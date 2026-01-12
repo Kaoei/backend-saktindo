@@ -1,0 +1,97 @@
+@extends('layouts.dashboard', [
+    'title' => 'User Management',
+    'pageTitle' => 'User Management',
+    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">User Management</li>',
+])
+
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
+@section('content')
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">Users</h5>
+                <a href="{{ route('users.create') }}" class="btn btn-primary">
+                    <i class="material-icons-two-tone text-white">person_add</i>
+                    Create User
+                </a>
+            </div>
+            <div class="card-body">
+                @if (session('status'))
+                    <div class="alert alert-success">{{ session('status') }}</div>
+                @endif
+
+                <div class="table-responsive">
+                    <table id="users-table" class="table table-hover m-b-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Created</th>
+                                <th class="text-end" style="width: 110px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($users as $user)
+                                <tr>
+                                    <td class="align-middle">{{ $user->name }}</td>
+                                    <td class="align-middle">{{ $user->email }}</td>
+                                    <td class="align-middle">
+                                        @php
+                                            $badgeClass = match ($user->role) {
+                                                \App\Models\User::ROLE_SUPER_ADMIN => 'bg-light-danger',
+                                                \App\Models\User::ROLE_TEKNISI => 'bg-light-warning',
+                                                default => 'bg-light-primary',
+                                            };
+                                        @endphp
+                                        <span class="badge {{ $badgeClass }}">{{ $user->role_label }}</span>
+                                    </td>
+                                    <td class="align-middle">{{ $user->created_at?->format('Y-m-d') }}</td>
+                                    <td class="align-middle text-end">
+                                        <a href="{{ route('users.edit', $user) }}" class="text-success" title="Edit">
+                                            <i class="icon feather icon-edit f-16 text-success"></i>
+                                        </a>
+
+                                        <form method="POST" action="{{ route('users.destroy', $user) }}" class="d-inline" onsubmit="return confirm('Delete this user?')">
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button type="submit" class="btn p-0 border-0 bg-transparent" title="Delete">
+                                                <i class="feather icon-trash-2 ml-3 f-16 text-danger"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">No users found.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#users-table').DataTable({
+                pageLength: 10,
+                order: [[3, 'desc']],
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [4] }
+                ]
+            });
+        });
+    </script>
+@endpush
