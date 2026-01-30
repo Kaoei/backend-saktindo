@@ -1,0 +1,287 @@
+/* DashboardKit overrides */
+
+.btn-primary,
+.btn-check:checked + .btn-primary,
+.btn-check:active + .btn-primary,
+.btn-primary:active,
+.btn-primary.active,
+.show > .btn-primary.dropdown-toggle {
+  background-color: #751204;
+  border-color: #751204;
+}
+
+.btn-primary:hover {
+  background-color:#751204;
+  border-color: #751204;
+}
+
+.btn-check:focus + .btn-primary,
+.btn-primary:focus {
+  background-color: #751204;
+  border-color: #751204;
+  box-shadow: 0 0 0 0.2rem rgba(117, 18, 4, 0.5);
+}
+
+.btn-primary:disabled,
+.btn-primary.disabled {
+  background-color: #751204;
+  border-color: #751204;
+}
+
+/* Form controls focus color */
+.form-control:focus {
+  border-color: #751204;
+  box-shadow: 0 0 0 0.2rem rgba(117, 18, 4, 0.25);
+}
+
+.form-select:focus {
+  border-color: #751204;
+  box-shadow: 0 0 0 0.2rem rgba(117, 18, 4, 0.25);
+}
+
+/* Auth page background */
+.auth-wrapper {
+  background: #f0f2f8;
+}
+
+/* Auth/login box sizing */
+@media (min-width: 576px) {
+  .auth-wrapper .auth-content:not(.container) {
+    width: 480px;
+  }
+}
+
+@media (min-width: 992px) {
+  .auth-wrapper .auth-content:not(.container) {
+    width: 540px;
+  }
+}
+
+/* Login logo sizing */
+.login-logo {
+  max-width: 140px;
+  width: 100%;
+  height: auto;
+}
+
+@media (max-width: 575.98px) {
+  .login-logo {
+    max-width: 120px;
+  }
+}
+
+/* Sidebar Custom Styling */
+.pc-sidebar {
+  background: #751204 !important;
+}
+
+.pc-sidebar .m-header {
+  background: #751204 !important;
+}
+
+.pc-sidebar .pc-link {
+  color: #e0e0e0 !important;
+}
+
+.pc-sidebar .pc-link:hover,
+.pc-sidebar .pc-link:focus,
+.pc-sidebar .pc-link:active,
+.pc-sidebar .active > .pc-link {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.pc-sidebar .pc-caption {
+  color: #ffffff !important;
+}
+
+.pc-sidebar .pc-caption span:not(.badge) {
+  color: #b8d4cf !important;
+}
+
+.pc-sidebar .pc-micon i,
+.pc-sidebar .pc-micon svg {
+  color: #b8d4cf !important;
+}
+
+.pc-sidebar .pc-link:hover .pc-micon i,
+.pc-sidebar .pc-link:hover .pc-micon svg,
+.pc-sidebar .pc-link:focus .pc-micon i,
+.pc-sidebar .pc-link:focus .pc-micon svg,
+.pc-sidebar .pc-link:active .pc-micon i,
+.pc-sidebar .pc-link:active .pc-micon svg,
+.pc-sidebar .active > .pc-link .pc-micon i,
+.pc-sidebar .active > .pc-link .pc-micon svg {
+  color: #ffffff !important;
+}
+
+.pc-sidebar .pc-micon i.material-icons-two-tone {
+  background-color: #e8f0ee !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 20px !important;
+}
+
+/* Submenu styling */
+.pc-sidebar .pc-submenu {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+
+.pc-sidebar .pc-submenu .pc-link {
+  color: #d0d0d0 !important;
+}
+
+.pc-sidebar .pc-submenu .pc-link:hover,
+.pc-sidebar .pc-submenu .pc-link:focus {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Arrow color for menu items */
+.pc-sidebar .pc-arrow i,
+.pc-sidebar .pc-arrow svg,
+.pc-sidebar .pc-arrow [data-feather],
+.pc-sidebar .pc-arrow {
+  color: #b8d4cf !important;
+  stroke: #b8d4cf !important;
+}
+
+.pc-sidebar .pc-link:hover .pc-arrow i,
+.pc-sidebar .pc-link:hover .pc-arrow svg,
+.pc-sidebar .pc-link:hover .pc-arrow [data-feather],
+.pc-sidebar .pc-link:hover .pc-arrow,
+.pc-sidebar .pc-link:focus .pc-arrow i,
+.pc-sidebar .pc-link:focus .pc-arrow svg,
+.pc-sidebar .pc-link:focus .pc-arrow [data-feather],
+.pc-sidebar .pc-link:focus .pc-arrow,
+.pc-sidebar .active > .pc-link .pc-arrow i,
+.pc-sidebar .active > .pc-link .pc-arrow svg,
+.pc-sidebar .active > .pc-link .pc-arrow [data-feather],
+.pc-sidebar .active > .pc-link .pc-arrow,
+.pc-sidebar .pc-trigger > .pc-link .pc-arrow i,
+.pc-sidebar .pc-trigger > .pc-link .pc-arrow svg,
+.pc-sidebar .pc-trigger > .pc-link .pc-arrow [data-feather],
+.pc-sidebar .pc-trigger > .pc-link .pc-arrow,
+.pc-sidebar .pc-hasmenu.pc-trigger > .pc-link .pc-arrow i,
+.pc-sidebar .pc-hasmenu.pc-trigger > .pc-link .pc-arrow svg,
+.pc-sidebar .pc-hasmenu.pc-trigger > .pc-link .pc-arrow [data-feather],
+.pc-sidebar .pc-hasmenu.pc-trigger > .pc-link .pc-arrow {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+
+body:not(.minimenu) .pc-sidebar .pc-submenu .pc-item.active:before {
+  color: #ffffff !important;
+}
+
+body:not(.minimenu) .pc-sidebar .pc-submenu .pc-item:before {
+  color: #b8d4cf !important;
+}
+
+/* Override primary color variable that affects sidebar */
+.pc-sidebar * {
+  --bs-primary: #751204 !important;
+}
+
+/* Mobile Header (Responsive Navbar) Styling */
+.pc-mob-header.pc-header {
+  background: #751204 !important;
+  border-bottom: 1px solid #751204 !important;
+}
+
+.pc-mob-header .pcm-logo {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Ensure burger icon and logo align nicely on mobile header */
+.pc-mob-header .pcm-logo img {
+  height: 60px !important;
+  max-height: 60px !important;
+  width: auto !important;
+  display: block !important;
+}
+
+.pc-mob-header .pcm-toolbar .pc-head-link {
+  color: #b8d4cf !important;
+}
+
+.pc-mob-header .pcm-toolbar .pc-head-link:hover,
+.pc-mob-header .pcm-toolbar .pc-head-link:focus,
+.pc-mob-header .pcm-toolbar .pc-head-link:active,
+.pc-mob-header .pcm-toolbar .pc-head-link.active {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.pc-mob-header .pcm-toolbar .pc-head-link .hamburger .hamburger-inner,
+.pc-mob-header .pcm-toolbar .pc-head-link .hamburger .hamburger-inner::before,
+.pc-mob-header .pcm-toolbar .pc-head-link .hamburger .hamburger-inner::after {
+  background-color: #b8d4cf !important;
+}
+
+.pc-mob-header .pcm-toolbar .pc-head-link:hover .hamburger .hamburger-inner,
+.pc-mob-header .pcm-toolbar .pc-head-link:focus .hamburger .hamburger-inner,
+.pc-mob-header .pcm-toolbar .pc-head-link:active .hamburger .hamburger-inner,
+.pc-mob-header .pcm-toolbar .pc-head-link.active .hamburger .hamburger-inner,
+.pc-mob-header .pcm-toolbar .pc-head-link:hover .hamburger .hamburger-inner::before,
+.pc-mob-header .pcm-toolbar .pc-head-link:focus .hamburger .hamburger-inner::before,
+.pc-mob-header .pcm-toolbar .pc-head-link:active .hamburger .hamburger-inner::before,
+.pc-mob-header .pcm-toolbar .pc-head-link.active .hamburger .hamburger-inner::before,
+.pc-mob-header .pcm-toolbar .pc-head-link:hover .hamburger .hamburger-inner::after,
+.pc-mob-header .pcm-toolbar .pc-head-link:focus .hamburger .hamburger-inner::after,
+.pc-mob-header .pcm-toolbar .pc-head-link:active .hamburger .hamburger-inner::after,
+.pc-mob-header .pcm-toolbar .pc-head-link.active .hamburger .hamburger-inner::after {
+  background-color: #ffffff !important;
+}
+
+.pc-mob-header .pcm-toolbar .pc-head-link i,
+.pc-mob-header .pcm-toolbar .pc-head-link svg {
+  color: #b8d4cf !important;
+  stroke: #b8d4cf !important;
+}
+
+.pc-mob-header .pcm-toolbar .pc-head-link:hover i,
+.pc-mob-header .pcm-toolbar .pc-head-link:focus i,
+.pc-mob-header .pcm-toolbar .pc-head-link:active i,
+.pc-mob-header .pcm-toolbar .pc-head-link.active i,
+.pc-mob-header .pcm-toolbar .pc-head-link:hover svg,
+.pc-mob-header .pcm-toolbar .pc-head-link:focus svg,
+.pc-mob-header .pcm-toolbar .pc-head-link:active svg,
+.pc-mob-header .pcm-toolbar .pc-head-link.active svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Mobile Header Dropdown Styling */
+.pc-mob-header .dropdown-menu {
+  background: #ffffff !important;
+}
+
+.pc-mob-header .dropdown-menu .dropdown-item {
+  color: #333333 !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0.5rem 1rem !important;
+}
+
+.pc-mob-header .dropdown-menu .dropdown-item span {
+  display: inline !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #333333 !important;
+}
+
+.pc-mob-header .dropdown-menu .dropdown-item:hover {
+  background-color: #f8f9fa !important;
+}
+
+.pc-mob-header .dropdown-menu .dropdown-header h6,
+.pc-mob-header .dropdown-menu .dropdown-header p {
+  color: #333333 !important;
+}
+

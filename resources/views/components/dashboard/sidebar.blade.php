@@ -6,8 +6,8 @@
     <div class="navbar-wrapper">
         <div class="m-header">
             <a href="{{ route('dashboard') }}" class="b-brand">
-                <img src="{{ asset($themeBase.'/images/logo.svg') }}" alt="" class="logo logo-lg">
-                <img src="{{ asset($themeBase.'/images/logo-sm.svg') }}" alt="" class="logo logo-sm">
+                <img src="{{ asset('src/img/gapuraWhite.png') }}" alt="" class="logo" style="height: 12rem;">
+                <img src="{{ asset('src/img/gapuraWhite.png') }}" alt="" class="logo logo-sm">
             </a>
         </div>
         <div class="navbar-content">

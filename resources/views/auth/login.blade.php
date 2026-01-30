@@ -11,8 +11,8 @@
             <div class="row align-items-center text-center">
                 <div class="col-md-12">
                     <div class="card-body">
-                        <img src="{{ asset($themeBase.'/images/logo-dark.svg') }}" alt="" class="img-fluid mb-4">
-                        <h4 class="mb-3 f-w-400">Signin</h4>
+                        <img src="{{ asset('src/img/gapuraIcon.png') }}" alt="" class="img-fluid mb-4" style="height: 12rem;">
+                        <h4 class="mb-3 f-w-400">Sign in</h4>
 
                         @if ($errors->any())
                             <div class="alert alert-danger text-start">
@@ -44,7 +44,7 @@
                                 </div>
                             </div>
 
-                            <button class="btn btn-block btn-primary mb-4" type="submit">Signin</button>
+                            <button class="btn btn-block btn-primary mb-4" type="submit">Sign in</button>
                         </form>
 
                     </div>
