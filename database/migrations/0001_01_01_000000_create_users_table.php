@@ -17,7 +17,8 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('role')->after('password')->index();
+            // 'after' is invalid inside CREATE TABLE for MySQL; just define normally
+            $table->string('role')->index();
             $table->rememberToken();
             $table->timestamps();
         });
