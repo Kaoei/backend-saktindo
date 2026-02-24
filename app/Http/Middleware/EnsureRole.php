@@ -11,7 +11,7 @@ class EnsureRole
     /**
      * @param  Closure(Request): Response  $next
      */
-    public function handle(Request $request, Closure $next, string $role): Response
+    public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         $user = $request->user();
 
@@ -19,8 +19,8 @@ class EnsureRole
             abort(401);
         }
 
-        if (($user->role ?? null) !== $role) {
-            abort(403);
+        if (! in_array($user->role ?? null, $roles, true)) {
+            abort(403, 'Access denied.');
         }
 
         return $next($request);

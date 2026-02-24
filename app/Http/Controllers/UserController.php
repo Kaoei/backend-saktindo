@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,22 +19,29 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('users.create');
+        $roles  = Role::orderBy('name')->get();
+        $groups = User::whereNotNull('group')->select('group')->distinct()->orderBy('group')->pluck('group');
+
+        return view('users.create', compact('roles', 'groups'));
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $validRoleSlugs = Role::pluck('slug')->implode(',');
+
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
-            'role' => ['required', 'in:'.User::ROLE_SUPER_ADMIN.','.User::ROLE_ADMIN.','.User::ROLE_TEKNISI],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', 'max:255', 'unique:users,email'],
+            'role'     => ['required', 'in:' . $validRoleSlugs],
+            'group'    => ['nullable', 'string', 'max:100'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
         User::query()->create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'role' => $data['role'],
+            'name'     => $data['name'],
+            'email'    => $data['email'],
+            'role'     => $data['role'],
+            'group'    => $data['group'] ?? null,
             'password' => Hash::make($data['password']),
         ]);
 
@@ -42,21 +50,28 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        return view('users.edit', compact('user'));
+        $roles  = Role::orderBy('name')->get();
+        $groups = User::whereNotNull('group')->select('group')->distinct()->orderBy('group')->pluck('group');
+
+        return view('users.edit', compact('user', 'roles', 'groups'));
     }
 
     public function update(Request $request, User $user): RedirectResponse
     {
+        $validRoleSlugs = Role::pluck('slug')->implode(',');
+
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$user->id],
-            'role' => ['required', 'in:'.User::ROLE_SUPER_ADMIN.','.User::ROLE_ADMIN.','.User::ROLE_TEKNISI],
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'role'     => ['required', 'in:' . $validRoleSlugs],
+            'group'    => ['nullable', 'string', 'max:100'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $user->name = $data['name'];
+        $user->name  = $data['name'];
         $user->email = $data['email'];
-        $user->role = $data['role'];
+        $user->role  = $data['role'];
+        $user->group = $data['group'] ?? null;
 
         if (! empty($data['password'])) {
             $user->password = Hash::make($data['password']);

@@ -21,16 +21,21 @@
             </div>
             <div class="card-body">
                 @if (session('status'))
-                    <div class="alert alert-success">{{ session('status') }}</div>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('status') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 @endif
 
                 <div class="table-responsive">
                     <table id="users-table" class="table table-hover m-b-0">
                         <thead>
                             <tr>
+                                <th>Kode</th>
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Role</th>
+                                <th>Group</th>
                                 <th>Created</th>
                                 <th class="text-end" style="width: 110px;">Action</th>
                             </tr>
@@ -38,28 +43,38 @@
                         <tbody>
                             @forelse($users as $user)
                                 <tr>
-                                    <td class="align-middle">{{ $user->name }}</td>
+                                    <td class="align-middle">
+                                        <span class="badge bg-light-secondary font-monospace">{{ $user->id }}</span>
+                                    </td>
+                                    <td class="align-middle fw-semibold">{{ $user->name }}</td>
                                     <td class="align-middle">{{ $user->email }}</td>
                                     <td class="align-middle">
                                         @php
                                             $badgeClass = match ($user->role) {
                                                 \App\Models\User::ROLE_SUPER_ADMIN => 'bg-light-danger',
-                                                \App\Models\User::ROLE_TEKNISI => 'bg-light-warning',
-                                                default => 'bg-light-primary',
+                                                \App\Models\User::ROLE_TEKNISI    => 'bg-light-warning',
+                                                \App\Models\User::ROLE_SALES      => 'bg-light-success',
+                                                \App\Models\User::ROLE_FINANCE    => 'bg-light-info',
+                                                default                           => 'bg-light-primary',
                                             };
                                         @endphp
                                         <span class="badge {{ $badgeClass }}">{{ $user->role_label }}</span>
                                     </td>
+                                    <td class="align-middle">
+                                        @if($user->group)
+                                            <span class="badge bg-light-secondary">{{ $user->group }}</span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
                                     <td class="align-middle">{{ $user->created_at?->format('Y-m-d') }}</td>
                                     <td class="align-middle text-end">
                                         <a href="{{ route('users.edit', $user) }}" class="text-success" title="Edit">
-                                            <i class="icon feather icon-edit f-16 text-success"></i>
+                                            <i class="feather icon-edit f-16 text-success"></i>
                                         </a>
-
-                                        <form method="POST" action="{{ route('users.destroy', $user) }}" class="d-inline" onsubmit="return confirm('Delete this user?')">
-                                            @csrf
-                                            @method('DELETE')
-
+                                        <form method="POST" action="{{ route('users.destroy', $user) }}" class="d-inline"
+                                              onsubmit="return confirm('Delete this user?')">
+                                            @csrf @method('DELETE')
                                             <button type="submit" class="btn p-0 border-0 bg-transparent" title="Delete">
                                                 <i class="feather icon-trash-2 ml-3 f-16 text-danger"></i>
                                             </button>
@@ -67,9 +82,6 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">No users found.</td>
-                                </tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -87,9 +99,10 @@
         $(function () {
             $('#users-table').DataTable({
                 pageLength: 10,
-                order: [[3, 'desc']],
+                order: [[5, 'desc']],
+                language: { emptyTable: 'Belum ada user.' },
                 columnDefs: [
-                    { orderable: false, searchable: false, targets: [4] }
+                    { orderable: false, searchable: false, targets: [6] }
                 ]
             });
         });

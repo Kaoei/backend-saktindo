@@ -38,11 +38,14 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Role</label>
+                        <label class="form-label">Role <span class="text-danger">*</span></label>
                         <select name="role" class="form-select" required>
-                            <option value="{{ \App\Models\User::ROLE_SUPER_ADMIN }}" {{ old('role', $user->role) === \App\Models\User::ROLE_SUPER_ADMIN ? 'selected' : '' }}>Super Admin</option>
-                            <option value="{{ \App\Models\User::ROLE_ADMIN }}" {{ old('role', $user->role) === \App\Models\User::ROLE_ADMIN ? 'selected' : '' }}>Admin</option>
-                            <option value="{{ \App\Models\User::ROLE_TEKNISI }}" {{ old('role', $user->role) === \App\Models\User::ROLE_TEKNISI ? 'selected' : '' }}>Teknisi</option>
+                            @foreach($roles as $role)
+                                <option value="{{ $role->slug }}"
+                                    {{ old('role', $user->role) === $role->slug ? 'selected' : '' }}>
+                                    {{ $role->name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
 
@@ -63,3 +66,21 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    const groupSelect = document.getElementById('group-select');
+    const newGroupInput = document.getElementById('new-group-input');
+    groupSelect.addEventListener('change', function() {
+        if (this.value === '__new__') {
+            newGroupInput.classList.remove('d-none');
+            newGroupInput.setAttribute('name', 'group');
+            groupSelect.removeAttribute('name');
+        } else {
+            newGroupInput.classList.add('d-none');
+            newGroupInput.removeAttribute('name');
+            groupSelect.setAttribute('name', 'group');
+        }
+    });
+</script>
+@endpush
