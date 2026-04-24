@@ -11,7 +11,7 @@
             <div class="row align-items-center text-center">
                 <div class="col-md-12">
                     <div class="card-body">
-                        <img src="{{ asset('src/img/gapuraIcon.png') }}" alt="" class="img-fluid mb-4" style="height: 12rem;">
+                        <img src="{{ $webCustomization['loginLogoUrl'] ?? asset('src/img/gapuraIcon.png') }}" alt="Login logo" class="img-fluid mb-4 login-logo" style="height: 12rem;">
                         <h4 class="mb-3 f-w-400">Sign in</h4>
 
                         @if ($errors->any())

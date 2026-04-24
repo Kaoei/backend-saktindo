@@ -6,8 +6,8 @@
     <div class="navbar-wrapper">
         <div class="m-header">
             <a href="{{ route('dashboard') }}" class="b-brand">
-                <img src="{{ asset('src/img/gapuraWhite.png') }}" alt="" class="logo" style="height: 12rem;">
-                <img src="{{ asset('src/img/gapuraWhite.png') }}" alt="" class="logo logo-sm">
+                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo" class="logo" style="height: 12rem;">
+                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo small" class="logo logo-sm">
             </a>
         </div>
         <div class="navbar-content">
@@ -24,37 +24,6 @@
                 </li>
 
                 @auth
-                    <li class="pc-item pc-caption">
-                        <label>Sales</label>
-                    </li>
-                    <li class="pc-item">
-                        <a href="{{ route('clients.index') }}" class="pc-link ">
-                            <span class="pc-micon"><i class="material-icons-two-tone">contacts</i></span>
-                            <span class="pc-mtext">Client Management</span>
-                        </a>
-                    </li>
-
-                    @if(in_array(auth()->user()?->role, [\App\Models\User::ROLE_SALES, \App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_ADMIN]))
-                        <li class="pc-item">
-                            <a href="{{ route('proposals.index') }}" class="pc-link ">
-                                <span class="pc-micon"><i class="material-icons-two-tone">description</i></span>
-                                <span class="pc-mtext">Penawaran</span>
-                            </a>
-                        </li>
-                    @endif
-
-                    @if(in_array(auth()->user()?->role, [\App\Models\User::ROLE_FINANCE, \App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_ADMIN]))
-                        <li class="pc-item pc-caption">
-                            <label>Finance</label>
-                        </li>
-                        <li class="pc-item">
-                            <a href="{{ route('invoices.index') }}" class="pc-link ">
-                                <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
-                                <span class="pc-mtext">Invoice</span>
-                            </a>
-                        </li>
-                    @endif
-
                     @if(auth()->user()?->role === \App\Models\User::ROLE_SUPER_ADMIN)
                         <li class="pc-item pc-caption">
                             <label>Management</label>
@@ -89,6 +58,12 @@
                                     </a>
                                 </li>
                             </ul>
+                        </li>
+                        <li class="pc-item">
+                            <a href="{{ route('web-customization.edit') }}" class="pc-link ">
+                                <span class="pc-micon"><i class="material-icons-two-tone">computer</i></span>
+                                <span class="pc-mtext">Web Customization</span>
+                            </a>
                         </li>
                     @endif
                 @endauth

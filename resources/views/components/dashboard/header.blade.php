@@ -5,7 +5,7 @@
 
 <div class="pc-mob-header pc-header">
     <div class="pcm-logo">
-        <img src="{{ asset('src/img/gapuraWhite.png') }}" alt="" class="logo" style="height: 10rem;">
+        <img src="{{ $webCustomization['sidebarLogoUrl'] ?? asset('src/img/gapuraWhite.png') }}" alt="Sidebar logo" class="logo" style="height: 10rem;">
     </div>
     <div class="pcm-toolbar">
         <a href="#!" class="pc-head-link" id="mobile-collapse">

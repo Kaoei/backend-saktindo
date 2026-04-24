@@ -24,38 +24,6 @@ class RoleSeeder extends Seeder
                 'is_system'   => true,
                 'permissions' => array_filter(array_keys(Role::PERMISSIONS), fn ($p) => $p !== 'roles.manage'),
             ],
-            [
-                'name'        => 'Sales',
-                'slug'        => 'sales',
-                'description' => 'Mengelola data klien dan penawaran.',
-                'is_system'   => true,
-                'permissions' => [
-                    'dashboard',
-                    'clients.view',
-                    'clients.create',
-                    'clients.edit',
-                    'proposals.view',
-                    'proposals.create',
-                    'proposals.edit',
-                    'proposals.delete',
-                    'proposals.send_email',
-                    'proposals.update_status',
-                ],
-            ],
-            [
-                'name'        => 'Finance',
-                'slug'        => 'finance',
-                'description' => 'Mengelola invoice dan penerimaan pembayaran.',
-                'is_system'   => true,
-                'permissions' => [
-                    'dashboard',
-                    'clients.view',
-                    'invoices.view',
-                    'invoices.mark_paid',
-                    'invoices.receipt',
-                    'proposals.view',
-                ],
-            ],
         ];
 
         foreach ($roles as $data) {
