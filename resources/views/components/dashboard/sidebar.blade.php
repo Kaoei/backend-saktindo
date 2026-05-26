@@ -23,6 +23,13 @@
                     </a>
                 </li>
 
+                <li class="pc-item">
+                    <a href="{{ route('products.index') }}" class="pc-link {{ Request::routeIs('products.*') ? 'active' : '' }}">
+                        <span class="pc-micon"><i class="material-icons-two-tone">shopping_bag</i></span>
+                        <span class="pc-mtext">Product Management</span>
+                    </a>
+                </li>
+
                 @auth
                     @if(auth()->user()?->role === \App\Models\User::ROLE_SUPER_ADMIN)
                         <li class="pc-item pc-caption">

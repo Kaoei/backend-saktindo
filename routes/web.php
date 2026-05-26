@@ -56,5 +56,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/web-customization', [WebCustomizationController::class, 'update'])
         ->middleware('role:'.User::ROLE_SUPER_ADMIN)
         ->name('web-customization.update');
+
+    // Product Management Routes
+    Route::post('/products/import', [App\Http\Controllers\ProductController::class, 'import'])->name('products.import');
+    Route::get('/products/export', [App\Http\Controllers\ProductController::class, 'export'])->name('products.export');
+    Route::resource('/products', App\Http\Controllers\ProductController::class);
 });
 
