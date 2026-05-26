@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\masterCustomerController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebCustomizationController;
@@ -56,5 +57,20 @@ Route::middleware('auth')->group(function () {
     Route::put('/web-customization', [WebCustomizationController::class, 'update'])
         ->middleware('role:'.User::ROLE_SUPER_ADMIN)
         ->name('web-customization.update');
+
+    Route::prefix('master-customer')->name('master-customer.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+        Route::get('/', [masterCustomerController::class, 'index'])->name('index');
+        Route::get('/create', [masterCustomerController::class, 'create'])->name('create');
+        Route::post('/', [masterCustomerController::class, 'store'])->name('store');
+        Route::get('/{customer}/edit', [masterCustomerController::class, 'edit'])->name('edit');
+        Route::put('/{customer}', [masterCustomerController::class, 'update'])->name('update');
+        Route::delete('/{customer}', [masterCustomerController::class, 'destroy'])->name('destroy');
+        Route::get('/import', [masterCustomerController::class, 'importPage'])->name('importPage');
+        Route::post('/import', [masterCustomerController::class, 'import'])->name('import');
+        Route::get('/export', [masterCustomerController::class, 'export'])->name('export');
+        Route::get('/tamplate', [masterCustomerController::class, 'tamplate'])->name('tamplate');
+    });
+
 });
+
 

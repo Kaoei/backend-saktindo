@@ -22,6 +22,37 @@
                         <span class="pc-mtext">Dashboard</span>
                     </a>
                 </li>
+                <li class="pc-item pc-hasmenu">
+                        <a href="javascript:void(0);" class="pc-link">
+                            <span class="pc-micon">
+                                <i class="material-icons-two-tone">settings</i>
+                            </span>
+                            <span class="pc-mtext">Customer Management</span>
+                            <span class="pc-arrow">
+                                <i class="material-icons-two-tone text-white">chevron_right</i>
+                            </span>
+                        </a>
+
+                        <ul class="pc-submenu">
+                            <li class="pc-item">
+                                <a href="{{ route('master-customer.index') }}" class="pc-link">
+                                    <span class="pc-micon">
+                                        <i class="material-icons-two-tone">group</i>
+                                    </span>
+                                    <span class="pc-mtext">List Customer</span>
+                                </a>
+                            </li>
+
+                            <li class="pc-item">
+                                <a href="{{ route('roles.index') }}" class="pc-link">
+                                    <span class="pc-micon">
+                                        <i class="material-icons-two-tone">admin_panel_settings</i>
+                                    </span>
+                                    <span class="pc-mtext">Role Management</span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
 
                 @auth
                     @if(auth()->user()?->role === \App\Models\User::ROLE_SUPER_ADMIN)
@@ -59,6 +90,7 @@
                                 </li>
                             </ul>
                         </li>
+                        
                         <li class="pc-item">
                             <a href="{{ route('web-customization.edit') }}" class="pc-link ">
                                 <span class="pc-micon"><i class="material-icons-two-tone">computer</i></span>
