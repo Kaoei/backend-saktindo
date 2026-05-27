@@ -25,6 +25,12 @@ class Role extends Model
         'users.edit'                 => 'Edit User',
         'users.delete'               => 'Hapus User',
         'roles.manage'               => 'Kelola Role',
+        'suppliers.view'             => 'Lihat Supplier',
+        'suppliers.create'           => 'Tambah Supplier',
+        'suppliers.edit'             => 'Edit Supplier',
+        'suppliers.delete'           => 'Hapus Supplier',
+        'activity_logs.view'         => 'Lihat Activity Log',
+        'sessions.manage'            => 'Kelola Session',
     ];
 
     /**
@@ -34,6 +40,8 @@ class Role extends Model
         'Umum'       => ['dashboard'],
         'User'       => ['users.view', 'users.create', 'users.edit', 'users.delete'],
         'Role'       => ['roles.manage'],
+        'Supplier'   => ['suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete'],
+        'Keamanan'   => ['activity_logs.view', 'sessions.manage'],
     ];
 
     protected $fillable = [

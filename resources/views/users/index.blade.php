@@ -14,14 +14,16 @@
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h5 class="mb-0">Users</h5>
-                <a href="{{ route('users.create') }}" class="btn btn-primary">
-                    <i class="material-icons-two-tone text-white">person_add</i>
-                    Create User
-                </a>
+                @if(auth()->user()?->hasPermission('users.create'))
+                    <a href="{{ route('users.create') }}" class="btn btn-primary">
+                        <i class="material-icons-two-tone text-white">person_add</i>
+                        Create User
+                    </a>
+                @endif
             </div>
             <div class="card-body">
                 @if (session('status'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <div class="alert alert-success alert-dismissible fade show mt-4" role="alert">
                         {{ session('status') }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
@@ -69,16 +71,23 @@
                                     </td>
                                     <td class="align-middle">{{ $user->created_at?->format('Y-m-d') }}</td>
                                     <td class="align-middle text-end">
-                                        <a href="{{ route('users.edit', $user) }}" class="text-success" title="Edit">
-                                            <i class="feather icon-edit f-16 text-success"></i>
-                                        </a>
-                                        <form method="POST" action="{{ route('users.destroy', $user) }}" class="d-inline"
-                                              onsubmit="return confirm('Delete this user?')">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="btn p-0 border-0 bg-transparent" title="Delete">
-                                                <i class="feather icon-trash-2 ml-3 f-16 text-danger"></i>
-                                            </button>
-                                        </form>
+                                        @if(auth()->user()?->hasPermission('users.edit'))
+                                            <a href="{{ route('users.edit', $user) }}" class="text-success" title="Edit">
+                                                <i class="feather icon-edit f-16 text-success"></i>
+                                            </a>
+                                            <a href="{{ route('users.reset-password', $user) }}" class="text-warning ms-2" title="Reset Password">
+                                                <i class="feather icon-lock f-16 text-warning"></i>
+                                            </a>
+                                        @endif
+                                        @if(auth()->user()?->hasPermission('users.delete'))
+                                            <form method="POST" action="{{ route('users.destroy', $user) }}" class="d-inline"
+                                                  onsubmit="return confirm('Delete this user?')">
+                                                @csrf @method('DELETE')
+                                                <button type="submit" class="btn p-0 border-0 bg-transparent" title="Delete">
+                                                    <i class="feather icon-trash-2 ml-3 f-16 text-danger"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty

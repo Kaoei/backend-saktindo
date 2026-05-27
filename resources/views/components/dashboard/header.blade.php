@@ -9,6 +9,7 @@
     </div>
     <div class="pcm-toolbar">
         <a href="#!" class="pc-head-link" id="mobile-collapse">
+            <i data-feather="menu"></i>
             <div class="hamburger hamburger--arrowturn">
                 <div class="hamburger-box">
                     <div class="hamburger-inner"></div>
@@ -41,13 +42,14 @@
                         </a>
                         <div class="dropdown-menu dropdown-menu-right pc-h-dropdown">
                             <div class="dropdown-header">
+                                <i class="material-icons-two-tone me-1">account_circle</i>
                                 <h6 class="text-overflow m-0">{{ $user?->email }}</h6>
                             </div>
 
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" class="dropdown-item">
-                                    <i class="material-icons-two-tone">chrome_reader_mode</i>
+                                    <i class="material-icons-two-tone">logout</i>
                                     <span>Logout</span>
                                 </button>
                             </form>
