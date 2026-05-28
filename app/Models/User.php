@@ -97,6 +97,10 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permission): bool
     {
+        if ($this->role === self::ROLE_SUPER_ADMIN) {
+            return true;
+        }
+
         $role = \App\Models\Role::where('slug', $this->role)->first();
 
         return $role?->hasPermission($permission) ?? false;

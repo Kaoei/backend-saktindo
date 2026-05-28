@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,11 +32,15 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
+        ActivityLogger::log('login', 'auth', null, ['email' => $credentials['email']], $request);
+
         return redirect()->intended(route('dashboard'));
     }
 
     public function destroy(Request $request): RedirectResponse
     {
+        ActivityLogger::log('logout', 'auth', null, [], $request);
+
         Auth::logout();
 
         $request->session()->invalidate();
