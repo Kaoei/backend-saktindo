@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -39,13 +40,15 @@ class RoleController extends Controller
             return back()->withInput()->withErrors(['name' => 'Role dengan nama ini sudah ada.']);
         }
 
-        Role::query()->create([
+        $role = Role::query()->create([
             'name'        => $data['name'],
             'slug'        => $slug,
             'description' => $data['description'] ?? null,
             'permissions' => $data['permissions'] ?? [],
             'is_system'   => false,
         ]);
+
+        ActivityLogger::log('create', 'role', $role);
 
         return redirect()->route('roles.index')->with('status', 'Role berhasil dibuat.');
     }
@@ -78,6 +81,8 @@ class RoleController extends Controller
 
         $role->save();
 
+        ActivityLogger::log('update', 'role', $role);
+
         return redirect()->route('roles.index')->with('status', "Role '{$role->name}' berhasil diupdate.");
     }
 
@@ -88,6 +93,7 @@ class RoleController extends Controller
         }
 
         $roleName = $role->name;
+        ActivityLogger::log('delete', 'role', $role, ['name' => $roleName]);
         $role->delete();
 
         return redirect()->route('roles.index')->with('status', "Role '{$roleName}' berhasil dihapus.");

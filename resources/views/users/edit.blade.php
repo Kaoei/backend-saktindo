@@ -50,6 +50,16 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">Group</label>
+                        <input name="group" type="text" class="form-control" value="{{ old('group', $user->group) }}" list="groups-list">
+                        <datalist id="groups-list">
+                            @foreach($groups as $group)
+                                <option value="{{ $group }}"></option>
+                            @endforeach
+                        </datalist>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">New Password (optional)</label>
                         <input name="password" type="password" class="form-control" autocomplete="new-password">
                     </div>
@@ -66,21 +76,3 @@
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-    const groupSelect = document.getElementById('group-select');
-    const newGroupInput = document.getElementById('new-group-input');
-    groupSelect.addEventListener('change', function() {
-        if (this.value === '__new__') {
-            newGroupInput.classList.remove('d-none');
-            newGroupInput.setAttribute('name', 'group');
-            groupSelect.removeAttribute('name');
-        } else {
-            newGroupInput.classList.add('d-none');
-            newGroupInput.removeAttribute('name');
-            groupSelect.setAttribute('name', 'group');
-        }
-    });
-</script>
-@endpush

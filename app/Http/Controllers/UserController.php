@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Role;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -37,13 +38,15 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        User::query()->create([
+        $user = User::query()->create([
             'name'     => $data['name'],
             'email'    => $data['email'],
             'role'     => $data['role'],
             'group'    => $data['group'] ?? null,
             'password' => Hash::make($data['password']),
         ]);
+
+        ActivityLogger::log('create', 'user', $user);
 
         return redirect()->route('users.index')->with('status', 'User berhasil dibuat.');
     }
@@ -79,11 +82,34 @@ class UserController extends Controller
 
         $user->save();
 
+        ActivityLogger::log('update', 'user', $user);
+
         return redirect()->route('users.index')->with('status', 'User berhasil diupdate.');
+    }
+
+    public function resetPassword(User $user)
+    {
+        return view('users.reset-password', compact('user'));
+    }
+
+    public function updatePassword(Request $request, User $user): RedirectResponse
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->password = Hash::make($data['password']);
+        $user->save();
+
+        ActivityLogger::log('reset_password', 'user', $user);
+
+        return redirect()->route('users.index')->with('status', 'Password user berhasil direset.');
     }
 
     public function destroy(User $user): RedirectResponse
     {
+        ActivityLogger::log('delete', 'user', $user, ['email' => $user->email]);
+
         $user->delete();
 
         return redirect()->route('users.index')->with('status', 'User berhasil dihapus.');

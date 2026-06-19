@@ -21,7 +21,7 @@
             </div>
             <div class="card-body">
                 @if (session('status'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <div class="alert alert-success alert-dismissible fade show mt-4" role="alert">
                         {{ session('status') }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>

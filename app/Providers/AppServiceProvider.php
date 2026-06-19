@@ -6,6 +6,7 @@ use App\Models\WebSetting;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,17 +33,20 @@ class AppServiceProvider extends ServiceProvider
             'loginLogoPath' => $defaultLoginLogo,
         ];
 
-        if (Schema::hasTable('web_settings')) {
-            $items = WebSetting::query()
-                ->whereIn('key', ['primary_color', 'sidebar_logo_path', 'login_logo_path'])
-                ->pluck('value', 'key');
+        try {
+            if (Schema::hasTable('web_settings')) {
+                $items = WebSetting::query()
+                    ->whereIn('key', ['primary_color', 'sidebar_logo_path', 'login_logo_path'])
+                    ->pluck('value', 'key');
 
-            $settings['primaryColor'] = $this->isValidHexColor($items['primary_color'] ?? null)
-                ? strtoupper($items['primary_color'])
-                : $defaultPrimaryColor;
+                $settings['primaryColor'] = $this->isValidHexColor($items['primary_color'] ?? null)
+                    ? strtoupper($items['primary_color'])
+                    : $defaultPrimaryColor;
 
-            $settings['sidebarLogoPath'] = $items['sidebar_logo_path'] ?? $defaultSidebarLogo;
-            $settings['loginLogoPath'] = $items['login_logo_path'] ?? $defaultLoginLogo;
+                $settings['sidebarLogoPath'] = $items['sidebar_logo_path'] ?? $defaultSidebarLogo;
+                $settings['loginLogoPath'] = $items['login_logo_path'] ?? $defaultLoginLogo;
+            }
+        } catch (Throwable) {
         }
 
         $primaryRgb = $this->hexToRgb($settings['primaryColor']);
