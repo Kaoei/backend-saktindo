@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\masterCustomerController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SalesFinanceController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
@@ -94,6 +95,26 @@ Route::middleware('auth')->group(function () {
         Route::put('/{supplier}', [SupplierController::class, 'update'])->middleware('permission:suppliers.edit')->name('update');
         Route::delete('/{supplier}', [SupplierController::class, 'destroy'])->middleware('permission:suppliers.delete')->name('destroy');
     });
+
+    Route::prefix('sales-finance')->name('sales-finance.')->group(function () {
+        Route::get('/', [SalesFinanceController::class, 'index'])->middleware('permission:sales_finance.view')->name('index');
+        Route::get('/create', [SalesFinanceController::class, 'create'])->middleware('permission:sales_finance.create')->name('create');
+        Route::post('/', [SalesFinanceController::class, 'store'])->middleware('permission:sales_finance.create')->name('store');
+        Route::get('/{salesOrder}', [SalesFinanceController::class, 'show'])->middleware('permission:sales_finance.view')->name('show');
+        Route::get('/{salesOrder}/edit', [SalesFinanceController::class, 'edit'])->middleware('permission:sales_finance.edit')->name('edit');
+        Route::put('/{salesOrder}', [SalesFinanceController::class, 'update'])->middleware('permission:sales_finance.edit')->name('update');
+        Route::delete('/{salesOrder}', [SalesFinanceController::class, 'destroy'])->middleware('permission:sales_finance.delete')->name('destroy');
+        Route::post('/{salesOrder}/stock-check', [SalesFinanceController::class, 'checkStock'])->middleware('permission:sales_finance.edit')->name('stock-check');
+        Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
+    });
+
+    Route::post('/invoices/{invoice}/delivery-note', [SalesFinanceController::class, 'storeDeliveryNote'])
+        ->middleware('permission:sales_finance.edit')
+        ->name('invoices.delivery-note.store');
+
+    Route::post('/invoices/{invoice}/payments', [SalesFinanceController::class, 'storePayment'])
+        ->middleware('permission:sales_finance.create')
+        ->name('invoices.payments.store');
 
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])
         ->middleware('permission:activity_logs.view')
