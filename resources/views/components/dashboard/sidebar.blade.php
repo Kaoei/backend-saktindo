@@ -53,6 +53,14 @@
                                     </a>
                                 </li>
                                 <li class="pc-item">
+                                    <a href="{{ route('outbound.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">group</i>
+                                        </span>
+                                        <span class="pc-mtext">List Barang Keluar</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
                                     <a href="{{ route('gudang-product.index') }}" class="pc-link">
                                         <span class="pc-micon">
                                             <i class="material-icons-two-tone">group</i>
@@ -70,6 +78,12 @@
                                 </li>
                             </ul>
                         </li>
+                         <li class="pc-item">
+                                <a href="{{ route('warehouse-task.index') }}" class="pc-link ">
+                                    <span class="pc-micon"><i class="material-icons-two-tone">computer</i></span>
+                                    <span class="pc-mtext">Warehouse Taks</span>
+                                </a>
+                            </li>
                     @endif
                     @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
                         <li class="pc-item pc-caption">

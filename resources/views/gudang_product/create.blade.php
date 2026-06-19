@@ -26,7 +26,7 @@
                             Barang Masuk (Pending)
                         </label>
 
-                        <select name="inbound_id"
+                        <select name="in_bound_id"
                                 class="form-select"
                                 required>
 

@@ -9,7 +9,7 @@ class Rak extends Model
 {
     use SoftDeletes;
 
-    protected $table = 'racks';
+    protected $table = 'raks';
 
     protected $primaryKey = 'rak_kode';
 

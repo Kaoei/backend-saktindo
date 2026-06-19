@@ -11,27 +11,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('gudang_products', function (Blueprint $table) {
-            $table->string('id', 30)->primary();
+     Schema::create('gudang_products', function (Blueprint $table) {
+    $table->string('id', 30)->primary();
 
-            $table->string('supplier_product_id', 30);
-            $table->string('rack_id')->nullable();
+    $table->string('supplier_product_id', 30);
+    $table->string('rack_id')->nullable();
 
-            $table->unsignedInteger('qty')->default(0);
-            $table->string('status')->default('stored')->index();
+    $table->unsignedInteger('qty')->default(0);
+    $table->string('status')->default('stored')->index();
 
-            $table->timestamps();
-            $table->softDeletes();
+    $table->timestamps();
+    $table->softDeletes();
 
-            $table->foreign('supplier_product_id')
-                ->references('id')
-                ->on('supplier_products');
+    $table->foreign('supplier_product_id')
+        ->references('id')
+        ->on('supplier_products');
 
-            $table->foreign('rack_id')
-                ->references('rak_kode')
-                ->on('racks')
-                ->nullOnDelete();
-        });
+    $table->foreign('rack_id')
+        ->references('rak_kode')
+        ->on('raks')
+        ->nullOnDelete();
+});
     }
 
     /**

@@ -7,11 +7,13 @@ use App\Http\Controllers\RakController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\GudangProductController;
 use App\Http\Controllers\InBoundController;
+use App\Http\Controllers\OutBoundController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesFinanceController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WarehouseTaskController;
 use App\Http\Controllers\WebCustomizationController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
@@ -173,5 +175,22 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [GudangProductController::class, 'create'])->name('create');
         Route::post('/', [GudangProductController::class, 'store'])->name('store');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');
+    });
+    Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+        Route::get('/', [WarehouseTaskController::class, 'index'])->name('index');
+        Route::get('/create', [WarehouseTaskController::class, 'create'])->name('create');
+        Route::post('/', [WarehouseTaskController::class, 'store'])->name('store');
+        Route::get('/{warehouseTask}/edit', [WarehouseTaskController::class, 'edit'])->name('edit');
+        Route::put('/{warehouseTask}', [WarehouseTaskController::class, 'update'])->name('update');
+        Route::delete('/{warehouseTask}', [WarehouseTaskController::class, 'destroy'])->name('destroy');
+        Route::patch('/{warehouseTask}/process', [WarehouseTaskController::class, 'process'])->name('process');
+        Route::patch('/{warehouseTask}/complete', [WarehouseTaskController::class, 'complete'])->name('complete');
+    });
+    Route::prefix('outbound')->name('outbound.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+        Route::get('/', [OutBoundController::class, 'index'])->name('index');
+        Route::get('/create/{warehouseTask}', [OutBoundController::class, 'create'])->name('create');
+        Route::post('/', [OutBoundController::class, 'store'])->name('store');
+        Route::get('/{outBound}/print', [OutBoundController::class, 'print'])->name('print');
+        Route::delete('/{outBound}', [OutBoundController::class, 'destroy'])->name('destroy');
     });
 });

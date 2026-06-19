@@ -16,7 +16,7 @@ class RakSeeder extends Seeder
             ],
             [
                 'rak_kode' => 'A-01',
-                'location' => 'Gudang Utama',
+                'location' => 'Gudang Utama',   
             ],
             [
                 'rak_kode' => 'A-02',
