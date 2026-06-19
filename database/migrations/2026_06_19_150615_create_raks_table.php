@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('racks', function (Blueprint $table) {
+        Schema::create('raks', function (Blueprint $table) {
             $table->string('rak_kode')->primary();
             $table->string('location');
 

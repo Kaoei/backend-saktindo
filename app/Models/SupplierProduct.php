@@ -41,4 +41,13 @@ class SupplierProduct extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
+    public function gudangProducts()
+    {
+        return $this->hasMany(
+            GudangProduct::class,
+            'supplier_product_id',
+            'id'
+        );
+    }
 }
+

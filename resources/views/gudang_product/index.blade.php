@@ -1,8 +1,8 @@
 @extends('layouts.dashboard',
 [
-    'title' => 'Product',
-    'pageTitle' => 'Product',
-    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Product</li>'
+    'title' => 'Produk Gudang',
+    'pageTitle' => 'Produk Gudang',
+    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Produk Gudang</li>'
 ])
 
 @push('styles')
@@ -16,19 +16,15 @@
 
         <div class="card">
             <div class="card-header d-flex align-items-center justify-content-between">
-
                 <div>
-                    <h5 class="mb-1">Daftar Product</h5>
-                    <small class="text-muted">Data master product</small>
+                    <h5 class="mb-1">Daftar Produk Gudang</h5>
+                    <small class="text-muted">Data barang yang sudah ditempatkan ke rak</small>
                 </div>
 
-                <div>
-                    <a href="{{ route('product.create') }}" class="btn btn-primary btn-sm">
-                        <i class="material-icons-two-tone text-white">add_circle</i>
-                        Tambah Product
-                    </a>
-                </div>
-
+                <a href="{{ route('gudang-product.create') }}" class="btn btn-primary btn-sm">
+                    <i class="material-icons-two-tone text-white">add_circle</i>
+                    Simpan Barang ke Rak
+                </a>
             </div>
 
             <div class="card-body">
@@ -40,49 +36,42 @@
                     </div>
                 @endif
 
-                @if (session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
-
                 <div class="table-responsive">
-
-                    <table id="products-table" class="table table-hover align-middle">
-
+                    <table id="gudang-product-table" class="table table-hover align-middle">
                         <thead>
                             <tr>
-                                <th>ID Product</th>
+                                <th>ID</th>
+                                <th>Barang</th>
                                 <th>SKU</th>
-                                <th>Nama Product</th>
-                                <th>Deskripsi</th>
-                                <th>Stock</th>
-                                <th>Tanggal Masuk</th>
-                                <th class="text-end" style="width: 120px;">Aksi</th>
+                                <th>Brand</th>
+                                <th>Qty</th>
+                                <th>Rak</th>
+                                <th>Lokasi</th>
+                                <th>Status</th>
+                                <th class="text-end" style="width: 80px;">Aksi</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @forelse($products as $product)
                                 <tr>
-                                    <td>{{ $product->id_product }}</td>
-                                    <td>{{ $product->sku }}</td>
-                                    <td>{{ $product->name }}</td>
-                                    <td>{{ $product->desc ?? '-' }}</td>
-                                    <td>{{ $product->stock }}</td>
-                                    <td>{{ $product->Tgl_masuk ?? '-' }}</td>
-
+                                    <td>{{ $product->id }}</td>
+                                    <td>{{ $product->supplierProduct->item_name ?? '-' }}</td>
+                                    <td>{{ $product->supplierProduct->sku ?? '-' }}</td>
+                                    <td>{{ $product->supplierProduct->brand ?? '-' }}</td>
+                                    <td>{{ $product->qty }}</td>
+                                    <td>{{ $product->rack->rak_kode ?? '-' }}</td>
+                                    <td>{{ $product->rack->location ?? '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            {{ ucfirst($product->status) }}
+                                        </span>
+                                    </td>
                                     <td class="text-end">
-                                        <a href="{{ route('product.edit', $product->id_product) }}"
-                                           class="text-success me-2">
-                                            <i class="feather icon-edit f-18"></i>
-                                        </a>
-
                                         <button type="button"
                                                 class="btn p-0 border-0 bg-transparent text-danger btn-delete-product"
-                                                data-product-name="{{ $product->name }}"
-                                                data-product-action="{{ route('product.destroy', $product->id_product) }}">
+                                                data-product-name="{{ $product->id }}"
+                                                data-product-action="{{ route('gudang-product.destroy', $product->id) }}">
                                             <i class="feather icon-trash-2 f-18"></i>
                                         </button>
                                     </td>
@@ -90,9 +79,7 @@
                             @empty
                             @endforelse
                         </tbody>
-
                     </table>
-
                 </div>
 
             </div>
@@ -101,22 +88,18 @@
     </div>
 </div>
 
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+<div class="modal fade" id="deleteModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
 
             <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">
-                    Hapus Product
-                </h5>
+                <h5 class="modal-title">Hapus Produk Gudang</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body">
-                <p class="mb-0">
-                    Apakah Anda yakin ingin menghapus product
-                    <strong id="deleteProductName"></strong> ?
-                </p>
+                Apakah Anda yakin ingin menghapus data
+                <strong id="deleteProductName"></strong> ?
             </div>
 
             <div class="modal-footer">
@@ -129,7 +112,6 @@
                     @method('DELETE')
 
                     <button type="submit" class="btn btn-danger">
-                        <i class="feather icon-trash-2 me-1"></i>
                         Hapus
                     </button>
                 </form>
@@ -148,32 +130,27 @@
 
 <script>
 $(function () {
-    $('#products-table').DataTable({
+    $('#gudang-product-table').DataTable({
         pageLength: 25,
         language: {
-            emptyTable: 'Belum ada data product.'
+            emptyTable: 'Belum ada produk gudang.'
         },
         columnDefs: [
             {
                 orderable: false,
-                targets: [6]
+                targets: [8]
             }
         ]
     });
 
     $(document).on('click', '.btn-delete-product', function () {
-        const btn = this;
-
         document.getElementById('deleteProductName').textContent =
-            btn.dataset.productName;
+            this.dataset.productName;
 
         document.getElementById('deleteForm').action =
-            btn.dataset.productAction;
+            this.dataset.productAction;
 
-        const modal = new bootstrap.Modal(
-            document.getElementById('deleteModal')
-        );
-
+        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
         modal.show();
     });
 });

@@ -25,47 +25,52 @@
                     </li>
                 @endif
 
-                    <li class="pc-item pc-hasmenu">
-                        <a href="javascript:void(0);" class="pc-link">
-                            <span class="pc-micon">
-                                <i class="material-icons-two-tone">settings</i>
-                            </span>
-                            <span class="pc-mtext">Barang Masuk</span>
-                            <span class="pc-arrow">
-                                <i class="material-icons-two-tone text-white">chevron_right</i>
-                            </span>
-                        </a>
-
-                        <ul class="pc-submenu">
-                            <li class="pc-item">
-                                <a href="{{ route('master-customer.index') }}" class="pc-link">
-                                    <span class="pc-micon">
-                                        <i class="material-icons-two-tone">group</i>
-                                    </span>
-                                    <span class="pc-mtext">List Product</span>
-                                </a>
-                            </li>
-
-                            <li class="pc-item">
-                                <a href="{{ route('supplier.index') }}" class="pc-link">
-                                    <span class="pc-micon">
-                                        <i class="material-icons-two-tone">admin_panel_settings</i>
-                                    </span>
-                                    <span class="pc-mtext">Supplier</span>
-                                </a>
-                            </li>
-                            <li class="pc-item">
-                                <a href="{{ route('rak.index') }}" class="pc-link">
-                                    <span class="pc-micon">
-                                        <i class="material-icons-two-tone">admin_panel_settings</i>
-                                    </span>
-                                    <span class="pc-mtext">Rak</span>
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
+                 
 
                 @auth
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
+                        <li class="pc-item pc-caption">
+                            <label>Gudang</label>
+                        </li>
+                        <li class="pc-item pc-hasmenu">
+                            <a href="javascript:void(0);" class="pc-link">
+                                <span class="pc-micon">
+                                    <i class="material-icons-two-tone">settings</i>
+                                </span>
+                                <span class="pc-mtext">Barang Masuk</span>
+                                <span class="pc-arrow">
+                                    <i class="material-icons-two-tone text-white">chevron_right</i>
+                                </span>
+                            </a>
+
+                            <ul class="pc-submenu">
+                                <li class="pc-item">
+                                    <a href="{{ route('inbound.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">group</i>
+                                        </span>
+                                        <span class="pc-mtext">List Barang Masuk</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('gudang-product.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">group</i>
+                                        </span>
+                                        <span class="pc-mtext">Stok Barang</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('rak.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">admin_panel_settings</i>
+                                        </span>
+                                        <span class="pc-mtext">Rak</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    @endif
                     @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
                         <li class="pc-item pc-caption">
                             <label>Customer</label>
