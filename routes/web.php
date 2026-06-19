@@ -2,7 +2,10 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\masterCustomerController;
+use App\Http\Controllers\ProductController;
+use App\Http\Controllers\RakController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WebCustomizationController;
 use App\Models\User;
@@ -69,6 +72,30 @@ Route::middleware('auth')->group(function () {
         Route::post('/import', [masterCustomerController::class, 'import'])->name('import');
         Route::get('/export', [masterCustomerController::class, 'export'])->name('export');
         Route::get('/tamplate', [masterCustomerController::class, 'tamplate'])->name('tamplate');
+    });
+    Route::prefix('supplier')->name('supplier.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+        Route::get('/', [SupplierController::class, 'index'])->name('index');
+        Route::get('/create', [SupplierController::class, 'create'])->name('create');
+        Route::post('/', [SupplierController::class, 'store'])->name('store');
+        Route::get('/{supplier}/edit', [SupplierController::class, 'edit'])->name('edit');
+        Route::put('/{supplier}', [SupplierController::class, 'update'])->name('update');
+        Route::delete('/{supplier}', [SupplierController::class, 'destroy'])->name('destroy');
+    });
+    Route::prefix('rak')->name('rak.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+        Route::get('/', [RakController::class, 'index'])->name('index');
+        Route::get('/create', [RakController::class, 'create'])->name('create');
+        Route::post('/', [RakController::class, 'store'])->name('store');
+        Route::get('/{customer}/edit', [RakController::class, 'edit'])->name('edit');
+        Route::put('/{customer}', [RakController::class, 'update'])->name('update');
+        Route::delete('/{customer}', [RakController::class, 'destroy'])->name('destroy');
+    });
+    Route::prefix('product')->name('product.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+        Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/create', [ProductController::class, 'create'])->name('create');
+        Route::post('/', [ProductController::class, 'store'])->name('store');
+        Route::get('/{customer}/edit', [ProductController::class, 'edit'])->name('edit');
+        Route::put('/{customer}', [ProductController::class, 'update'])->name('update');
+        Route::delete('/{customer}', [ProductController::class, 'destroy'])->name('destroy');
     });
 
 });
