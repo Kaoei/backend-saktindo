@@ -57,4 +57,9 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoicePayment::class);
     }
+
+    public function warehouseTask(): HasOne
+    {
+        return $this->hasOne(WarehouseTask::class);
+    }
 }

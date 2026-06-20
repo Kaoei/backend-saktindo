@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\DeliveryNote;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
+use App\Models\GudangProduct;
 use App\Models\Master_customer;
 use App\Models\SalesOrder;
 use App\Models\SupplierProduct;
+use App\Models\WarehouseTask;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,7 +21,7 @@ class SalesFinanceController extends Controller
     public function index()
     {
         $orders = SalesOrder::query()
-            ->with(['invoice.deliveryNote', 'invoice.payments'])
+            ->with(['invoice.deliveryNote', 'invoice.payments', 'invoice.warehouseTask'])
             ->latest()
             ->get();
 
@@ -59,7 +61,7 @@ class SalesFinanceController extends Controller
 
     public function show(SalesOrder $salesOrder)
     {
-        $salesOrder->load(['customer', 'items', 'invoice.deliveryNote', 'invoice.payments']);
+        $salesOrder->load(['customer', 'items', 'invoice.deliveryNote', 'invoice.payments', 'invoice.warehouseTask']);
 
         return view('sales-finance.show', ['order' => $salesOrder]);
     }
@@ -106,22 +108,24 @@ class SalesFinanceController extends Controller
 
     public function checkStock(Request $request, SalesOrder $salesOrder): RedirectResponse
     {
-        $data = $request->validate([
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.id' => ['required', 'exists:sales_order_items,id'],
-            'items.*.available_stock' => ['required', 'numeric', 'min:0'],
-        ]);
+        DB::transaction(function () use ($salesOrder) {
+            $salesOrder->load('items');
+            $stockByProduct = GudangProduct::query()
+                ->select('supplier_product_id', DB::raw('SUM(qty) as total_qty'))
+                ->whereIn('supplier_product_id', $salesOrder->items->pluck('product_code')->filter()->values())
+                ->where('qty', '>', 0)
+                ->groupBy('supplier_product_id')
+                ->pluck('total_qty', 'supplier_product_id');
 
-        DB::transaction(function () use ($data, $salesOrder) {
             $hasPendingStock = false;
 
-            foreach ($data['items'] as $itemData) {
-                $item = $salesOrder->items()->whereKey($itemData['id'])->firstOrFail();
-                $stockStatus = (float) $itemData['available_stock'] >= (float) $item->quantity ? 'available' : 'pending';
+            foreach ($salesOrder->items as $item) {
+                $availableStock = (float) ($stockByProduct[$item->product_code] ?? 0);
+                $stockStatus = $availableStock >= (float) $item->quantity ? 'available' : 'pending';
                 $hasPendingStock = $hasPendingStock || $stockStatus === 'pending';
 
                 $item->update([
-                    'available_stock' => $itemData['available_stock'],
+                    'available_stock' => $availableStock,
                     'stock_status' => $stockStatus,
                 ]);
             }
@@ -129,9 +133,6 @@ class SalesFinanceController extends Controller
             $salesOrder->update([
                 'stock_status' => $hasPendingStock ? 'pending' : 'available',
                 'order_status' => $hasPendingStock ? 'pending_stock' : 'ready_to_invoice',
-                'warehouse_task_reference' => $hasPendingStock
-                    ? ($salesOrder->warehouse_task_reference ?: $this->nextDocumentNumber('WT'))
-                    : $salesOrder->warehouse_task_reference,
             ]);
         });
 
@@ -181,6 +182,21 @@ class SalesFinanceController extends Controller
                 'grand_total' => $grandTotal,
             ]);
 
+            $warehouseTask = WarehouseTask::query()->firstOrCreate(
+                ['invoice_id' => $invoice->id],
+                [
+                    'id' => WarehouseTask::generateId(),
+                    'sales_order_id' => $salesOrder->id,
+                    'assigned_to' => null,
+                    'status' => 'waiting',
+                    'note' => 'Auto task dari Sales Order '.$salesOrder->id,
+                ]
+            );
+
+            $salesOrder->update([
+                'warehouse_task_reference' => $warehouseTask->id,
+            ]);
+
             return $invoice;
         });
 
@@ -217,6 +233,12 @@ class SalesFinanceController extends Controller
 
     public function storePayment(Request $request, Invoice $invoice): RedirectResponse
     {
+        $invoice->load('warehouseTask');
+
+        if ($invoice->warehouseTask?->status !== 'completed') {
+            return back()->with('status', 'Pembayaran belum bisa diproses karena barang keluar gudang belum completed.');
+        }
+
         if ((float) $invoice->outstanding_amount <= 0) {
             return back()->with('status', 'Invoice sudah lunas.');
         }

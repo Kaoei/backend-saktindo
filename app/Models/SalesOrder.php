@@ -55,4 +55,9 @@ class SalesOrder extends Model
     {
         return $this->hasOne(Invoice::class);
     }
+
+    public function warehouseTask(): HasOne
+    {
+        return $this->hasOne(WarehouseTask::class);
+    }
 }

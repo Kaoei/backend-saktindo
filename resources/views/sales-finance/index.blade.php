@@ -75,6 +75,9 @@
                                         @if($order->invoice)
                                             <a href="{{ route('sales-finance.show', $order) }}">{{ $order->invoice->invoice_number }}</a>
                                             <div class="small text-muted">{{ ucfirst($order->invoice->status) }}</div>
+                                            @if($order->invoice->warehouseTask)
+                                                <div class="small text-muted">Task: {{ $order->invoice->warehouseTask->id }} / {{ ucfirst($order->invoice->warehouseTask->status) }}</div>
+                                            @endif
                                         @else
                                             <span class="text-muted">Belum ada</span>
                                         @endif

@@ -8,6 +8,8 @@
 @php
     $invoice = $order->invoice;
     $deliveryNote = $invoice?->deliveryNote;
+    $warehouseTask = $invoice?->warehouseTask;
+    $warehouseTaskReference = $warehouseTask?->id ?? $order->warehouse_task_reference ?? '-';
 @endphp
 
 @if (session('status'))
@@ -34,7 +36,13 @@
                     <div class="col-md-3"><div class="text-muted small">Status Order</div><span class="badge bg-light-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span></div>
                     <div class="col-md-3"><div class="text-muted small">Status Stok</div><span class="badge bg-light-secondary">{{ ucfirst($order->stock_status) }}</span></div>
                     <div class="col-md-3"><div class="text-muted small">Tanggal Order</div>{{ optional($order->order_date)->format('d M Y') }}</div>
-                    <div class="col-md-3"><div class="text-muted small">Task Gudang</div>{{ $order->warehouse_task_reference ?: '-' }}</div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Task Gudang</div>
+                        {{ $warehouseTaskReference }}
+                        @if($warehouseTask)
+                            <div><span class="badge bg-light-secondary">{{ ucfirst($warehouseTask->status) }}</span></div>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="table-responsive">
@@ -118,15 +126,21 @@
                 @csrf
                 <div class="card-header"><h5 class="mb-0">Pengecekan Stok</h5></div>
                 <div class="card-body">
-                    @foreach($order->items as $item)
-                        <div class="mb-3">
-                            <label class="form-label">{{ $item->product_name }}</label>
-                            <input type="hidden" name="items[{{ $loop->index }}][id]" value="{{ $item->id }}">
-                            <input type="number" step="0.01" min="0" name="items[{{ $loop->index }}][available_stock]" class="form-control" value="{{ $item->available_stock }}" required>
-                            <small class="text-muted">Qty order: {{ number_format((float) $item->quantity, 2, ',', '.') }}</small>
-                        </div>
-                    @endforeach
-                    <button type="submit" class="btn btn-primary w-100">Simpan Status Stok</button>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm mb-0">
+                            <thead><tr><th>Produk</th><th class="text-end">Order</th><th class="text-end">Stok Gudang</th></tr></thead>
+                            <tbody>
+                                @foreach($order->items as $item)
+                                    <tr>
+                                        <td>{{ $item->product_name }}</td>
+                                        <td class="text-end">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
+                                        <td class="text-end">{{ number_format((float) $item->available_stock, 2, ',', '.') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Cek Stok dari Gudang</button>
                 </div>
             </form>
         @endif
@@ -186,7 +200,16 @@
                 </div>
             </form>
 
-            @if((float) $invoice->outstanding_amount > 0)
+            @if($warehouseTask?->status !== 'completed')
+                <div class="card">
+                    <div class="card-header"><h5 class="mb-0">Pembayaran</h5></div>
+                    <div class="card-body">
+                        <div class="alert alert-warning mb-0">
+                            Pembayaran aktif setelah Warehouse Task completed.
+                        </div>
+                    </div>
+                </div>
+            @elseif((float) $invoice->outstanding_amount > 0)
                 <form method="POST" action="{{ route('invoices.payments.store', $invoice) }}" class="card">
                     @csrf
                     <div class="card-header"><h5 class="mb-0">Pelunasan Invoice</h5></div>
