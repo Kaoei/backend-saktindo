@@ -13,7 +13,7 @@
         <div class="navbar-content">
             <ul class="pc-navbar">
                 <li class="pc-item pc-caption">
-                    <label><i class="material-icons-two-tone me-1" style="font-size: 16px;">explore</i>Navigation</label>
+                    <label>Navigation</label>
                 </li>
 
                 @if(auth()->user()?->hasPermission('dashboard'))
@@ -25,17 +25,69 @@
                     </li>
                 @endif
 
-                <li class="pc-item">
-                    <a href="{{ route('products.index') }}" class="pc-link {{ Request::routeIs('products.*') ? 'active' : '' }}">
-                        <span class="pc-micon"><i class="material-icons-two-tone">shopping_bag</i></span>
-                        <span class="pc-mtext">Product Management</span>
-                    </a>
-                </li>
+                 
 
                 @auth
                     @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
                         <li class="pc-item pc-caption">
-                            <label><i class="material-icons-two-tone me-1" style="font-size: 16px;">groups</i>Customer</label>
+                            <label>Gudang</label>
+                        </li>
+                        <li class="pc-item pc-hasmenu">
+                            <a href="javascript:void(0);" class="pc-link">
+                                <span class="pc-micon">
+                                    <i class="material-icons-two-tone">settings</i>
+                                </span>
+                                <span class="pc-mtext">Barang Masuk</span>
+                                <span class="pc-arrow">
+                                    <i class="material-icons-two-tone text-white">chevron_right</i>
+                                </span>
+                            </a>
+
+                            <ul class="pc-submenu">
+                                <li class="pc-item">
+                                    <a href="{{ route('inbound.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">group</i>
+                                        </span>
+                                        <span class="pc-mtext">List Barang Masuk</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('outbound.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">group</i>
+                                        </span>
+                                        <span class="pc-mtext">List Barang Keluar</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('gudang-product.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">group</i>
+                                        </span>
+                                        <span class="pc-mtext">Stok Barang</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('rak.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">admin_panel_settings</i>
+                                        </span>
+                                        <span class="pc-mtext">Rak</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                         <li class="pc-item">
+                                <a href="{{ route('warehouse-task.index') }}" class="pc-link ">
+                                    <span class="pc-micon"><i class="material-icons-two-tone">computer</i></span>
+                                    <span class="pc-mtext">Warehouse Taks</span>
+                                </a>
+                            </li>
+                    @endif
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
+                        <li class="pc-item pc-caption">
+                            <label>Customer</label>
                         </li>
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">
@@ -61,9 +113,32 @@
                         </li>
                     @endif
 
+                    @if(auth()->user()?->hasPermission('sales_finance.view'))
+                        <li class="pc-item pc-caption">
+                            <label>Sales & Finance</label>
+                        </li>
+                        <li class="pc-item pc-hasmenu">
+                            <a href="javascript:void(0);" class="pc-link">
+                                <span class="pc-micon"><i class="material-icons-two-tone">request_quote</i></span>
+                                <span class="pc-mtext">Sales</span>
+                                <span class="pc-arrow">
+                                    <i class="material-icons-two-tone text-white">chevron_right</i>
+                                </span>
+                            </a>
+                            <ul class="pc-submenu">
+                                <li class="pc-item">
+                                    <a href="{{ route('sales-finance.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
+                                        <span class="pc-mtext">Order & Invoice</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    @endif
+
                     @if(auth()->user()?->hasPermission('suppliers.view'))
                         <li class="pc-item pc-caption">
-                            <label><i class="material-icons-two-tone me-1" style="font-size: 16px;">folder_special</i>Master</label>
+                            <label>Master</label>
                         </li>
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">
