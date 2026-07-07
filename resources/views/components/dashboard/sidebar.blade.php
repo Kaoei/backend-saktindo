@@ -35,9 +35,9 @@
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">
                                 <span class="pc-micon">
-                                    <i class="material-icons-two-tone">settings</i>
+                                  <i class="material-icons-two-tone">store</i>
                                 </span>
-                                <span class="pc-mtext">Barang Masuk</span>
+                                <span class="pc-mtext">Gudang</span>
                                 <span class="pc-arrow">
                                     <i class="material-icons-two-tone text-white">chevron_right</i>
                                 </span>
@@ -47,7 +47,7 @@
                                 <li class="pc-item">
                                     <a href="{{ route('inbound.index') }}" class="pc-link">
                                         <span class="pc-micon">
-                                            <i class="material-icons-two-tone">group</i>
+                                            <i class="material-icons-two-tone">move_to_inbox</i>
                                         </span>
                                         <span class="pc-mtext">List Barang Masuk</span>
                                     </a>
@@ -55,7 +55,7 @@
                                 <li class="pc-item">
                                     <a href="{{ route('outbound.index') }}" class="pc-link">
                                         <span class="pc-micon">
-                                            <i class="material-icons-two-tone">group</i>
+                                           <i class="material-icons-two-tone">local_shipping</i>
                                         </span>
                                         <span class="pc-mtext">List Barang Keluar</span>
                                     </a>
@@ -63,7 +63,7 @@
                                 <li class="pc-item">
                                     <a href="{{ route('gudang-product.index') }}" class="pc-link">
                                         <span class="pc-micon">
-                                            <i class="material-icons-two-tone">group</i>
+                                                <i class="material-icons-two-tone">inventory</i>
                                         </span>
                                         <span class="pc-mtext">Stok Barang</span>
                                     </a>
@@ -71,7 +71,7 @@
                                 <li class="pc-item">
                                     <a href="{{ route('rak.index') }}" class="pc-link">
                                         <span class="pc-micon">
-                                            <i class="material-icons-two-tone">admin_panel_settings</i>
+                                            <i class="material-icons-two-tone">table_rows</i>
                                         </span>
                                         <span class="pc-mtext">Rak</span>
                                     </a>
@@ -80,7 +80,7 @@
                         </li>
                          <li class="pc-item">
                                 <a href="{{ route('warehouse-task.index') }}" class="pc-link ">
-                                    <span class="pc-micon"><i class="material-icons-two-tone">computer</i></span>
+                                    <span class="pc-micon"><i class="material-icons-two-tone">assignment</i></span>
                                     <span class="pc-mtext">Warehouse Taks</span>
                                 </a>
                             </li>

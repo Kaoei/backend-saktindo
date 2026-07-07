@@ -15,7 +15,18 @@ class WarehouseTaskController extends Controller
             ->latest()
             ->get();
 
-        return view('warehouse-task.index', compact('warehouseTasks'));
+        $totalTask = $warehouseTasks->count();
+        $waitingTask = $warehouseTasks->where('status', 'waiting')->count();
+        $processTask = $warehouseTasks->where('status', 'process')->count();
+        $completedTask = $warehouseTasks->where('status', 'completed')->count();
+
+        return view('warehouse-task.index', compact(
+            'warehouseTasks',
+            'totalTask',
+            'waitingTask',
+            'processTask',
+            'completedTask'
+        ));
     }
 
     public function create()
