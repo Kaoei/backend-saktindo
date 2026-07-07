@@ -10,7 +10,43 @@
 @endpush
 
 @section('content')
+<div class="row mt-3">
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Total Task</div>
+                <h3 class="mb-0">{{ $totalTask }}</h3>
+            </div>
+        </div>
+    </div>
 
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Waiting</div>
+                <h3 class="mb-0">{{ $waitingTask }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Process</div>
+                <h3 class="mb-0">{{ $processTask }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Completed</div>
+                <h3 class="mb-0">{{ $completedTask }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="row">
     <div class="col-12">
 
