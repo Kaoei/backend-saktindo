@@ -24,11 +24,11 @@
                         </a>
                     </li>
                 @endif
-
-                 
-
                 @auth
-                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
+                    @if(auth()->user()?->hasAnyRole([
+                        \App\Models\User::ROLE_SUPER_ADMIN,
+                        \App\Models\User::ROLE_GUDANG
+                    ]))
                         <li class="pc-item pc-caption">
                             <label>Gudang</label>
                         </li>
@@ -115,7 +115,7 @@
 
                     @if(auth()->user()?->hasPermission('sales_finance.view'))
                         <li class="pc-item pc-caption">
-                            <label>Sales & Finance</label>
+                            <label>Sales</label>
                         </li>
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">
@@ -130,6 +130,38 @@
                                     <a href="{{ route('sales-finance.index') }}" class="pc-link">
                                         <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
                                         <span class="pc-mtext">Order & Invoice</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    @endif
+                    @if(auth()->user()?->hasPermission('sales_finance.view'))
+                        <li class="pc-item pc-caption">
+                            <label>Finance</label>
+                        </li>
+                        <li class="pc-item pc-hasmenu">
+                            <a href="javascript:void(0);" class="pc-link">
+                                <span class="pc-micon"><i class="material-icons-two-tone">request_quote</i></span>
+                                <span class="pc-mtext">Finance</span>
+                                <span class="pc-arrow">
+                                    <i class="material-icons-two-tone text-white">chevron_right</i>
+                                </span>
+                            </a>
+                            <ul class="pc-submenu">
+                                <li class="pc-item">
+                                    <a href="{{ route('finance.receivables') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">receipt_long</i>
+                                        </span>
+                                        <span class="pc-mtext">Piutang Usaha</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('finance.reports') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">assessment</i>
+                                        </span>
+                                        <span class="pc-mtext">Laporan Keuangan</span>
                                     </a>
                                 </li>
                             </ul>

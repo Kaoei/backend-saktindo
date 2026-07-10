@@ -37,12 +37,14 @@ class User extends Authenticatable
     public const ROLE_TEKNISI = 'teknisi';
     public const ROLE_SALES = 'sales';
     public const ROLE_FINANCE = 'finance';
+    public const ROLE_GUDANG = 'gudang';
     public const ROLES = [
         self::ROLE_SUPER_ADMIN,
         self::ROLE_ADMIN,
         self::ROLE_TEKNISI,
         self::ROLE_SALES,
         self::ROLE_FINANCE,
+        self::ROLE_GUDANG,
     ];
 
     /**
