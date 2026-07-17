@@ -114,6 +114,7 @@ class SalesFinanceController extends Controller
                 ->select('supplier_product_id', DB::raw('SUM(qty) as total_qty'))
                 ->whereIn('supplier_product_id', $salesOrder->items->pluck('product_code')->filter()->values())
                 ->where('qty', '>', 0)
+                ->where('status', 'stored')
                 ->groupBy('supplier_product_id')
                 ->pluck('total_qty', 'supplier_product_id');
 
@@ -341,6 +342,14 @@ class SalesFinanceController extends Controller
     private function productOptions()
     {
         return SupplierProduct::query()
+            ->withSum(['gudangProducts as available_stock' => function ($query) {
+                $query->where('qty', '>', 0)
+                    ->where('status', 'stored');
+            }], 'qty')
+            ->whereHas('gudangProducts', function ($query) {
+                $query->where('qty', '>', 0)
+                    ->where('status', 'stored');
+            })
             ->where('status', 'active')
             ->orderBy('item_name')
             ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price']);

@@ -1,6 +1,6 @@
 @extends('layouts.dashboard', [
-    'title' => 'Detail Sales Order',
-    'pageTitle' => 'Detail Sales Order',
+    'title' => 'Detail Sales',
+    'pageTitle' => 'Detail Sales',
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('sales-finance.index').'">Sales & Finance</a></li><li class="breadcrumb-item">'.$order->id.'</li>',
 ])
 
@@ -25,7 +25,7 @@
             <div class="card-header d-flex align-items-center justify-content-between">
                 <div>
                     <h5 class="mb-0">{{ $order->id }}</h5>
-                    <small class="text-muted">{{ $order->customer_name }} - PO {{ $order->customer_po_number }}</small>
+                    <small class="text-muted">{{ $order->customer_name }} - PI/PO {{ $order->customer_po_number }}</small>
                 </div>
                 @if(auth()->user()?->hasPermission('sales_finance.edit'))
                     <a href="{{ route('sales-finance.edit', $order) }}" class="btn btn-outline-primary btn-sm">Edit</a>
@@ -86,7 +86,7 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Invoice Management</h5>
-                    <small class="text-muted">{{ $invoice->invoice_number }} - Faktur {{ $invoice->faktur_number }}</small>
+                    <small class="text-muted">{{ $invoice->invoice_number }} - Faktur {{ $invoice->faktur_number }} - dikumpulkan untuk invoice bulanan SJS</small>
                 </div>
                 <div class="card-body">
                     <div class="row mb-3">
@@ -148,7 +148,10 @@
         @if(!$invoice && auth()->user()?->hasPermission('sales_finance.create'))
             <form method="POST" action="{{ route('sales-finance.invoice.generate', $order) }}" class="card">
                 @csrf
-                <div class="card-header"><h5 class="mb-0">Generate Invoice</h5></div>
+                <div class="card-header">
+                    <h5 class="mb-0">Generate Invoice</h5>
+                    <small class="text-muted">Invoice akan menjadi bagian dari pengumpulan periode 1 bulan sebelum digabung melalui proses SJS.</small>
+                </div>
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">Jenis Faktur</label>
@@ -166,7 +169,7 @@
                         <label class="form-label">Jatuh Tempo</label>
                         <input type="date" name="due_date" class="form-control">
                     </div>
-                    <button type="submit" class="btn btn-success w-100" @disabled($order->stock_status !== 'available')>Generate Invoice</button>
+                    <button type="submit" class="btn btn-success w-100" @disabled($order->stock_status !== 'available')>Generate Invoice Sales</button>
                     @if($order->stock_status !== 'available')
                         <small class="text-muted d-block mt-2">Invoice aktif setelah stok available.</small>
                     @endif

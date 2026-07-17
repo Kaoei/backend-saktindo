@@ -1,6 +1,6 @@
 @extends('layouts.dashboard', [
-    'title' => 'Form Sales Order',
-    'pageTitle' => 'Form Sales Order',
+    'title' => 'Form Sales',
+    'pageTitle' => 'Form Sales',
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('sales-finance.index').'">Sales & Finance</a></li><li class="breadcrumb-item">Form</li>',
 ])
 
@@ -12,6 +12,7 @@
         'name' => $product->item_name,
         'unit' => $product->unit ?: 'pcs',
         'price' => (float) $product->last_purchase_price,
+        'stock' => (float) ($product->available_stock ?? 0),
     ])->values();
     $items = old('items', $order->exists ? $order->items->map(fn ($item) => [
         'product_code' => $item->product_code,
@@ -77,10 +78,15 @@
     }
 
     #items-table th:nth-child(3),
-    #items-table td:nth-child(3),
+    #items-table td:nth-child(3) {
+        width: 14%;
+    }
+
     #items-table th:nth-child(4),
-    #items-table td:nth-child(4) {
-        width: 20%;
+    #items-table td:nth-child(4),
+    #items-table th:nth-child(5),
+    #items-table td:nth-child(5) {
+        width: 16%;
     }
 </style>
 @endpush
@@ -91,8 +97,8 @@
             @csrf
             @if($method !== 'POST') @method($method) @endif
             <div class="card-header">
-                <h5 class="mb-0">Input PO Customer</h5>
-                <small class="text-muted">Data ini menjadi dasar Sales Order, pengecekan stok, invoice, dan surat jalan.</small>
+                <h5 class="mb-0">Input PI Customer</h5>
+                <small class="text-muted">Data ini menjadi dasar Sales, pengecekan stok, pengumpulan invoice bulanan, Surat Jalan, dan proses SJS.</small>
             </div>
             <div class="card-body">
                 @if ($errors->any())
@@ -114,11 +120,11 @@
                         <input type="text" name="customer_name" class="form-control @error('customer_name') is-invalid @enderror" value="{{ old('customer_name', $order->customer_name) }}" required>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Nomor PO Customer</label>
+                        <label class="form-label">Nomor PI / PO Customer</label>
                         <input type="text" name="customer_po_number" class="form-control @error('customer_po_number') is-invalid @enderror" value="{{ old('customer_po_number', $order->customer_po_number) }}" required>
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label">Tanggal PO</label>
+                        <label class="form-label">Tanggal PI / PO</label>
                         <input type="date" name="po_date" class="form-control" value="{{ old('po_date', optional($order->po_date)->format('Y-m-d')) }}">
                     </div>
                     <div class="col-md-4 mb-3">
@@ -136,7 +142,10 @@
                 </div>
 
                 <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
-                    <h6 class="mb-0">Detail Item Pesanan</h6>
+                    <div>
+                        <h6 class="mb-0">Detail Item Pesanan</h6>
+                        <small class="text-muted">Barang diambil dari stok Gudang yang sudah tersimpan di rak.</small>
+                    </div>
                     <button type="button" class="btn btn-sm btn-outline-primary" id="add-item">
                         <i class="material-icons-two-tone">add</i>
                         Tambah Item
@@ -149,6 +158,7 @@
                             <tr>
                                 <th>Nama Produk</th>
                                 <th>Unit</th>
+                                <th>Stok Barang</th>
                                 <th>Qty</th>
                                 <th>Harga</th>
                                 <th></th>
@@ -179,6 +189,9 @@
                                         </div>
                                     </td>
                                     <td><input type="text" name="items[{{ $index }}][unit]" class="form-control" value="{{ $item['unit'] ?? 'pcs' }}" required></td>
+                                    <td>
+                                        <input type="text" class="form-control stock-display" value="{{ $selectedProduct ? number_format((float) ($selectedProduct->available_stock ?? 0), 2, ',', '.') : '0,00' }}" readonly>
+                                    </td>
                                     <td><input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control" value="{{ $item['quantity'] ?? 1 }}" required></td>
                                     <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][unit_price]" class="form-control" value="{{ $item['unit_price'] ?? 0 }}" required></td>
                                     <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="material-icons-two-tone">delete</i></button></td>
@@ -235,6 +248,15 @@
             if (Number(selected.price) > 0) {
                 $row.find('input[name$="[unit_price]"]').val(selected.price);
             }
+
+            $row.find('.stock-display').val(formatStock(selected.stock));
+        }
+
+        function formatStock(value) {
+            return Number(value || 0).toLocaleString('id-ID', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
         }
 
         function renderProductMenu($picker, keyword = '') {
@@ -251,7 +273,8 @@
 
             $menu.html(matches.map((product) => `
                 <button type="button" class="product-picker-option" data-product-id="${escapeHtml(product.id)}">
-                    ${escapeHtml(product.label)}
+                    <span class="d-block">${escapeHtml(product.label)}</span>
+                    <span class="text-muted small">Stok: ${escapeHtml(formatStock(product.stock))} ${escapeHtml(product.unit || '')}</span>
                 </button>
             `).join(''));
         }
@@ -311,6 +334,7 @@
                 <tr>
                     <td>${productPickerTemplate(itemIndex)}</td>
                     <td><input type="text" name="items[${itemIndex}][unit]" class="form-control" value="pcs" required></td>
+                    <td><input type="text" class="form-control stock-display" value="0,00" readonly></td>
                     <td><input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control" value="1" required></td>
                     <td><input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control" value="0" required></td>
                     <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="material-icons-two-tone">delete</i></button></td>
