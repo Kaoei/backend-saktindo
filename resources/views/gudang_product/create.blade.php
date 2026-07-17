@@ -26,26 +26,31 @@
                             Barang Masuk (Pending)
                         </label>
 
-                        <select name="in_bound_id"
-                                class="form-select"
-                                required>
-
-                            <option value="">
-                                Pilih Barang Masuk
-                            </option>
+                       <select name="in_bound_id" class="form-select" required>
+                            <option value="">Pilih Barang Masuk</option>
 
                             @foreach($inbounds as $inbound)
-                                <option value="{{ $inbound->id }}">
+                                <option value="{{ $inbound->id }}"
+                                    {{ old('in_bound_id', $selectedInbound) == $inbound->id ? 'selected' : '' }}>
+
                                     {{ $inbound->id }}
-                                    -
-                                    {{ $inbound->supplierProduct->item_name }}
+                                    - {{ $inbound->supplierProduct->item_name }}
                                     (Qty: {{ $inbound->qty_received }})
                                 </option>
                             @endforeach
-
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Gudang Penyimpanan
+                        </label>
 
+                        <select name="gudang_type" class="form-select" required>
+                            <option value="">Pilih Gudang</option>
+                            <option value="JS" {{ old('gudang_type') == 'JS' ? 'selected' : '' }}>Gudang JS</option>
+                            <option value="SJB" {{ old('gudang_type') == 'SJB' ? 'selected' : '' }}>Gudang SJB</option>
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label class="form-label">
                             Rak Penyimpanan

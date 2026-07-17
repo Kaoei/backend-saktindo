@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\masterCustomerController;
-use App\Http\Controllers\ProductController;
 use App\Http\Controllers\RakController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\FinanceController;
@@ -183,6 +182,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [InBoundController::class, 'store'])->name('store');
         Route::get('/{inbound}/edit', [InBoundController::class, 'edit'])->name('edit');
         Route::put('/{inbound}', [InBoundController::class, 'update'])->name('update');
+        Route::patch('/{inbound}/cancel', [InBoundController::class, 'cancel'])
+            ->name('cancel');
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {

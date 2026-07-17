@@ -10,7 +10,95 @@
 @endpush
 
 @section('content')
+<div class="row mb-4">
 
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Total Produk</p>
+                        <h3 class="mb-0">{{ $totalProduk }}</h3>
+                    </div>
+                    <i class="feather icon-package text-primary" style="font-size:32px"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Total Qty</p>
+                        <h3 class="mb-0">{{ $totalQty }}</h3>
+                    </div>
+                    <i class="feather icon-boxes text-success" style="font-size:32px"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <p class="text-muted mb-1">Gudang JS</p>
+                        <h3 class="mb-0">{{ $totalJS }}</h3>
+                    </div>
+                    <i class="feather icon-building text-warning" style="font-size:32px"></i>
+                </div>
+
+                <hr>
+
+                <small class="text-muted fw-bold">Top 3 Rak</small>
+
+                @forelse($topRakJS as $rak)
+                    <div class="d-flex justify-content-between mt-2">
+                        <span>{{ $rak->rack_id }}</span>
+                        <span class="fw-bold">{{ $rak->total_qty }}</span>
+                    </div>
+                @empty
+                    <div class="text-muted mt-2">Belum ada data</div>
+                @endforelse
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <p class="text-muted mb-1">Gudang SJB</p>
+                        <h3 class="mb-0">{{ $totalSJB }}</h3>
+                    </div>
+                    <i class="feather icon-home text-danger" style="font-size:32px"></i>
+                </div>
+
+                <hr>
+
+                <small class="text-muted fw-bold">Top 3 Rak</small>
+
+                @forelse($topRakSJB as $rak)
+                    <div class="d-flex justify-content-between mt-2">
+                        <span>{{ $rak->rack_id }}</span>
+                        <span class="fw-bold">{{ $rak->total_qty }}</span>
+                    </div>
+                @empty
+                    <div class="text-muted mt-2">Belum ada data</div>
+                @endforelse
+
+            </div>
+        </div>
+    </div>
+
+</div>
 <div class="row">
     <div class="col-12">
 
@@ -45,6 +133,7 @@
                                 <th>SKU</th>
                                 <th>Brand</th>
                                 <th>Qty</th>
+                                <th>Gudang</th>
                                 <th>Rak</th>
                                 <th>Lokasi</th>
                                 <th>Status</th>
@@ -60,6 +149,7 @@
                                     <td>{{ $product->supplierProduct->sku ?? '-' }}</td>
                                     <td>{{ $product->supplierProduct->brand ?? '-' }}</td>
                                     <td>{{ $product->qty }}</td>
+                                    <td>{{ $product->gudang_type }}</td>
                                     <td>{{ $product->rack->rak_kode ?? '-' }}</td>
                                     <td>{{ $product->rack->location ?? '-' }}</td>
                                     <td>
@@ -138,7 +228,7 @@ $(function () {
         columnDefs: [
             {
                 orderable: false,
-                targets: [8]
+                targets: [9]
             }
         ]
     });
