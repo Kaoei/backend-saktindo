@@ -16,6 +16,7 @@ class SalesOrderItem extends Model
         'product_name',
         'unit',
         'quantity',
+        'delivered_qty',
         'available_stock',
         'unit_price',
         'line_total',
@@ -24,6 +25,7 @@ class SalesOrderItem extends Model
 
     protected $casts = [
         'quantity' => 'decimal:2',
+        'delivered_qty' => 'decimal:2',
         'available_stock' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'line_total' => 'decimal:2',
@@ -32,5 +34,10 @@ class SalesOrderItem extends Model
     public function salesOrder(): BelongsTo
     {
         return $this->belongsTo(SalesOrder::class);
+    }
+
+    public function deliveryNoteItems()
+    {
+        return $this->hasMany(DeliveryNoteItem::class);
     }
 }

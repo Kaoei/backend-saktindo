@@ -107,6 +107,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [SalesFinanceController::class, 'index'])->middleware('permission:sales_finance.view')->name('index');
         Route::get('/create', [SalesFinanceController::class, 'create'])->middleware('permission:sales_finance.create')->name('create');
         Route::post('/', [SalesFinanceController::class, 'store'])->middleware('permission:sales_finance.create')->name('store');
+        Route::post('/invoice-gabungan', [SalesFinanceController::class, 'consolidateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.consolidate');
+        Route::get('/invoices/{invoice}/pdf', [SalesFinanceController::class, 'invoicePdf'])->middleware('permission:sales_finance.view')->name('invoices.pdf');
+        Route::get('/delivery-notes/{deliveryNote}/print', [SalesFinanceController::class, 'printDeliveryNote'])->middleware('permission:sales_finance.view')->name('delivery-notes.print');
+        Route::get('/delivery-notes/{deliveryNote}/pdf', [SalesFinanceController::class, 'deliveryNotePdf'])->middleware('permission:sales_finance.view')->name('delivery-notes.pdf');
+        Route::post('/delivery-notes/{deliveryNote}/returns', [SalesFinanceController::class, 'storeReturn'])->middleware('permission:sales_finance.edit')->name('delivery-notes.returns.store');
         Route::get('/{salesOrder}', [SalesFinanceController::class, 'show'])->middleware('permission:sales_finance.view')->name('show');
         Route::get('/{salesOrder}/edit', [SalesFinanceController::class, 'edit'])->middleware('permission:sales_finance.edit')->name('edit');
         Route::put('/{salesOrder}', [SalesFinanceController::class, 'update'])->middleware('permission:sales_finance.edit')->name('update');

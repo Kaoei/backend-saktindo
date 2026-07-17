@@ -14,20 +14,21 @@
         'price' => (float) $product->last_purchase_price,
         'stock' => (float) ($product->available_stock ?? 0),
     ])->values();
+
     $items = old('items', $order->exists ? $order->items->map(fn ($item) => [
         'product_code' => $item->product_code,
         'product_name' => $item->product_name,
         'unit' => $item->unit,
         'quantity' => $item->quantity,
         'unit_price' => $item->unit_price,
-    ])->toArray() : [['product_code' => '', 'product_name' => '', 'unit' => 'pcs', 'quantity' => 1, 'unit_price' => 0]]);
+    ])->toArray() : [['product_code' => '', 'product_name' => '', 'unit' => 'pcs', 'quantity' => 0, 'unit_price' => 0]]);
 @endphp
 
 @push('styles')
 <style>
     .product-picker {
         position: relative;
-        min-width: 260px;
+        min-width: 240px;
     }
 
     .product-picker-menu {
@@ -67,27 +68,13 @@
         color: #6c757d;
     }
 
-    #items-table th:first-child,
-    #items-table td:first-child {
-        width: 34%;
-    }
-
-    #items-table th:nth-child(2),
-    #items-table td:nth-child(2) {
-        width: 14%;
-    }
-
-    #items-table th:nth-child(3),
-    #items-table td:nth-child(3) {
-        width: 14%;
-    }
-
-    #items-table th:nth-child(4),
-    #items-table td:nth-child(4),
-    #items-table th:nth-child(5),
-    #items-table td:nth-child(5) {
-        width: 16%;
-    }
+    #items-table th:nth-child(1), #items-table td:nth-child(1) { width: 28%; }
+    #items-table th:nth-child(2), #items-table td:nth-child(2) { width: 10%; }
+    #items-table th:nth-child(3), #items-table td:nth-child(3) { width: 14%; }
+    #items-table th:nth-child(4), #items-table td:nth-child(4) { width: 10%; }
+    #items-table th:nth-child(5), #items-table td:nth-child(5) { width: 16%; }
+    #items-table th:nth-child(6), #items-table td:nth-child(6) { width: 16%; }
+    #items-table th:nth-child(7), #items-table td:nth-child(7) { width: 6%; }
 </style>
 @endpush
 
@@ -102,10 +89,11 @@
             </div>
             <div class="card-body">
                 @if ($errors->any())
-                    <div class="alert alert-danger">Periksa kembali data yang wajib diisi.</div>
+                    <div class="alert alert-danger mb-3">Periksa kembali data yang wajib diisi. Silakan cek kolom bertanda merah atau inputan yang kurang.</div>
                 @endif
 
                 <div class="row">
+                    <!-- Baris Pertama -->
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Customer Terdaftar</label>
                         <select name="customer_id" class="form-select">
@@ -123,20 +111,32 @@
                         <label class="form-label">Nomor PI / PO Customer</label>
                         <input type="text" name="customer_po_number" class="form-control @error('customer_po_number') is-invalid @enderror" value="{{ old('customer_po_number', $order->customer_po_number) }}" required>
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Tanggal PI / PO</label>
+
+                    <!-- Baris Kedua (Diubah jadi col-md-3 untuk menyelipkan Tipe Sales) -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Tanggal PO</label>
                         <input type="date" name="po_date" class="form-control" value="{{ old('po_date', optional($order->po_date)->format('Y-m-d')) }}">
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label class="form-label">Tanggal Order</label>
                         <input type="date" name="order_date" class="form-control" value="{{ old('order_date', optional($order->order_date)->format('Y-m-d') ?? now()->toDateString()) }}" required>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label class="form-label">Status Order</label>
                         <select name="order_status" class="form-select">
-                            @foreach(['draft', 'stock_check', 'ready_to_invoice', 'pending_stock', 'invoiced', 'delivered', 'completed', 'cancelled'] as $status)
+                            @foreach(['draft', 'stock_check', 'ready_invoice', 'pending_stock', 'invoiced', 'partial_delivery', 'delivered', 'completed', 'cancelled'] as $status)
                                 <option value="{{ $status }}" @selected(old('order_status', $order->order_status ?: 'draft') === $status)>{{ str_replace('_', ' ', ucfirst($status)) }}</option>
                             @endforeach
+                        </select>
+                    </div>
+                    <!-- PERBAIKAN: Input Tipe Sales yang diminta oleh Controller -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Tipe Sales <span class="text-danger">*</span></label>
+                        <select name="sales_type" class="form-select @error('sales_type') is-invalid @enderror" required>
+                            <option value="" disabled @selected(!old('sales_type', $order->sales_type))>-- Pilih Tipe --</option>
+                            <option value="js" @selected(old('sales_type', $order->sales_type) === 'js')>JS</option>
+                            <option value="sjb" @selected(old('sales_type', $order->sales_type) === 'sjb')>SJB</option>
+                            <option value="nearby_store" @selected(old('sales_type', $order->sales_type) === 'nearby_store')>Nearby Store</option>
                         </select>
                     </div>
                 </div>
@@ -161,6 +161,7 @@
                                 <th>Stok Barang</th>
                                 <th>Qty</th>
                                 <th>Harga</th>
+                                <th>Total</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -173,6 +174,10 @@
                                             || ($item['product_code'] ?? null) === $product->sku
                                             || ($item['product_code'] ?? null) === $product->part_number;
                                     })?->id;
+
+                                    $qty = (float) ($item['quantity'] ?? 1);
+                                    $price = (float) ($item['unit_price'] ?? 0);
+                                    $initialTotal = $qty * $price;
                                 @endphp
                                 <tr>
                                     <td>
@@ -184,6 +189,7 @@
                                         @endphp
                                         <div class="product-picker">
                                             <input type="hidden" name="items[{{ $index }}][product_code]" class="product-code-input" value="{{ $selectedProductId }}" required>
+                                            <input type="hidden" name="items[{{ $index }}][product_name]" class="product-name-input" value="{{ $selectedProduct?->item_name }}" required>
                                             <input type="text" class="form-control product-search-input" value="{{ $selectedLabel }}" placeholder="Cari produk..." autocomplete="off" required>
                                             <div class="product-picker-menu"></div>
                                         </div>
@@ -192,8 +198,9 @@
                                     <td>
                                         <input type="text" class="form-control stock-display" value="{{ $selectedProduct ? number_format((float) ($selectedProduct->available_stock ?? 0), 2, ',', '.') : '0,00' }}" readonly>
                                     </td>
-                                    <td><input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control" value="{{ $item['quantity'] ?? 1 }}" required></td>
-                                    <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][unit_price]" class="form-control" value="{{ $item['unit_price'] ?? 0 }}" required></td>
+                                    <td><input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control qty-input" value="{{ $qty }}" required></td>
+                                    <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][unit_price]" class="form-control price-input" value="{{ $price }}" readonly required></td>
+                                    <td><input type="text" class="form-control total-display" value="{{ number_format($initialTotal, 2, ',', '.') }}" readonly></td>
                                     <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="material-icons-two-tone">delete</i></button></td>
                                 </tr>
                             @endforeach
@@ -233,6 +240,17 @@
             });
         }
 
+        function calculateRowTotal($row) {
+            const qty = parseFloat($row.find('.qty-input').val()) || 0;
+            const price = parseFloat($row.find('.price-input').val()) || 0;
+            const total = qty * price;
+
+            $row.find('.total-display').val(total.toLocaleString('id-ID', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }));
+        }
+
         function applyProductOption($picker, selected) {
             const $row = $picker.closest('tr');
 
@@ -241,15 +259,15 @@
             }
 
             $picker.find('.product-code-input').val(selected.id);
+            $picker.find('.product-name-input').val(selected.name);
             $picker.find('.product-search-input').val(selected.label);
             closeProductMenus();
+
             $row.find('input[name$="[unit]"]').val(selected.unit || 'pcs');
-
-            if (Number(selected.price) > 0) {
-                $row.find('input[name$="[unit_price]"]').val(selected.price);
-            }
-
+            $row.find('.price-input').val(Number(selected.price) > 0 ? selected.price : 0);
             $row.find('.stock-display').val(formatStock(selected.stock));
+
+            calculateRowTotal($row);
         }
 
         function formatStock(value) {
@@ -323,6 +341,7 @@
             return `
                 <div class="product-picker">
                     <input type="hidden" name="items[${index}][product_code]" class="product-code-input" required>
+                    <input type="hidden" name="items[${index}][product_name]" class="product-name-input" required>
                     <input type="text" class="form-control product-search-input" placeholder="Cari produk..." autocomplete="off" required>
                     <div class="product-picker-menu"></div>
                 </div>
@@ -335,8 +354,9 @@
                     <td>${productPickerTemplate(itemIndex)}</td>
                     <td><input type="text" name="items[${itemIndex}][unit]" class="form-control" value="pcs" required></td>
                     <td><input type="text" class="form-control stock-display" value="0,00" readonly></td>
-                    <td><input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control" value="1" required></td>
-                    <td><input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control" value="0" required></td>
+                    <td><input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control qty-input" value="1" required></td>
+                    <td><input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control price-input" value="0" readonly required></td>
+                    <td><input type="text" class="form-control total-display" value="0,00" readonly></td>
                     <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="material-icons-two-tone">delete</i></button></td>
                 </tr>
             `);
@@ -359,12 +379,17 @@
         $(document).on('input', '.product-search-input', function () {
             const $picker = $(this).closest('.product-picker');
             $picker.find('.product-code-input').val('');
+            $picker.find('.product-name-input').val('');
             openProductMenu($picker, this.value);
         });
 
         $(document).on('click', '.product-picker-option', function () {
             const selected = productOptions.find((product) => product.id === $(this).data('product-id'));
             applyProductOption($(this).closest('.product-picker-menu').data('picker'), selected);
+        });
+
+        $(document).on('input', '.qty-input', function () {
+            calculateRowTotal($(this).closest('tr'));
         });
 
         $(document).on('mousedown', function (event) {

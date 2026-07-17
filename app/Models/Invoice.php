@@ -6,6 +6,7 @@ use App\Traits\HasCustomCode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -19,8 +20,10 @@ class Invoice extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'sales_order_id',
         'invoice_number',
+        'invoice_type',
         'tax_type',
         'faktur_number',
         'invoice_date',
@@ -48,9 +51,19 @@ class Invoice extends Model
         return $this->belongsTo(SalesOrder::class);
     }
 
+    public function salesOrders(): BelongsToMany
+    {
+        return $this->belongsToMany(SalesOrder::class, 'invoice_sales_orders');
+    }
+
     public function deliveryNote(): HasOne
     {
         return $this->hasOne(DeliveryNote::class);
+    }
+
+    public function deliveryNotes(): HasMany
+    {
+        return $this->hasMany(DeliveryNote::class);
     }
 
     public function payments(): HasMany

@@ -7,25 +7,33 @@ use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\GudangProduct;
 use App\Models\Master_customer;
+use App\Models\SalesReturn;
 use App\Models\SalesOrder;
+use App\Models\SalesOrderItem;
 use App\Models\SupplierProduct;
 use App\Models\WarehouseTask;
 use App\Support\ActivityLogger;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SalesFinanceController extends Controller
 {
     public function index()
     {
+        // Menggunakan relasi salesOrders (Many to Many via Pivot)
         $orders = SalesOrder::query()
-            ->with(['invoice.deliveryNote', 'invoice.payments', 'invoice.warehouseTask'])
+            ->with(['invoices.deliveryNotes', 'invoices.payments', 'invoices.warehouseTask'])
             ->latest()
             ->get();
 
-        return view('sales-finance.index', compact('orders'));
+        return view('sales-finance.index', [
+            'orders' => $orders,
+            'customers' => $this->customerOptions(),
+        ]);
     }
 
     public function create()
@@ -61,7 +69,15 @@ class SalesFinanceController extends Controller
 
     public function show(SalesOrder $salesOrder)
     {
-        $salesOrder->load(['customer', 'items', 'invoice.deliveryNote', 'invoice.payments', 'invoice.warehouseTask']);
+        $salesOrder->load([
+            'customer',
+            'items',
+            'invoices.salesOrders.items',
+            'invoices.deliveryNotes.items.salesOrderItem',
+            'invoices.deliveryNotes.returns.items.salesOrderItem',
+            'invoices.payments',
+            'invoices.warehouseTask',
+        ]);
 
         return view('sales-finance.show', ['order' => $salesOrder]);
     }
@@ -100,10 +116,15 @@ class SalesFinanceController extends Controller
 
     public function destroy(SalesOrder $salesOrder): RedirectResponse
     {
-        ActivityLogger::log('delete', 'sales_order', $salesOrder, ['customer_po_number' => $salesOrder->customer_po_number]);
-        $salesOrder->delete();
+        $salesOrder->update(['order_status' => 'cancelled']);
 
-        return redirect()->route('sales-finance.index')->with('status', 'Sales Order berhasil dihapus.');
+        foreach ($salesOrder->invoices as $invoice) {
+            $invoice->update(['status' => 'cancelled']);
+        }
+
+        ActivityLogger::log('cancel', 'sales_order', $salesOrder, ['customer_po_number' => $salesOrder->customer_po_number]);
+
+        return redirect()->route('sales-finance.index')->with('status', 'Sales Order berhasil dicancel.');
     }
 
     public function checkStock(Request $request, SalesOrder $salesOrder): RedirectResponse
@@ -133,8 +154,22 @@ class SalesFinanceController extends Controller
 
             $salesOrder->update([
                 'stock_status' => $hasPendingStock ? 'pending' : 'available',
-                'order_status' => $hasPendingStock ? 'pending_stock' : 'ready_to_invoice',
+                'order_status' => $hasPendingStock ? 'pending_stock' : 'ready_invoice',
             ]);
+
+            if ($hasPendingStock) {
+                $warehouseTask = WarehouseTask::query()->firstOrCreate(
+                    ['sales_order_id' => $salesOrder->id, 'invoice_id' => null],
+                    [
+                        'id' => WarehouseTask::generateId(),
+                        'assigned_to' => null,
+                        'status' => 'waiting',
+                        'note' => 'Auto task stok kosong dari Sales Order '.$salesOrder->id,
+                    ]
+                );
+
+                $salesOrder->update(['warehouse_task_reference' => $warehouseTask->id]);
+            }
         });
 
         ActivityLogger::log('stock_check', 'sales_order', $salesOrder);
@@ -145,12 +180,14 @@ class SalesFinanceController extends Controller
     public function generateInvoice(Request $request, SalesOrder $salesOrder): RedirectResponse
     {
         $data = $request->validate([
+            'invoice_type' => ['required', 'in:normal,gabungan'],
             'tax_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
             'invoice_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
         ]);
 
-        if ($salesOrder->invoice) {
+        // Cek jika sudah memiliki invoice berjenis normal
+        if ($salesOrder->invoices()->where('invoice_type', 'normal')->exists()) {
             return back()->with('status', 'Invoice untuk Sales Order ini sudah ada.');
         }
 
@@ -162,9 +199,11 @@ class SalesFinanceController extends Controller
             $taxAmount = $data['tax_type'] === 'sjb_pajak' ? ((float) $salesOrder->subtotal * 0.11) : 0;
             $grandTotal = (float) $salesOrder->subtotal + $taxAmount;
 
+            // FIX: Penghapusan kolom sales_order_id dari tabel invoices langsung
             $invoice = Invoice::query()->create([
-                'sales_order_id' => $salesOrder->id,
+                'id' => (string) Str::uuid(),
                 'invoice_number' => $this->nextDocumentNumber('INV'),
+                'invoice_type' => $data['invoice_type'],
                 'tax_type' => $data['tax_type'],
                 'faktur_number' => $this->nextFakturNumber($data['tax_type']),
                 'invoice_date' => $data['invoice_date'],
@@ -176,6 +215,9 @@ class SalesFinanceController extends Controller
                 'paid_amount' => 0,
                 'outstanding_amount' => $grandTotal,
             ]);
+
+            // Hubungkan via tabel pivot invoice_sales_orders
+            $invoice->salesOrders()->attach($salesOrder->id);
 
             $salesOrder->update([
                 'order_status' => 'invoiced',
@@ -206,6 +248,86 @@ class SalesFinanceController extends Controller
         return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Invoice berhasil digenerate.');
     }
 
+    public function consolidateInvoice(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'customer_id' => ['required', 'exists:master_customers,id'],
+            'period_start' => ['required', 'date'],
+            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
+            'tax_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
+            'invoice_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+        ]);
+
+        $orders = SalesOrder::query()
+            ->where('customer_id', $data['customer_id'])
+            ->whereBetween('order_date', [$data['period_start'], $data['period_end']])
+            ->where('stock_status', 'available')
+            ->whereNotIn('order_status', ['cancelled', 'completed'])
+            ->whereDoesntHave('invoices', fn ($query) => $query->where('status', '!=', 'cancelled'))
+            ->with('items')
+            ->get();
+
+        if ($orders->isEmpty()) {
+            return back()->with('status', 'Tidak ada Sales Order eligible untuk digabung pada periode ini.');
+        }
+
+        $invoice = DB::transaction(function () use ($data, $orders) {
+            $subtotal = (float) $orders->sum(fn ($order) => (float) $order->subtotal);
+            $taxAmount = $data['tax_type'] === 'sjb_pajak' ? $subtotal * 0.11 : 0;
+            $grandTotal = $subtotal + $taxAmount;
+
+            $invoice = Invoice::query()->create([
+                'id' => (string) Str::uuid(),
+                'invoice_number' => $this->nextDocumentNumber('INV-G'),
+                'invoice_type' => 'gabungan',
+                'tax_type' => $data['tax_type'],
+                'faktur_number' => $this->nextFakturNumber($data['tax_type']),
+                'invoice_date' => $data['invoice_date'],
+                'due_date' => $data['due_date'] ?? null,
+                'status' => 'outstanding',
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'grand_total' => $grandTotal,
+                'paid_amount' => 0,
+                'outstanding_amount' => $grandTotal,
+            ]);
+
+            $invoice->salesOrders()->attach($orders->pluck('id'));
+
+            foreach ($orders as $order) {
+                $order->update([
+                    'order_status' => 'invoiced',
+                    'tax_amount' => $taxAmount * ((float) $order->subtotal / max(1, $subtotal)),
+                    'grand_total' => (float) $order->subtotal + ($taxAmount * ((float) $order->subtotal / max(1, $subtotal))),
+                ]);
+            }
+
+            $firstOrder = $orders->first();
+            $warehouseTask = WarehouseTask::query()->create([
+                'id' => WarehouseTask::generateId(),
+                'sales_order_id' => $firstOrder->id,
+                'invoice_id' => $invoice->id,
+                'assigned_to' => null,
+                'status' => 'waiting',
+                'note' => 'Auto task dari Invoice Gabungan '.$invoice->invoice_number,
+            ]);
+
+            foreach ($orders as $order) {
+                $order->update(['warehouse_task_reference' => $warehouseTask->id]);
+            }
+
+            return $invoice;
+        });
+
+        ActivityLogger::log('create', 'consolidated_invoice', $invoice);
+
+        return redirect()->route('sales-finance.show', $invoice->salesOrders()->first())->with('status', 'Invoice gabungan berhasil dibuat.');
+    }
+
+    /**
+     * FIX: Implementasi Logika Partial Delivery (Pengiriman Bertahap) & Pengisian Surat Jalan Item
+     */
     public function storeDeliveryNote(Request $request, Invoice $invoice): RedirectResponse
     {
         $data = $request->validate([
@@ -214,22 +336,192 @@ class SalesFinanceController extends Controller
             'pic_sales' => ['nullable', 'string', 'max:255'],
             'pic_gudang' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            // Validasi data item yang akan dikirim pada tahapan ini
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.sales_order_item_id' => ['required', 'exists:sales_order_items,id'],
+            'items.*.qty_sent' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $deliveryNote = DeliveryNote::query()->updateOrCreate(
-            ['invoice_id' => $invoice->id],
-            array_merge($data, [
-                'delivery_note_number' => $invoice->deliveryNote?->delivery_note_number ?? $this->nextDocumentNumber('SJ'),
-            ])
-        );
+        DB::transaction(function () use ($data, $invoice) {
+            $deliveryNote = DeliveryNote::query()->create([
+                'id' => (string) Str::uuid(),
+                'invoice_id' => $invoice->id,
+                'delivery_note_number' => $this->nextDocumentNumber('SJ'),
+                'delivery_date' => $data['delivery_date'],
+                'status' => $data['status'],
+                'pic_sales' => $data['pic_sales'],
+                'pic_gudang' => $data['pic_gudang'],
+                'notes' => $data['notes'],
+                'print_count' => 0,
+            ]);
 
-        if ($data['status'] === 'delivered') {
-            $invoice->salesOrder()->update(['order_status' => 'delivered']);
-        }
+            $invoice->load('salesOrders.items');
+            $allowedItemIds = $invoice->salesOrders->flatMap->items->pluck('id')->all();
+            $hasSentItem = false;
 
-        ActivityLogger::log('save', 'delivery_note', $deliveryNote);
+            foreach ($data['items'] as $itemData) {
+                if (! in_array((int) $itemData['sales_order_item_id'], $allowedItemIds, true)) {
+                    abort(422, 'Item Surat Jalan tidak sesuai dengan invoice.');
+                }
 
-        return back()->with('status', 'Surat Jalan berhasil disimpan.');
+                $soItem = SalesOrderItem::findOrFail($itemData['sales_order_item_id']);
+                $qtySent = (float) $itemData['qty_sent'];
+                $remainingQty = max(0, (float) $soItem->quantity - (float) $soItem->delivered_qty);
+
+                if ($qtySent <= 0) {
+                    continue;
+                }
+
+                $hasSentItem = true;
+
+                if ($qtySent > $remainingQty) {
+                    abort(422, 'Qty kirim '.$soItem->product_name.' melebihi sisa barang yang belum dikirim.');
+                }
+
+                // 1. Simpan item ke delivery_note_items
+                $deliveryNote->items()->create([
+                    'sales_order_item_id' => $itemData['sales_order_item_id'],
+                    'qty_sent' => $qtySent,
+                ]);
+
+                // 2. Akumulasikan total barang dikirim di tabel sales_order_items
+                $newDeliveredQty = (float) $soItem->delivered_qty + $qtySent;
+
+                $soItem->update([
+                    'delivered_qty' => $newDeliveredQty
+                ]);
+
+                if ($data['status'] === 'delivered') {
+                    $this->decrementWarehouseStock($soItem->product_code, $qtySent);
+                }
+            }
+
+            if (! $hasSentItem) {
+                abort(422, 'Minimal satu item Surat Jalan harus memiliki qty kirim.');
+            }
+
+            foreach ($invoice->salesOrders as $so) {
+                $so->load('items');
+                $isAllItemsFullyDelivered = $so->items->every(fn ($item) => (float) $item->delivered_qty >= (float) $item->quantity);
+                $hasAnyDelivered = $so->items->contains(fn ($item) => (float) $item->delivered_qty > 0);
+                $targetStatus = $isAllItemsFullyDelivered ? 'delivered' : ($hasAnyDelivered ? 'partial_delivery' : 'invoiced');
+
+                $so->update(['order_status' => $targetStatus]);
+            }
+
+            if ($data['status'] === 'delivered') {
+                $invoice->warehouseTask?->update(['status' => 'completed']);
+            }
+
+            ActivityLogger::log('save', 'delivery_note', $deliveryNote);
+        });
+
+        return back()->with('status', 'Surat Jalan tahap ini berhasil diterbitkan.');
+    }
+
+    /**
+     * FITUR BARU: Audit Trail untuk Fitur Print & Re-print Cetak A7/Surat Jalan
+     */
+    public function printDeliveryNote(DeliveryNote $deliveryNote)
+    {
+        $deliveryNote->load(['invoice.salesOrders.items', 'items.salesOrderItem']);
+        $deliveryNote->increment('print_count');
+
+        ActivityLogger::log('print', 'delivery_note', $deliveryNote, [
+            'print_count' => $deliveryNote->print_count
+        ]);
+
+        // Arahkan ke view cetak struk/kertas A7 Anda
+        return view('sales-finance.print-delivery-note', compact('deliveryNote'));
+    }
+
+    public function deliveryNotePdf(DeliveryNote $deliveryNote)
+    {
+        $deliveryNote->load(['invoice.salesOrders', 'items.salesOrderItem']);
+        $deliveryNote->increment('print_count');
+
+        ActivityLogger::log('print', 'delivery_note', $deliveryNote, [
+            'print_count' => $deliveryNote->print_count,
+            'format' => 'pdf_a7',
+        ]);
+
+        return Pdf::loadView('sales-finance.pdf.delivery-note', compact('deliveryNote'))
+            ->setPaper([0, 0, 209.76, 297.64], 'portrait')
+            ->stream($deliveryNote->delivery_note_number.'.pdf');
+    }
+
+    public function invoicePdf(Invoice $invoice)
+    {
+        $invoice->load(['salesOrders.items', 'payments']);
+
+        return Pdf::loadView('sales-finance.pdf.invoice', compact('invoice'))
+            ->setPaper('a4', 'portrait')
+            ->stream($invoice->invoice_number.'.pdf');
+    }
+
+    public function storeReturn(Request $request, DeliveryNote $deliveryNote): RedirectResponse
+    {
+        $data = $request->validate([
+            'return_date' => ['required', 'date'],
+            'received_date' => ['nullable', 'date', 'after_or_equal:return_date'],
+            'status' => ['required', 'in:requested,approved,received,cancelled'],
+            'notes' => ['nullable', 'string'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.sales_order_item_id' => ['required', 'exists:sales_order_items,id'],
+            'items.*.qty_returned' => ['required', 'numeric', 'min:0'],
+            'items.*.reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($data, $deliveryNote) {
+            $deliveryNote->load('items');
+            $allowedItemIds = $deliveryNote->items->pluck('sales_order_item_id')->all();
+
+            $salesReturn = SalesReturn::query()->create([
+                'id' => (string) Str::uuid(),
+                'delivery_note_id' => $deliveryNote->id,
+                'return_date' => $data['return_date'],
+                'received_date' => $data['received_date'] ?? null,
+                'status' => $data['status'],
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            foreach ($data['items'] as $itemData) {
+                $qtyReturned = (float) $itemData['qty_returned'];
+
+                if ($qtyReturned <= 0) {
+                    continue;
+                }
+
+                if (! in_array((int) $itemData['sales_order_item_id'], $allowedItemIds, true)) {
+                    abort(422, 'Item retur tidak sesuai dengan Surat Jalan.');
+                }
+
+                $sentQty = (float) $deliveryNote->items
+                    ->where('sales_order_item_id', $itemData['sales_order_item_id'])
+                    ->sum('qty_sent');
+
+                if ($qtyReturned > $sentQty) {
+                    abort(422, 'Qty retur melebihi qty Surat Jalan.');
+                }
+
+                $salesReturn->items()->create([
+                    'sales_order_item_id' => $itemData['sales_order_item_id'],
+                    'qty_returned' => $qtyReturned,
+                    'reason' => $itemData['reason'] ?? null,
+                ]);
+
+                if ($data['status'] === 'received') {
+                    $soItem = SalesOrderItem::findOrFail($itemData['sales_order_item_id']);
+                    $soItem->update([
+                        'delivered_qty' => max(0, (float) $soItem->delivered_qty - $qtyReturned),
+                    ]);
+                }
+            }
+
+            ActivityLogger::log('create', 'sales_return', $salesReturn);
+        });
+
+        return back()->with('status', 'Retur barang berhasil disimpan.');
     }
 
     public function storePayment(Request $request, Invoice $invoice): RedirectResponse
@@ -255,6 +547,7 @@ class SalesFinanceController extends Controller
 
         $payment = DB::transaction(function () use ($data, $invoice) {
             $payment = InvoicePayment::query()->create(array_merge($data, [
+                'id' => (string) Str::uuid(),
                 'invoice_id' => $invoice->id,
                 'payment_number' => $this->nextDocumentNumber('PAY'),
             ]));
@@ -269,7 +562,9 @@ class SalesFinanceController extends Controller
             ]);
 
             if ($outstandingAmount <= 0) {
-                $invoice->salesOrder()->update(['order_status' => 'completed']);
+                foreach ($invoice->salesOrders as $so) {
+                    $so->update(['order_status' => 'completed']);
+                }
             }
 
             return $payment;
@@ -288,7 +583,8 @@ class SalesFinanceController extends Controller
             'customer_po_number' => ['required', 'string', 'max:100', Rule::unique('sales_orders', 'customer_po_number')->ignore($order?->id)],
             'po_date' => ['nullable', 'date'],
             'order_date' => ['required', 'date'],
-            'order_status' => ['required', 'in:draft,stock_check,ready_to_invoice,pending_stock,invoiced,delivered,completed,cancelled'],
+            'sales_type' => ['required', 'in:js,sjb,nearby_store'], // Tambahan tipe SO
+            'order_status' => ['required', 'in:draft,stock_check,ready_invoice,pending_stock,invoiced,partial_delivery,delivered,completed,cancelled'],
             'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_code' => ['required', 'exists:supplier_products,id'],
@@ -346,13 +642,45 @@ class SalesFinanceController extends Controller
                 $query->where('qty', '>', 0)
                     ->where('status', 'stored');
             }], 'qty')
-            ->whereHas('gudangProducts', function ($query) {
-                $query->where('qty', '>', 0)
-                    ->where('status', 'stored');
-            })
             ->where('status', 'active')
             ->orderBy('item_name')
             ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price']);
+    }
+
+    private function decrementWarehouseStock(?string $productId, float $qty): void
+    {
+        if (! $productId || $qty <= 0) {
+            return;
+        }
+
+        $remaining = $qty;
+        $stocks = GudangProduct::query()
+            ->where('supplier_product_id', $productId)
+            ->where('status', 'stored')
+            ->where('qty', '>', 0)
+            ->orderBy('created_at')
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($stocks as $stock) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $deductedQty = min((float) $stock->qty, $remaining);
+            $newQty = (float) $stock->qty - $deductedQty;
+
+            $stock->update([
+                'qty' => $newQty,
+                'status' => $newQty <= 0 ? 'out' : $stock->status,
+            ]);
+
+            $remaining -= $deductedQty;
+        }
+
+        if ($remaining > 0) {
+            abort(422, 'Stok gudang tidak cukup saat menyelesaikan Surat Jalan.');
+        }
     }
 
     private function nextDocumentNumber(string $prefix): string
