@@ -19,6 +19,7 @@ class GudangProduct extends Model
         'id',
         'supplier_product_id',
         'rack_id',
+        'gudang_type',
         'qty',
         'status',
     ];

@@ -106,24 +106,6 @@
                                    required>
                             @error('qty_received') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
-
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Status <span class="text-danger">*</span></label>
-                            <select name="status"
-                                    class="form-select @error('status') is-invalid @enderror"
-                                    required>
-                                <option value="pending" {{ old('status', $inbound->status) == 'pending' ? 'selected' : '' }}>
-                                    Pending
-                                </option>
-                                <option value="stored" {{ old('status', $inbound->status) == 'stored' ? 'selected' : '' }}>
-                                    Stored
-                                </option>
-                                <option value="cancelled" {{ old('status', $inbound->status) == 'cancelled' ? 'selected' : '' }}>
-                                    Cancelled
-                                </option>
-                            </select>
-                            @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                        </div>
                     </div>
 
                     <div class="d-flex gap-2 mt-4">

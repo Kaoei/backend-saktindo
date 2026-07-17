@@ -1,5 +1,4 @@
-@extends('layouts.dashboard',
-[
+@extends('layouts.dashboard', [
     'title' => 'Tambah Barang Masuk',
     'pageTitle' => 'Barang Masuk',
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('inbound.index').'">Barang Masuk</a></li><li class="breadcrumb-item">Tambah Barang Masuk</li>'
@@ -41,19 +40,22 @@
 
                     <div class="row">
 
+                        {{-- Supplier --}}
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
                                 Supplier <span class="text-danger">*</span>
                             </label>
 
                             <select name="supplier_id"
+                                    id="supplier_id"
                                     class="form-select"
                                     required>
 
                                 <option value="">Pilih Supplier</option>
 
                                 @foreach($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}">
+                                    <option value="{{ $supplier->id }}"
+                                        {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
                                         {{ $supplier->name }}
                                     </option>
                                 @endforeach
@@ -61,19 +63,23 @@
                             </select>
                         </div>
 
+                        {{-- Produk Supplier --}}
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
                                 Produk Supplier <span class="text-danger">*</span>
                             </label>
 
                             <select name="supplier_product_id"
+                                    id="supplier_product_id"
                                     class="form-select"
                                     required>
 
                                 <option value="">Pilih Produk</option>
 
                                 @foreach($supplierProducts as $product)
-                                    <option value="{{ $product->id }}">
+                                    <option value="{{ $product->id }}"
+                                            data-supplier="{{ $product->supplier_id }}"
+                                            {{ old('supplier_product_id') == $product->id ? 'selected' : '' }}>
                                         {{ $product->sku }} - {{ $product->item_name }}
                                     </option>
                                 @endforeach
@@ -133,5 +139,48 @@
 
     </div>
 </div>
+
+{{-- Filter produk berdasarkan supplier --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const supplierSelect = document.getElementById('supplier_id');
+    const productSelect  = document.getElementById('supplier_product_id');
+
+    function filterProducts() {
+
+        const supplierId = supplierSelect.value;
+
+        Array.from(productSelect.options).forEach(option => {
+
+            // option default
+            if (option.value === '') {
+                option.hidden = false;
+                return;
+            }
+
+            // tampilkan hanya produk milik supplier
+            if (option.dataset.supplier === supplierId) {
+                option.hidden = false;
+            } else {
+                option.hidden = true;
+
+                // reset jika produk yang dipilih tidak sesuai supplier
+                if (option.selected) {
+                    productSelect.value = '';
+                }
+            }
+
+        });
+    }
+
+    // jalankan saat supplier berubah
+    supplierSelect.addEventListener('change', filterProducts);
+
+    // jalankan saat halaman pertama kali dibuka
+    filterProducts();
+
+});
+</script>
 
 @endsection

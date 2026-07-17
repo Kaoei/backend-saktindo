@@ -64,7 +64,6 @@ class InBoundController extends Controller
             'supplier_product_id' => 'required|exists:supplier_products,id',
             'qty_received' => 'required|integer|min:1',
             'received_date' => 'required|date',
-            'status' => 'required|in:pending,stored,cancelled',
         ]);
 
         $inbound->update([
@@ -72,12 +71,27 @@ class InBoundController extends Controller
             'supplier_product_id' => $request->supplier_product_id,
             'qty_received' => $request->qty_received,
             'received_date' => $request->received_date,
-            'status' => $request->status,
         ]);
 
         return redirect()
             ->route('inbound.index')
             ->with('success', 'Barang masuk berhasil diperbarui.');
+    }
+    public function cancel(InBound $inbound)
+    {
+        if ($inbound->status !== 'pending') {
+            return redirect()
+                ->route('inbound.index')
+                ->with('error', 'Hanya inbound pending yang dapat dibatalkan.');
+        }
+
+        $inbound->update([
+            'status' => 'cancelled'
+        ]);
+
+        return redirect()
+            ->route('inbound.index')
+            ->with('success', 'Inbound berhasil dibatalkan.');
     }
 
     public function destroy(InBound $inbound)
