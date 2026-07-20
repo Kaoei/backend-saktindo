@@ -91,7 +91,7 @@ class OutBoundController extends Controller
     public function print(OutBound $outBound)
     {
         $outBound->load([
-            'warehouseTask.invoice',
+            'warehouseTask.invoice.deliveryNote',
             'gudangProduct.supplierProduct',
             'gudangProduct.rack',
         ]);

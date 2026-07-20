@@ -18,7 +18,7 @@
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/fontawesome.css') }}">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/material.css') }}">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/style.css') }}" id="main-style-link">
-<link rel="stylesheet" href="{{ asset($themeBase.'/css/custom.css') }}">
+<link rel="stylesheet" href="{{ asset($themeBase.'/css/custom.css') }}?v={{ file_exists(public_path($themeBase.'/css/custom.css')) ? filemtime(public_path($themeBase.'/css/custom.css')) : time() }}">
 
 <style>
     :root {

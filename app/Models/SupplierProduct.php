@@ -22,6 +22,7 @@ class SupplierProduct extends Model
         'part_number',
         'item_name',
         'category',
+        'sub_category',
         'brand',
         'unit',
         'last_purchase_price',

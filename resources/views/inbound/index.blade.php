@@ -42,9 +42,11 @@
                             <tr>
                                 <th>ID Inbound</th>
                                 <th>Supplier</th>
+                                <th>No. PO</th>
                                 <th>Barang</th>
                                 <th>SKU</th>
                                 <th>Qty Diterima</th>
+                                <th>HPP</th>
                                 <th>Tanggal Masuk</th>
                                 <th>Status</th>
                                 <th class="text-end" style="width: 120px;">Aksi</th>
@@ -56,9 +58,11 @@
                                 <tr>
                                     <td>{{ $inbound->id }}</td>
                                     <td>{{ $inbound->supplier->name ?? '-' }}</td>
+                                    <td>{{ $inbound->supplierPo->po_number ?? '-' }}</td>
                                     <td>{{ $inbound->supplierProduct->item_name ?? '-' }}</td>
                                     <td>{{ $inbound->supplierProduct->sku ?? '-' }}</td>
                                     <td>{{ $inbound->qty_received }}</td>
+                                    <td>Rp {{ number_format($inbound->hpp, 0, ',', '.') }}</td>
                                     <td>{{ $inbound->received_date }}</td>
                                     <td>
                                         @if ($inbound->status == 'pending')
@@ -146,7 +150,7 @@ $(function () {
         columnDefs: [
             {
                 orderable: false,
-                targets: [7]
+                targets: [9]
             }
         ]
     });

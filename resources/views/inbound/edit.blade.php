@@ -97,6 +97,32 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
+                            <label class="form-label">Gunakan Template Supplier PO (Opsional)</label>
+                            <select name="supplier_po_id" class="form-select @error('supplier_po_id') is-invalid @enderror">
+                                <option value="">-- Tanpa PO --</option>
+                                @foreach($supplierPos as $po)
+                                    <option value="{{ $po->id }}" {{ old('supplier_po_id', $inbound->supplier_po_id) == $po->id ? 'selected' : '' }}>
+                                        {{ $po->po_number }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('supplier_po_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">HPP (Harga Pokok Penjualan)</label>
+                            <input type="number"
+                                   name="hpp"
+                                   class="form-control @error('hpp') is-invalid @enderror"
+                                   value="{{ old('hpp', $inbound->hpp) }}"
+                                   min="0"
+                                   step="0.01">
+                            @error('hpp') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
                             <label class="form-label">Qty Diterima <span class="text-danger">*</span></label>
                             <input type="number"
                                    name="qty_received"

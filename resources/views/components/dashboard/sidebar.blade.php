@@ -6,8 +6,8 @@
     <div class="navbar-wrapper">
         <div class="m-header">
             <a href="{{ route('dashboard') }}" class="b-brand">
-                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo" class="logo" style="height: 12rem;">
-                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo small" class="logo logo-sm">
+                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo" class="logo logo-lg" style="max-width: 100%; max-height: 50px; width: auto; height: auto; object-fit: contain;">
+                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo small" class="logo logo-sm" style="max-width: 100%; max-height: 35px; width: auto; height: auto; object-fit: contain;">
             </a>
         </div>
         <div class="navbar-content">
@@ -114,27 +114,66 @@
                     @endif
 
                     @if(auth()->user()?->hasPermission('sales_finance.view'))
-                        <li class="pc-item pc-caption">
-                            <label>Sales & Finance</label>
-                        </li>
-                        <li class="pc-item pc-hasmenu">
-                            <a href="javascript:void(0);" class="pc-link">
-                                <span class="pc-micon"><i class="material-icons-two-tone">request_quote</i></span>
-                                <span class="pc-mtext">Sales</span>
-                                <span class="pc-arrow">
-                                    <i class="material-icons-two-tone text-white">chevron_right</i>
-                                </span>
-                            </a>
-                            <ul class="pc-submenu">
-                                <li class="pc-item">
-                                    <a href="{{ route('sales-finance.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
-                                        <span class="pc-mtext">Order & Invoice</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-                    @endif
+                         <li class="pc-item pc-caption">
+                             <label>Sales & Finance</label>
+                         </li>
+                         <li class="pc-item pc-hasmenu">
+                             <a href="javascript:void(0);" class="pc-link">
+                                 <span class="pc-micon"><i class="material-icons-two-tone">request_quote</i></span>
+                                 <span class="pc-mtext">Sales</span>
+                                 <span class="pc-arrow">
+                                     <i class="material-icons-two-tone text-white">chevron_right</i>
+                                 </span>
+                             </a>
+                             <ul class="pc-submenu">
+                                 <li class="pc-item">
+                                     <a href="{{ route('sales-finance.index') }}" class="pc-link">
+                                         <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
+                                         <span class="pc-mtext">Order & Invoice</span>
+                                     </a>
+                                 </li>
+                             </ul>
+                         </li>
+
+                         <li class="pc-item pc-caption">
+                             <label>Finance</label>
+                         </li>
+                         <li class="pc-item pc-hasmenu">
+                             <a href="javascript:void(0);" class="pc-link">
+                                 <span class="pc-micon"><i class="material-icons-two-tone">account_balance</i></span>
+                                 <span class="pc-mtext">Keuangan / Finance</span>
+                                 <span class="pc-arrow">
+                                     <i class="material-icons-two-tone text-white">chevron_right</i>
+                                 </span>
+                             </a>
+                             <ul class="pc-submenu">
+                                 <li class="pc-item">
+                                     <a href="{{ route('finance.index') }}" class="pc-link">
+                                         <span class="pc-micon"><i class="material-icons-two-tone">dashboard</i></span>
+                                         <span class="pc-mtext">Overview</span>
+                                     </a>
+                                 </li>
+                                 <li class="pc-item">
+                                     <a href="{{ route('finance.ar') }}" class="pc-link">
+                                         <span class="pc-micon"><i class="material-icons-two-tone">account_balance_wallet</i></span>
+                                         <span class="pc-mtext">Piutang (AR)</span>
+                                     </a>
+                                 </li>
+                                 <li class="pc-item">
+                                     <a href="{{ route('finance.ap') }}" class="pc-link">
+                                         <span class="pc-micon"><i class="material-icons-two-tone">payment</i></span>
+                                         <span class="pc-mtext">Hutang (AP)</span>
+                                     </a>
+                                 </li>
+                                 <li class="pc-item">
+                                     <a href="{{ route('finance.report') }}" class="pc-link">
+                                         <span class="pc-micon"><i class="material-icons-two-tone">bar_chart</i></span>
+                                         <span class="pc-mtext">Laporan Finance</span>
+                                     </a>
+                                 </li>
+                             </ul>
+                         </li>
+                     @endif
 
                     @if(auth()->user()?->hasPermission('suppliers.view'))
                         <li class="pc-item pc-caption">
@@ -183,6 +222,42 @@
                                     <a href="{{ route('suppliers.payment-terms') }}" class="pc-link">
                                         <span class="pc-micon"><i class="material-icons-two-tone">payments</i></span>
                                         <span class="pc-mtext">Termin Pembayaran</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('supplier-po.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">description</i></span>
+                                        <span class="pc-mtext">Purchase Order (PO)</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+
+                        <li class="pc-item pc-hasmenu">
+                            <a href="javascript:void(0);" class="pc-link">
+                                <span class="pc-micon"><i class="material-icons-two-tone">settings</i></span>
+                                <span class="pc-mtext">Master Barang</span>
+                                <span class="pc-arrow">
+                                    <i class="material-icons-two-tone text-white">chevron_right</i>
+                                </span>
+                            </a>
+                            <ul class="pc-submenu">
+                                <li class="pc-item">
+                                    <a href="{{ route('brands.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">style</i></span>
+                                        <span class="pc-mtext">Master Brand</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('categories.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">category</i></span>
+                                        <span class="pc-mtext">Master Kategori</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('sub-categories.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">layers</i></span>
+                                        <span class="pc-mtext">Master Sub Kategori</span>
                                     </a>
                                 </li>
                             </ul>

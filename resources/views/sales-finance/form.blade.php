@@ -11,7 +11,8 @@
         'label' => $product->item_name.($product->sku ? ' - '.$product->sku : ''),
         'name' => $product->item_name,
         'unit' => $product->unit ?: 'pcs',
-        'price' => (float) $product->last_purchase_price,
+        'price' => (float) ($product->custom_price ?? $product->last_purchase_price),
+        'discount_percent' => (float) ($product->discount_percent ?? 0),
     ])->values();
     $items = old('items', $order->exists ? $order->items->map(fn ($item) => [
         'product_code' => $item->product_code,
@@ -172,11 +173,12 @@
                                                 ? $selectedProduct->item_name.($selectedProduct->sku ? ' - '.$selectedProduct->sku : '')
                                                 : '';
                                         @endphp
-                                        <div class="product-picker">
-                                            <input type="hidden" name="items[{{ $index }}][product_code]" class="product-code-input" value="{{ $selectedProductId }}" required>
-                                            <input type="text" class="form-control product-search-input" value="{{ $selectedLabel }}" placeholder="Cari produk..." autocomplete="off" required>
-                                            <div class="product-picker-menu"></div>
-                                        </div>
+                                         <div class="product-picker">
+                                             <input type="hidden" name="items[{{ $index }}][product_code]" class="product-code-input" value="{{ $selectedProductId }}" required>
+                                             <input type="text" class="form-control product-search-input" value="{{ $selectedLabel }}" placeholder="Cari produk..." autocomplete="off" required>
+                                             <div class="product-picker-menu"></div>
+                                             <div class="product-picker-info small text-success mt-1" style="display: none;"></div>
+                                         </div>
                                     </td>
                                     <td><input type="text" name="items[{{ $index }}][unit]" class="form-control" value="{{ $item['unit'] ?? 'pcs' }}" required></td>
                                     <td><input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control" value="{{ $item['quantity'] ?? 1 }}" required></td>
@@ -220,6 +222,31 @@
             });
         }
 
+        function updateProductPickerInfo($row, selected) {
+            const $info = $row.find('.product-picker-info');
+            if (selected) {
+                const normalPrice = Number(selected.price);
+                const discountPercent = Number(selected.discount_percent || 0);
+                
+                const formattedNormal = 'Rp ' + new Intl.NumberFormat('id-ID').format(normalPrice);
+
+                if (discountPercent > 0) {
+                    const discountedPrice = normalPrice * (1 - discountPercent / 100);
+                    const formattedDiscounted = 'Rp ' + new Intl.NumberFormat('id-ID').format(discountedPrice);
+                    $info.html(`Harga: <span class="text-decoration-line-through">${formattedNormal}</span> | Diskon: <strong>${discountPercent}%</strong> | Harga Akhir: <strong>${formattedDiscounted}</strong>`);
+                    $info.show();
+                    $row.find('input[name$="[unit_price]"]').val(discountedPrice.toFixed(2));
+                } else {
+                    $info.html(`Harga: <strong>${formattedNormal}</strong>`);
+                    $info.show();
+                    $row.find('input[name$="[unit_price]"]').val(normalPrice.toFixed(2));
+                }
+            } else {
+                $info.html('');
+                $info.hide();
+            }
+        }
+
         function applyProductOption($picker, selected) {
             const $row = $picker.closest('tr');
 
@@ -232,9 +259,7 @@
             closeProductMenus();
             $row.find('input[name$="[unit]"]').val(selected.unit || 'pcs');
 
-            if (Number(selected.price) > 0) {
-                $row.find('input[name$="[unit_price]"]').val(selected.price);
-            }
+            updateProductPickerInfo($row, selected);
         }
 
         function renderProductMenu($picker, keyword = '') {
@@ -302,6 +327,7 @@
                     <input type="hidden" name="items[${index}][product_code]" class="product-code-input" required>
                     <input type="text" class="form-control product-search-input" placeholder="Cari produk..." autocomplete="off" required>
                     <div class="product-picker-menu"></div>
+                    <div class="product-picker-info small text-success mt-1" style="display: none;"></div>
                 </div>
             `;
         }
@@ -364,6 +390,31 @@
             if (hasEmptyProduct) {
                 event.preventDefault();
                 alert('Pilih produk dari hasil pencarian terlebih dahulu.');
+            }
+        });
+
+        // Initialize existing rows info
+        $('#items-table tbody tr').each(function () {
+            const $row = $(this);
+            const productId = $row.find('.product-code-input').val();
+            if (productId) {
+                const selected = productOptions.find((p) => p.id === productId);
+                if (selected) {
+                    const $info = $row.find('.product-picker-info');
+                    const normalPrice = Number(selected.price);
+                    const discountPercent = Number(selected.discount_percent || 0);
+                    const formattedNormal = 'Rp ' + new Intl.NumberFormat('id-ID').format(normalPrice);
+                    
+                    if (discountPercent > 0) {
+                        const discountedPrice = normalPrice * (1 - discountPercent / 100);
+                        const formattedDiscounted = 'Rp ' + new Intl.NumberFormat('id-ID').format(discountedPrice);
+                        $info.html(`Harga: <span class="text-decoration-line-through">${formattedNormal}</span> | Diskon: <strong>${discountPercent}%</strong> | Harga Akhir: <strong>${formattedDiscounted}</strong>`);
+                        $info.show();
+                    } else {
+                        $info.html(`Harga: <strong>${formattedNormal}</strong>`);
+                        $info.show();
+                    }
+                }
             }
         });
     });

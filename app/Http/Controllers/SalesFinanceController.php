@@ -153,9 +153,7 @@ class SalesFinanceController extends Controller
             return back()->with('status', 'Invoice untuk Sales Order ini sudah ada.');
         }
 
-        if ($salesOrder->stock_status !== 'available') {
-            return back()->with('status', 'Invoice belum bisa dibuat karena stok belum available.');
-        }
+
 
         $invoice = DB::transaction(function () use ($data, $salesOrder) {
             $taxAmount = $data['tax_type'] === 'sjb_pajak' ? ((float) $salesOrder->subtotal * 0.11) : 0;
@@ -205,6 +203,83 @@ class SalesFinanceController extends Controller
         return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Invoice berhasil digenerate.');
     }
 
+    public function mergeInvoices(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'sales_order_ids' => ['required', 'array', 'min:1'],
+            'sales_order_ids.*' => ['required', 'exists:sales_orders,id'],
+            'tax_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
+            'invoice_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+        ]);
+
+        $salesOrders = SalesOrder::whereIn('id', $request->sales_order_ids)->get();
+
+        // Validate all belong to same customer
+        $customerIds = $salesOrders->pluck('customer_id')->unique();
+        if ($customerIds->count() > 1) {
+            return back()->with('error', 'Semua Sales Order harus milik customer yang sama.');
+        }
+
+        try {
+            $invoice = DB::transaction(function () use ($request, $salesOrders) {
+                $subtotal = 0;
+                foreach ($salesOrders as $so) {
+                    $subtotal += (float) $so->subtotal;
+                }
+
+                $taxAmount = $request->tax_type === 'sjb_pajak' ? ($subtotal * 0.11) : 0;
+                $grandTotal = $subtotal + $taxAmount;
+
+                // Create combined Invoice
+                $invoice = Invoice::query()->create([
+                    'sales_order_id' => $salesOrders->first()->id, // fallback reference
+                    'invoice_number' => $this->nextDocumentNumber('INV-COMB'),
+                    'tax_type' => $request->tax_type,
+                    'faktur_number' => $this->nextFakturNumber($request->tax_type),
+                    'invoice_date' => $request->invoice_date,
+                    'due_date' => $request->due_date ?? null,
+                    'status' => 'outstanding',
+                    'subtotal' => $subtotal,
+                    'tax_amount' => $taxAmount,
+                    'grand_total' => $grandTotal,
+                    'paid_amount' => 0,
+                    'outstanding_amount' => $grandTotal,
+                ]);
+
+                foreach ($salesOrders as $so) {
+                    $so->update([
+                        'invoice_id' => $invoice->id,
+                        'order_status' => 'invoiced',
+                        'tax_amount' => $so->subtotal * ($request->tax_type === 'sjb_pajak' ? 0.11 : 0),
+                        'grand_total' => $so->subtotal * (1 + ($request->tax_type === 'sjb_pajak' ? 0.11 : 0)),
+                    ]);
+
+                    // Generate warehouse task for each sales order in this invoice
+                    WarehouseTask::query()->firstOrCreate(
+                        ['invoice_id' => $invoice->id, 'sales_order_id' => $so->id],
+                        [
+                            'id' => WarehouseTask::generateId(),
+                            'sales_order_id' => $so->id,
+                            'assigned_to' => null,
+                            'status' => 'waiting',
+                            'note' => 'Combined invoice task dari Sales Order ' . $so->id,
+                        ]
+                    );
+                }
+
+                return $invoice;
+            });
+
+            ActivityLogger::log('create', 'invoice', $invoice);
+
+            return back()->with('status', 'Berhasil menggabungkan ' . $salesOrders->count() . ' Sales Order ke dalam Invoice: ' . $invoice->invoice_number);
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal menggabungkan Sales Order: ' . $e->getMessage());
+        }
+    }
+
     public function storeDeliveryNote(Request $request, Invoice $invoice): RedirectResponse
     {
         $data = $request->validate([
@@ -235,9 +310,7 @@ class SalesFinanceController extends Controller
     {
         $invoice->load('warehouseTask');
 
-        if ($invoice->warehouseTask?->status !== 'completed') {
-            return back()->with('status', 'Pembayaran belum bisa diproses karena barang keluar gudang belum completed.');
-        }
+
 
         if ((float) $invoice->outstanding_amount <= 0) {
             return back()->with('status', 'Invoice sudah lunas.');
@@ -343,7 +416,25 @@ class SalesFinanceController extends Controller
         return SupplierProduct::query()
             ->where('status', 'active')
             ->orderBy('item_name')
-            ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price']);
+            ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price'])
+            ->map(function ($product) {
+                // Find first gudang product to get custom price and discount
+                $gProduct = GudangProduct::where('supplier_product_id', $product->id)
+                    ->where('qty', '>', 0)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                if (!$gProduct) {
+                    $gProduct = GudangProduct::where('supplier_product_id', $product->id)
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
+
+                $product->custom_price = $gProduct && floatval($gProduct->price) > 0 ? floatval($gProduct->price) : floatval($product->last_purchase_price);
+                $product->discount_percent = $gProduct ? floatval($gProduct->discount) : 0;
+                
+                return $product;
+            });
     }
 
     private function nextDocumentNumber(string $prefix): string

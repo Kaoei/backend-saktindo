@@ -40,6 +40,22 @@
                     @csrf
 
                     <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                Gunakan Template Supplier PO (Opsional)
+                            </label>
+                            <select name="supplier_po_id" id="po-select" class="form-select">
+                                <option value="">-- Pilih PO Supplier --</option>
+                                @foreach($supplierPos as $po)
+                                    <option value="{{ $po->id }}" data-supplier-id="{{ $po->supplier_id }}" data-items='@json($po->items)'>
+                                        {{ $po->po_number }} - {{ $po->supplier->name ?? 'Supplier' }} (Rp {{ number_format($po->total_amount, 0, ',', '.') }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
@@ -100,6 +116,23 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">
+                                HPP (Harga Pokok Penjualan)
+                            </label>
+
+                            <input type="number"
+                                   name="hpp"
+                                   id="hpp-input"
+                                   class="form-control"
+                                   min="0"
+                                   step="0.01"
+                                   value="{{ old('hpp', 0) }}">
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
                                 Tanggal Masuk <span class="text-danger">*</span>
                             </label>
 
@@ -109,7 +142,6 @@
                                    value="{{ old('received_date', date('Y-m-d')) }}"
                                    required>
                         </div>
-
                     </div>
 
                     <div class="d-flex gap-2 mt-4">
@@ -135,3 +167,40 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const poSelect = document.getElementById('po-select');
+        const supplierSelect = document.querySelector('select[name="supplier_id"]');
+        const productSelect = document.querySelector('select[name="supplier_product_id"]');
+        const qtyInput = document.querySelector('input[name="qty_received"]');
+        const hppInput = document.getElementById('hpp-input');
+
+        poSelect.addEventListener('change', function() {
+            const option = this.options[this.selectedIndex];
+            if (!option.value) return;
+
+            const supplierId = option.getAttribute('data-supplier-id');
+            const items = JSON.parse(option.getAttribute('data-items') || '[]');
+
+            if (supplierId) {
+                supplierSelect.value = supplierId;
+            }
+
+            if (items.length > 0) {
+                // Auto fill with first item details
+                const firstItem = items[0];
+                productSelect.value = firstItem.supplier_product_id;
+                qtyInput.value = firstItem.qty;
+                
+                // HPP: price after discount
+                const price = parseFloat(firstItem.price) || 0;
+                const discount = parseFloat(firstItem.discount) || 0;
+                const netPrice = price * (1 - discount / 100);
+                hppInput.value = netPrice.toFixed(2);
+            }
+        });
+    });
+</script>
+@endpush

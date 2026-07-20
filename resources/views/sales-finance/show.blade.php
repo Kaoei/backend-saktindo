@@ -45,6 +45,13 @@
                     </div>
                 </div>
 
+                @if($order->stock_status === 'pending')
+                    <div class="alert alert-warning py-2 mb-3 small d-flex align-items-center">
+                        <i class="feather icon-alert-triangle me-2"></i>
+                        <span><strong>Pemberitahuan:</strong> Beberapa barang dalam pesanan ini tidak ready (Pending Stock). Invoice tetap dapat diproses.</span>
+                    </div>
+                @endif
+
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead>
@@ -166,9 +173,9 @@
                         <label class="form-label">Jatuh Tempo</label>
                         <input type="date" name="due_date" class="form-control">
                     </div>
-                    <button type="submit" class="btn btn-success w-100" @disabled($order->stock_status !== 'available')>Generate Invoice</button>
+                    <button type="submit" class="btn btn-success w-100">Generate Invoice</button>
                     @if($order->stock_status !== 'available')
-                        <small class="text-muted d-block mt-2">Invoice aktif setelah stok available.</small>
+                        <small class="text-warning d-block mt-2"><i class="feather icon-alert-triangle me-1"></i> Status: Barang Tidak Ready / Pending Stock</small>
                     @endif
                 </div>
             </form>
@@ -200,16 +207,7 @@
                 </div>
             </form>
 
-            @if($warehouseTask?->status !== 'completed')
-                <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Pembayaran</h5></div>
-                    <div class="card-body">
-                        <div class="alert alert-warning mb-0">
-                            Pembayaran aktif setelah Warehouse Task completed.
-                        </div>
-                    </div>
-                </div>
-            @elseif((float) $invoice->outstanding_amount > 0)
+            @if((float) $invoice->outstanding_amount > 0)
                 <form method="POST" action="{{ route('invoices.payments.store', $invoice) }}" class="card">
                     @csrf
                     <div class="card-header"><h5 class="mb-0">Pelunasan Invoice</h5></div>

@@ -15,6 +15,11 @@ use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WarehouseTaskController;
 use App\Http\Controllers\WebCustomizationController;
+use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\SupplierPOController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\SubCategoryController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -114,6 +119,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
     });
 
+    Route::post('/sales-finance/merge', [SalesFinanceController::class, 'mergeInvoices'])->name('sales-finance.merge');
+
+    Route::prefix('finance')->name('finance.')->group(function () {
+        Route::get('/', [FinanceController::class, 'index'])->name('index');
+        Route::get('/ar', [FinanceController::class, 'ar'])->name('ar');
+        Route::get('/ap', [FinanceController::class, 'ap'])->name('ap');
+        Route::post('/payment', [FinanceController::class, 'storePayment'])->name('payment');
+        Route::get('/report', [FinanceController::class, 'report'])->name('report');
+    });
+
+    Route::resource('/supplier-po', SupplierPOController::class);
+
     Route::post('/invoices/{invoice}/delivery-note', [SalesFinanceController::class, 'storeDeliveryNote'])
         ->middleware('permission:sales_finance.edit')
         ->name('invoices.delivery-note.store');
@@ -176,9 +193,16 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+        Route::get('/export', [GudangProductController::class, 'export'])->name('export');
+        Route::get('/download-template', [GudangProductController::class, 'downloadTemplate'])->name('download-template');
+        Route::post('/import', [GudangProductController::class, 'import'])->name('import');
+        Route::get('/import', [GudangProductController::class, 'importPage'])->name('importPage');
+
         Route::get('/', [GudangProductController::class, 'index'])->name('index');
         Route::get('/create', [GudangProductController::class, 'create'])->name('create');
         Route::post('/', [GudangProductController::class, 'store'])->name('store');
+        Route::get('/{gudangProduct}/edit', [GudangProductController::class, 'edit'])->name('edit');
+        Route::put('/{gudangProduct}', [GudangProductController::class, 'update'])->name('update');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
@@ -198,4 +222,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/{outBound}/print', [OutBoundController::class, 'print'])->name('print');
         Route::delete('/{outBound}', [OutBoundController::class, 'destroy'])->name('destroy');
     });
+
+    Route::resource('/brands', BrandController::class);
+    Route::resource('/categories', CategoryController::class);
+    Route::resource('/sub-categories', SubCategoryController::class);
 });
