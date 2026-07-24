@@ -22,6 +22,8 @@ class SalesOrder extends Model
         'customer_id',
         'customer_name',
         'customer_po_number',
+        'toko',
+        'jenis_invoice',
         'po_date',
         'order_date',
         'order_status',
@@ -59,5 +61,15 @@ class SalesOrder extends Model
     public function warehouseTask(): HasOne
     {
         return $this->hasOne(WarehouseTask::class);
+    }
+
+    public function proformaInvoice(): HasOne
+    {
+        return $this->hasOne(ProformaInvoice::class);
+    }
+
+    public function retur(): HasOne
+    {
+        return $this->hasOne(Retur::class);
     }
 }

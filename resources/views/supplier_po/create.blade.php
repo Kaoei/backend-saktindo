@@ -8,7 +8,21 @@
 @if(session('error'))
     <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
         {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+@endif
+
+@if(isset($prefillItems) && $prefillItems->count() > 0)
+    <div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
+        <div class="d-flex align-items-center">
+            <i class="feather icon-info mr-2 f-20"></i>
+            <div>
+                <strong>Data dari Dashboard Kekurangan Stok</strong><br>
+                <small>{{ $prefillItems->count() }} barang sudah terisi otomatis berdasarkan data kekurangan stok. Silakan pilih Supplier, review, dan simpan PO.</small>
+            </div>
+        </div>
     </div>
 @endif
 
@@ -34,6 +48,35 @@
                                 </tr>
                             </thead>
                             <tbody id="items-body">
+                                @if(isset($prefillItems) && $prefillItems->count() > 0)
+                                    @foreach($prefillItems as $idx => $prefill)
+                                    <tr class="item-row">
+                                        <td>
+                                            <select name="items[{{ $idx }}][product_id]" class="form-select product-select" required>
+                                                <option value="">-- Pilih Barang --</option>
+                                                @foreach($products as $product)
+                                                    <option value="{{ $product->id }}" data-price="{{ $product->last_purchase_price }}"
+                                                        {{ $prefill['product_id'] == $product->id ? 'selected' : '' }}>
+                                                        {{ $product->item_name }} ({{ $product->sku }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="items[{{ $idx }}][qty]" class="form-control qty-input" min="1" value="{{ $prefill['qty'] }}" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="items[{{ $idx }}][price]" class="form-control price-input" min="0" step="0.01" value="{{ $prefill['price'] }}" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="items[{{ $idx }}][discount]" class="form-control discount-input" min="0" max="100" step="0.1" value="{{ $prefill['discount'] }}" required>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-outline-danger btn-sm remove-row"><span class="material-icons" style="font-size: 1.2rem;">delete</span></button>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                @else
                                 <tr class="item-row">
                                     <td>
                                         <select name="items[0][product_id]" class="form-select product-select" required>
@@ -58,6 +101,7 @@
                                         <button type="button" class="btn btn-outline-danger btn-sm remove-row"><span class="material-icons" style="font-size: 1.2rem;">delete</span></button>
                                     </td>
                                 </tr>
+                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -92,7 +136,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Catatan</label>
-                        <textarea name="notes" class="form-control" rows="3" placeholder="Masukkan catatan tambahan..."></textarea>
+                        <textarea name="notes" class="form-control" rows="3" placeholder="Masukkan catatan tambahan...">{{ isset($prefillItems) && $prefillItems->count() > 0 ? 'PO dibuat dari data kekurangan stok dashboard.' : '' }}</textarea>
                     </div>
 
                     <hr>
@@ -113,7 +157,7 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        let rowCount = 1;
+        let rowCount = document.querySelectorAll('.item-row').length;
         const products = @json($products);
 
         function updateGrandTotal() {
@@ -198,6 +242,9 @@
         document.querySelectorAll('.item-row').forEach(row => {
             bindRowEvents(row);
         });
+
+        // Calculate grand total on page load (for prefilled items)
+        updateGrandTotal();
     });
 </script>
 @endpush

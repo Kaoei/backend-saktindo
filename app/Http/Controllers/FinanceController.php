@@ -69,6 +69,7 @@ class FinanceController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'payment_date' => 'required|date',
             'payment_method' => 'required|string',
+            'receiving_account' => 'required_if:type,ar|nullable|in:js,sjb',
             'notes' => 'nullable|string',
         ]);
 
@@ -101,10 +102,16 @@ class FinanceController extends Controller
                     $invoice->salesOrder->update(['order_status' => 'completed']);
                 }
 
+                $method = $request->payment_method;
+                if ($method === 'transfer') $method = 'transfer_bank';
+                if ($method === 'cheque') $method = 'giro';
+
                 InvoicePayment::create([
                     'invoice_id' => $invoice->id,
+                    'payment_number' => 'PAY-' . now()->format('YmdHis') . '-' . random_int(100, 999),
                     'payment_date' => $request->payment_date,
-                    'payment_method' => $request->payment_method,
+                    'method' => $method,
+                    'receiving_account' => $request->receiving_account,
                     'amount' => $amount,
                     'notes' => $request->notes,
                 ]);

@@ -1,18 +1,14 @@
 @extends('layouts.dashboard', [
-    'title' => 'Dashboard',
-    'pageTitle' => 'Dashboard sale',
-    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Dashboard sale</li>',
+    'title' => 'Dashboard Finance',
+    'pageTitle' => 'Dashboard Finance',
+    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Dashboard Finance</li>',
 ])
 
 @section('content')
-@php
-    $themeBase = 'DashboardKit-main';
-@endphp
-
 <!-- Alert & Reminder Panel -->
 <div class="row mb-4">
     <!-- Alert 1: Stok Minimum -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']) && $lowStockProducts->count() > 0)
+    @if($lowStockProducts->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -30,7 +26,7 @@
     @endif
 
     <!-- Alert 2: Transaksi > 30 Hari Belum Selesai -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']) && $pendingOrders30Days->count() > 0)
+    @if($pendingOrders30Days->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-warning text-warning-dark h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -48,7 +44,7 @@
     @endif
 
     <!-- Alert 3: Piutang Jatuh Tempo (< 7 Hari) -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']) && $dueAR->count() > 0)
+    @if($dueAR->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-primary text-primary h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -65,26 +61,8 @@
         </div>
     @endif
 
-    <!-- Alert 4: Putaway Rak Sementara (> 3 Hari) -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'teknisi']) && $temporaryRackProducts->count() > 0)
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm bg-light-info text-info h-100">
-                <div class="card-body py-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <h6 class="mb-1 text-info fw-bold">Rak Temp (&gt; 3 Hari)</h6>
-                        <span class="h4 mb-0 fw-bold">{{ $temporaryRackProducts->count() }}</span> <span class="small">Barang</span>
-                    </div>
-                    <i class="feather icon-archive f-30"></i>
-                </div>
-                <div class="card-footer bg-transparent border-0 pt-0 pb-3">
-                    <button class="btn btn-sm btn-info text-white w-100" data-toggle="modal" data-target="#tempRackModal">Detail</button>
-                </div>
-            </div>
-        </div>
-    @endif
-
     <!-- Alert 5: Barang Dipesan tapi Kosong/Kurang Stok -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']) && $orderedPendingStock->count() > 0)
+    @if($orderedPendingStock->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -187,35 +165,6 @@
     </div>
 </div>
 
-<!-- Modal 4: Temp Rack -->
-<div class="modal fade" id="tempRackModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content text-dark">
-            <div class="modal-header">
-                <h5 class="modal-title">Detail Barang di Rak Sementara (&gt; 3 Hari)</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body p-0">
-                <table class="table table-striped mb-0">
-                    <thead><tr><th>Nama Produk</th><th>Rak Sementara</th><th>Tanggal Masuk</th><th class="text-end">Jumlah</th></tr></thead>
-                    <tbody>
-                        @foreach($temporaryRackProducts as $p)
-                            <tr>
-                                <td>{{ $p->supplierProduct->name ?? 'N/A' }}</td>
-                                <td>{{ $p->rack->rak_kode ?? '-' }}</td>
-                                <td>{{ $p->created_at->format('d/m/Y') }}</td>
-                                <td class="text-end fw-bold">{{ number_format($p->qty, 0) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Modal 5: Ordered Pending Stock -->
 <div class="modal fade" id="orderedPendingStockModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -281,11 +230,13 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    // Select all toggle
     $('#selectAllShortage').on('change', function() {
         $('.shortage-checkbox').prop('checked', $(this).is(':checked'));
         updateShortageSelection();
     });
 
+    // Individual checkbox change
     $(document).on('change', '.shortage-checkbox', function() {
         var total = $('.shortage-checkbox').length;
         var checked = $('.shortage-checkbox:checked').length;
@@ -299,6 +250,7 @@ $(document).ready(function() {
         $('#btnCreatePOFromShortage').prop('disabled', checked === 0);
     }
 
+    // Create PO from selected shortage items
     $('#btnCreatePOFromShortage').on('click', function() {
         var $checked = $('.shortage-checkbox:checked');
         if ($checked.length === 0) {
@@ -333,47 +285,8 @@ $(document).ready(function() {
 </style>
 
 <div class="row">
-    <!-- Card 1: Total Customers -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales']))
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="text-muted small text-uppercase fw-bold">Total Customer</span>
-                        <h3 class="mb-0 fw-bold mt-1">{{ number_format($totalCustomers) }}</h3>
-                    </div>
-                    <div class="p-3 bg-light-primary text-primary rounded-circle">
-                        <i class="feather icon-users f-24"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <!-- Card 2: Total Orders -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales']))
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <span class="text-muted small text-uppercase fw-bold">Total Sales Order</span>
-                        <h3 class="mb-0 fw-bold mt-1">{{ number_format($totalOrders) }}</h3>
-                    </div>
-                    <div class="p-3 bg-light-success text-success rounded-circle">
-                        <i class="feather icon-shopping-cart f-24"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
     <!-- Card 3: Total Revenue -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
-    <div class="col-xl-3 col-md-6 mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
@@ -388,11 +301,9 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 
     <!-- Card 4: Outstanding AR -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
-    <div class="col-xl-3 col-md-6 mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
@@ -407,30 +318,9 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
-</div>
-
-<div class="row">
-    <!-- Card 5: Total Stock Qty -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']))
-    <div class="col-xl-6 col-md-12 mb-4">
-        <div class="card border-0 shadow-sm h-100">
-            <div class="card-body d-flex align-items-center justify-content-between">
-                <div>
-                    <span class="text-muted small text-uppercase fw-bold">Total Stok Fisik Gudang</span>
-                    <h3 class="mb-0 fw-bold mt-1">{{ number_format($totalPhysicalProducts) }} <span class="h6 text-muted">unit</span></h3>
-                </div>
-                <div class="p-3 bg-light-secondary text-secondary rounded-circle">
-                    <i class="feather icon-package f-24"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
 
     <!-- Card 6: Total Supplier POs -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
-    <div class="col-xl-6 col-md-12 mb-4">
+    <div class="col-xl-4 col-md-12 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center justify-content-between">
                 <div>
@@ -443,54 +333,11 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 </div>
 
 <div class="row">
-    <!-- Recent Orders Table -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']))
-    <div class="col-xl-6 col-md-12 mb-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white py-3">
-                <h5 class="mb-0 fw-bold">Pesanan Terakhir (Sales Order)</h5>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>No. SO</th>
-                                <th>Customer</th>
-                                <th>Status</th>
-                                <th class="text-end">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($recentOrders as $order)
-                                <tr>
-                                    <td><a href="{{ route('sales-finance.show', $order) }}" class="fw-bold">{{ $order->id }}</a></td>
-                                    <td>{{ $order->customer_name }}</td>
-                                    <td>
-                                        <span class="badge bg-light-primary text-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span>
-                                    </td>
-                                    <td class="text-end fw-bold">Rp {{ number_format($order->grand_total, 0, ',', '.') }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-3">Tidak ada data order terbaru.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
     <!-- Recent Invoices Table -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
-    <div class="col-xl-6 col-md-12 mb-4">
+    <div class="col-12 mb-4">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0 fw-bold">Invoice Terakhir</h5>
@@ -535,11 +382,5 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 </div>
 @endsection
-
-@push('scripts')
-    <script src="{{ asset('DashboardKit-main/js/apexcharts.min.js') }}"></script>
-    <script src="{{ asset('DashboardKit-main/js/dashboard-sale.js') }}"></script>
-@endpush

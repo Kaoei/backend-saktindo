@@ -203,6 +203,52 @@ class SalesFinanceController extends Controller
         return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Invoice berhasil digenerate.');
     }
 
+    public function generateProformaInvoice(SalesOrder $salesOrder): RedirectResponse
+    {
+        if ($salesOrder->proformaInvoice) {
+            return back()->with('status', 'Proforma Invoice untuk Sales Order ini sudah ada.');
+        }
+
+        $pi = DB::transaction(function () use ($salesOrder) {
+            $taxAmount = $salesOrder->toko === 'sjb' ? ((float) $salesOrder->subtotal * 0.11) : 0;
+            $grandTotal = (float) $salesOrder->subtotal + $taxAmount;
+
+            $pi = \App\Models\ProformaInvoice::query()->create([
+                'sales_order_id' => $salesOrder->id,
+                'pi_number' => $this->nextDocumentNumber('PI'),
+                'pi_date' => now(),
+                'status' => 'printed',
+                'subtotal' => $salesOrder->subtotal,
+                'tax_amount' => $taxAmount,
+                'grand_total' => $grandTotal,
+            ]);
+
+            return $pi;
+        });
+
+        ActivityLogger::log('create', 'proforma_invoice', $pi);
+
+        return back()->with('status', 'Proforma Invoice berhasil digenerate.');
+    }
+
+    public function printProformaInvoice(SalesOrder $salesOrder)
+    {
+        $salesOrder->load(['customer', 'items', 'proformaInvoice']);
+
+        if (!$salesOrder->proformaInvoice) {
+            return back()->with('error', 'Proforma Invoice belum digenerate.');
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'proforma-invoice.print',
+            compact('salesOrder')
+        );
+
+        return $pdf->download(
+            'ProformaInvoice-' . $salesOrder->proformaInvoice->pi_number . '.pdf'
+        );
+    }
+
     public function mergeInvoices(Request $request): RedirectResponse
     {
         $request->validate([
@@ -358,6 +404,8 @@ class SalesFinanceController extends Controller
             'customer_id' => ['nullable', 'exists:master_customers,id'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_po_number' => ['required', 'string', 'max:100', Rule::unique('sales_orders', 'customer_po_number')->ignore($order?->id)],
+            'toko' => ['required', 'in:js,sjb'],
+            'jenis_invoice' => ['required', 'in:normal,gabungan'],
             'po_date' => ['nullable', 'date'],
             'order_date' => ['required', 'date'],
             'order_status' => ['required', 'in:draft,stock_check,ready_to_invoice,pending_stock,invoiced,delivered,completed,cancelled'],

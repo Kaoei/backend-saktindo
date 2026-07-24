@@ -18,11 +18,17 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class GudangProductController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $products = GudangProduct::with(['supplierProduct', 'rack'])
-            ->latest()
-            ->get();
+        $query = GudangProduct::with(['supplierProduct', 'rack']);
+
+        if ($request->filled('gudang')) {
+            $query->whereHas('rack', function ($q) use ($request) {
+                $q->where('gudang', $request->gudang);
+            });
+        }
+
+        $products = $query->latest()->get();
 
         return view('gudang_product.index', compact('products'));
     }
@@ -287,6 +293,7 @@ class GudangProductController extends Controller
             $errors = [];
             $importedCount = 0;
             $updatedCount = 0;
+            $skippedCount = 0;
 
             // First pass: validation
             $rowsToProcess = [];
@@ -472,15 +479,29 @@ class GudangProductController extends Controller
                 }
 
                 if ($existingProduct) {
-                    // Update quantity, rack, price, discount (and status if needed)
-                    $existingProduct->update([
+                    $incomingStock = [
                         'qty' => $data['qty'],
                         'price' => $data['price'],
                         'discount' => $data['discount'],
                         'rack_id' => $rakKode,
-                        'status' => $data['status']
-                    ]);
-                    $updatedCount++;
+                        'status' => $data['status'],
+                    ];
+
+                    $hasChange = false;
+                    foreach ($incomingStock as $key => $newVal) {
+                        $oldVal = $existingProduct->$key ?? null;
+                        if ((string) $oldVal !== (string) $newVal) {
+                            $hasChange = true;
+                            break;
+                        }
+                    }
+
+                    if ($hasChange) {
+                        $existingProduct->update($incomingStock);
+                        $updatedCount++;
+                    } else {
+                        $skippedCount++;
+                    }
                 } else {
                     // Create new
                     GudangProduct::create([
@@ -499,7 +520,7 @@ class GudangProductController extends Controller
             DB::commit();
 
             return redirect()->route('gudang-product.index')
-                ->with('status', "Import berhasil! Berhasil menambahkan {$importedCount} stok baru dan memperbarui {$updatedCount} stok lama.");
+                ->with('status', "Import berhasil! {$importedCount} stok baru ditambahkan, {$updatedCount} diperbarui, dan {$skippedCount} dilewati (tidak ada perubahan).");
 
         } catch (\Exception $e) {
             DB::rollBack();

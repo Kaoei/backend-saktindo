@@ -33,10 +33,12 @@
             </div>
             <div class="card-body">
                 <div class="row mb-3">
-                    <div class="col-md-3"><div class="text-muted small">Status Order</div><span class="badge bg-light-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span></div>
-                    <div class="col-md-3"><div class="text-muted small">Status Stok</div><span class="badge bg-light-secondary">{{ ucfirst($order->stock_status) }}</span></div>
-                    <div class="col-md-3"><div class="text-muted small">Tanggal Order</div>{{ optional($order->order_date)->format('d M Y') }}</div>
-                    <div class="col-md-3">
+                    <div class="col-md-2"><div class="text-muted small">Status Order</div><span class="badge bg-light-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span></div>
+                    <div class="col-md-2"><div class="text-muted small">Status Stok</div><span class="badge bg-light-secondary">{{ ucfirst($order->stock_status) }}</span></div>
+                    <div class="col-md-2"><div class="text-muted small">Toko</div><span class="badge bg-light-info text-dark fw-bold">{{ strtoupper($order->toko ?: 'JS') }}</span></div>
+                    <div class="col-md-2"><div class="text-muted small">Jenis Invoice</div><span class="badge bg-light-warning text-dark">{{ ucfirst($order->jenis_invoice ?: 'normal') }}</span></div>
+                    <div class="col-md-2"><div class="text-muted small">Tanggal Order</div>{{ optional($order->order_date)->format('d M Y') }}</div>
+                    <div class="col-md-2">
                         <div class="text-muted small">Task Gudang</div>
                         {{ $warehouseTaskReference }}
                         @if($warehouseTask)
@@ -152,6 +154,27 @@
             </form>
         @endif
 
+        <!-- Proforma Invoice (PI) Management -->
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Proforma Invoice</h5></div>
+            <div class="card-body">
+                @if($order->proformaInvoice)
+                    <div class="alert alert-success py-2 mb-3 small">
+                        <strong>Status:</strong> Terbit (No. {{ $order->proformaInvoice->pi_number }})
+                    </div>
+                    <a href="{{ route('sales-finance.proforma.print', $order) }}" class="btn btn-outline-success w-100">
+                        <i class="feather icon-download me-1"></i> Cetak/Unduh PI
+                    </a>
+                @else
+                    <form method="POST" action="{{ route('sales-finance.proforma.generate', $order) }}">
+                        @csrf
+                        <p class="text-muted small">Proforma Invoice (PI) digunakan sebagai pra-invoice sebelum verifikasi pembayaran.</p>
+                        <button type="submit" class="btn btn-outline-primary w-100">Generate Proforma Invoice</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+
         @if(!$invoice && auth()->user()?->hasPermission('sales_finance.create'))
             <form method="POST" action="{{ route('sales-finance.invoice.generate', $order) }}" class="card">
                 @csrf
@@ -236,6 +259,58 @@
                 </form>
             @endif
         @endif
+
+        <!-- Retur Barang Card -->
+        <div class="card mt-3">
+            <div class="card-header"><h5 class="mb-0">Retur Barang</h5></div>
+            <div class="card-body">
+                @if($order->retur)
+                    <form method="POST" action="{{ route('returs.update', $order->retur) }}">
+                        @csrf
+                        @method('PUT')
+                        <div class="alert alert-warning py-2 mb-3 small border-0">
+                            <strong>Status Retur:</strong> {{ strtoupper($order->retur->status) }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tanggal Retur</label>
+                            <input type="text" class="form-control-plaintext p-0 fw-bold" value="{{ $order->retur->return_date->format('d M Y') }}" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tanggal Barang Kembali</label>
+                            <input type="date" name="received_date" class="form-control" value="{{ $order->retur->received_date ? $order->retur->received_date->format('Y-m-d') : '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="pending" @selected($order->retur->status === 'pending')>Pending (Proses)</option>
+                                <option value="received" @selected($order->retur->status === 'received')>Received (Barang Kembali)</option>
+                                <option value="cancelled" @selected($order->retur->status === 'cancelled')>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Catatan</label>
+                            <textarea name="notes" class="form-control" rows="2">{{ $order->retur->notes }}</textarea>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100 text-dark">Update Status Retur</button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('returs.store') }}">
+                        @csrf
+                        <input type="hidden" name="sales_order_id" value="{{ $order->id }}">
+                        <p class="text-muted small">Catat pengembalian barang (retur) dari customer untuk Sales Order ini.</p>
+                        <div class="mb-3">
+                            <label class="form-label">Tanggal Retur</label>
+                            <input type="date" name="return_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Catatan / Alasan</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Sebutkan barang dan alasan retur..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-warning w-100">Ajukan Retur Barang</button>
+                    </form>
+                @endif
+            </div>
+        </div>
     </div>
 </div>
 @endsection

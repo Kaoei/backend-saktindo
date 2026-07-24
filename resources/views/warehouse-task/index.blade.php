@@ -86,6 +86,13 @@
                                     <td class="text-end">
                                         <div class="d-flex justify-content-end gap-2 flex-wrap">
 
+                                            <a href="{{ route('warehouse-task.print', $task->id) }}"
+                                               class="btn btn-sm btn-outline-primary"
+                                               title="Cetak Checklist">
+                                                <i class="feather icon-printer"></i>
+                                                Cetak
+                                            </a>
+
                                             <a href="{{ route('warehouse-task.edit', $task->id) }}"
                                                class="btn btn-sm btn-outline-success"
                                                title="Edit Task">

@@ -19,6 +19,8 @@ class WarehouseTask extends Model
         'id',
         'sales_order_id',
         'invoice_id',
+        'toko',
+        'task_type',
         'assigned_to',
         'status',
         'note',

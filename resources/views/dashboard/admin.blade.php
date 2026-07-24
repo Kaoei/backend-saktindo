@@ -1,18 +1,14 @@
 @extends('layouts.dashboard', [
-    'title' => 'Dashboard',
-    'pageTitle' => 'Dashboard sale',
-    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Dashboard sale</li>',
+    'title' => 'Dashboard Admin',
+    'pageTitle' => 'Dashboard Admin',
+    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Dashboard Admin</li>',
 ])
 
 @section('content')
-@php
-    $themeBase = 'DashboardKit-main';
-@endphp
-
 <!-- Alert & Reminder Panel -->
 <div class="row mb-4">
     <!-- Alert 1: Stok Minimum -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']) && $lowStockProducts->count() > 0)
+    @if($lowStockProducts->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -30,7 +26,7 @@
     @endif
 
     <!-- Alert 2: Transaksi > 30 Hari Belum Selesai -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']) && $pendingOrders30Days->count() > 0)
+    @if($pendingOrders30Days->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-warning text-warning-dark h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -48,7 +44,7 @@
     @endif
 
     <!-- Alert 3: Piutang Jatuh Tempo (< 7 Hari) -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']) && $dueAR->count() > 0)
+    @if($dueAR->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-primary text-primary h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -66,7 +62,7 @@
     @endif
 
     <!-- Alert 4: Putaway Rak Sementara (> 3 Hari) -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'teknisi']) && $temporaryRackProducts->count() > 0)
+    @if($temporaryRackProducts->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-info text-info h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -84,7 +80,7 @@
     @endif
 
     <!-- Alert 5: Barang Dipesan tapi Kosong/Kurang Stok -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']) && $orderedPendingStock->count() > 0)
+    @if($orderedPendingStock->count() > 0)
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -334,7 +330,6 @@ $(document).ready(function() {
 
 <div class="row">
     <!-- Card 1: Total Customers -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales']))
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
@@ -350,10 +345,8 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 
     <!-- Card 2: Total Orders -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales']))
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
@@ -369,10 +362,8 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 
     <!-- Card 3: Total Revenue -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
@@ -388,10 +379,8 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 
     <!-- Card 4: Outstanding AR -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
@@ -407,12 +396,10 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 </div>
 
 <div class="row">
     <!-- Card 5: Total Stock Qty -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']))
     <div class="col-xl-6 col-md-12 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center justify-content-between">
@@ -426,10 +413,8 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 
     <!-- Card 6: Total Supplier POs -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
     <div class="col-xl-6 col-md-12 mb-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center justify-content-between">
@@ -443,12 +428,10 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 </div>
 
 <div class="row">
     <!-- Recent Orders Table -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']))
     <div class="col-xl-6 col-md-12 mb-4">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3">
@@ -486,10 +469,8 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 
     <!-- Recent Invoices Table -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
     <div class="col-xl-6 col-md-12 mb-4">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white py-3">
@@ -535,11 +516,5 @@ $(document).ready(function() {
             </div>
         </div>
     </div>
-    @endif
 </div>
 @endsection
-
-@push('scripts')
-    <script src="{{ asset('DashboardKit-main/js/apexcharts.min.js') }}"></script>
-    <script src="{{ asset('DashboardKit-main/js/dashboard-sale.js') }}"></script>
-@endpush

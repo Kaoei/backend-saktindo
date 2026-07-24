@@ -20,6 +20,10 @@ use App\Http\Controllers\SupplierPOController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SubCategoryController;
+use App\Http\Controllers\ReturController;
+use App\Http\Controllers\InternalInvoiceController;
+use App\Http\Controllers\RekeningBankController;
+use App\Http\Controllers\DashboardController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -34,11 +38,12 @@ Route::post('/logout', [AuthController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
-Route::get('/dashboard', function () {
-    return view('dashboard.home');
-})->middleware(['auth', 'permission:dashboard'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'permission:dashboard'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/api/search/customers', [DashboardController::class, 'searchCustomers'])->name('api.search.customers');
+    Route::get('/api/search/products', [DashboardController::class, 'searchProducts'])->name('api.search.products');
+
     Route::get('/users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
 
     Route::get('/users/create', [UserController::class, 'create'])
@@ -117,6 +122,8 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{salesOrder}', [SalesFinanceController::class, 'destroy'])->middleware('permission:sales_finance.delete')->name('destroy');
         Route::post('/{salesOrder}/stock-check', [SalesFinanceController::class, 'checkStock'])->middleware('permission:sales_finance.edit')->name('stock-check');
         Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
+        Route::post('/{salesOrder}/proforma-invoice', [SalesFinanceController::class, 'generateProformaInvoice'])->middleware('permission:sales_finance.create')->name('proforma.generate');
+        Route::get('/{salesOrder}/proforma-invoice/print', [SalesFinanceController::class, 'printProformaInvoice'])->middleware('permission:sales_finance.view')->name('proforma.print');
     });
 
     Route::post('/sales-finance/merge', [SalesFinanceController::class, 'mergeInvoices'])->name('sales-finance.merge');
@@ -129,6 +136,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/report', [FinanceController::class, 'report'])->name('report');
     });
 
+    Route::post('/supplier-po/create-from-shortage', [SupplierPOController::class, 'createFromShortage'])->name('supplier-po.create-from-shortage');
     Route::resource('/supplier-po', SupplierPOController::class);
 
     Route::post('/invoices/{invoice}/delivery-note', [SalesFinanceController::class, 'storeDeliveryNote'])
@@ -205,7 +213,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{gudangProduct}', [GudangProductController::class, 'update'])->name('update');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');
     });
-    Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+    Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_SALES)->group(function () {
         Route::get('/', [WarehouseTaskController::class, 'index'])->name('index');
         Route::get('/create', [WarehouseTaskController::class, 'create'])->name('create');
         Route::post('/', [WarehouseTaskController::class, 'store'])->name('store');
@@ -214,6 +222,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{warehouseTask}', [WarehouseTaskController::class, 'destroy'])->name('destroy');
         Route::patch('/{warehouseTask}/process', [WarehouseTaskController::class, 'process'])->name('process');
         Route::patch('/{warehouseTask}/complete', [WarehouseTaskController::class, 'complete'])->name('complete');
+        Route::get('/{warehouseTask}/print', [WarehouseTaskController::class, 'print'])->name('print');
     });
     Route::prefix('outbound')->name('outbound.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
         Route::get('/', [OutBoundController::class, 'index'])->name('index');
@@ -226,4 +235,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('/brands', BrandController::class);
     Route::resource('/categories', CategoryController::class);
     Route::resource('/sub-categories', SubCategoryController::class);
+    Route::resource('/returs', ReturController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('/internal-invoices', InternalInvoiceController::class)->only(['index', 'create', 'store', 'destroy']);
+    Route::resource('/rekening-banks', RekeningBankController::class);
 });
+
+Route::post('/api/external-orders', [\App\Http\Controllers\ExternalOrderController::class, 'store']);
+

@@ -88,4 +88,37 @@ class SupplierPOController extends Controller
         $supplierPo->load(['supplier', 'items.supplierProduct']);
         return view('supplier_po.show', compact('supplierPo'));
     }
+
+    /**
+     * Render PO create form with pre-filled items from dashboard shortage data.
+     */
+    public function createFromShortage(Request $request)
+    {
+        $request->validate([
+            'shortage_items' => 'required|array|min:1',
+            'shortage_items.*.product_code' => 'required|string',
+            'shortage_items.*.product_name' => 'required|string',
+            'shortage_items.*.qty' => 'required|numeric|min:1',
+            'shortage_items.*.unit' => 'nullable|string',
+            'shortage_items.*.price' => 'nullable|numeric|min:0',
+        ]);
+
+        $suppliers = Supplier::where('status', 'active')->get();
+        $products = SupplierProduct::where('status', 'active')->get();
+
+        // Build prefill items by matching product_code to SupplierProduct
+        $prefillItems = collect($request->shortage_items)->map(function ($item) {
+            $sp = SupplierProduct::find($item['product_code']);
+            return [
+                'product_id' => $sp ? $sp->id : null,
+                'product_name' => $item['product_name'],
+                'qty' => (int) ceil($item['qty']),
+                'price' => $sp ? (float) $sp->last_purchase_price : (float) ($item['price'] ?? 0),
+                'unit' => $item['unit'] ?? 'pcs',
+                'discount' => 0,
+            ];
+        });
+
+        return view('supplier_po.create', compact('suppliers', 'products', 'prefillItems'));
+    }
 }

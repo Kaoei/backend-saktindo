@@ -124,6 +124,14 @@
                         <option value="transfer">Transfer Bank</option>
                         <option value="cash">Tunai / Cash</option>
                         <option value="cheque">Giro / Cheque</option>
+                        <option value="qris">QRIS</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Rekening Penerimaan</label>
+                    <select name="receiving_account" class="form-select" required>
+                        <option value="js">JS</option>
+                        <option value="sjb">SJB</option>
                     </select>
                 </div>
                 <div class="mb-3">

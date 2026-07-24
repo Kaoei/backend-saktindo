@@ -51,6 +51,15 @@
                     </div>
                 @endif
 
+                <div class="mb-4">
+                    <form method="GET" action="{{ route('gudang-product.index') }}" class="d-flex align-items-center gap-2">
+                        <span class="fw-bold">Filter Gudang:</span>
+                        <a href="{{ route('gudang-product.index') }}" class="btn btn-sm {{ !request()->filled('gudang') ? 'btn-primary' : 'btn-outline-primary' }}">Semua</a>
+                        <a href="{{ route('gudang-product.index', ['gudang' => 'js']) }}" class="btn btn-sm {{ request('gudang') === 'js' ? 'btn-primary' : 'btn-outline-primary' }}">Gudang JS</a>
+                        <a href="{{ route('gudang-product.index', ['gudang' => 'sjb']) }}" class="btn btn-sm {{ request('gudang') === 'sjb' ? 'btn-primary' : 'btn-outline-primary' }}">Gudang SJB</a>
+                    </form>
+                </div>
+
                 @if (session('error'))
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         {{ session('error') }}

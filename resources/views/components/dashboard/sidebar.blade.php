@@ -6,8 +6,8 @@
     <div class="navbar-wrapper">
         <div class="m-header">
             <a href="{{ route('dashboard') }}" class="b-brand">
-                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo" class="logo logo-lg" style="max-width: 100%; max-height: 50px; width: auto; height: auto; object-fit: contain;">
-                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo small" class="logo logo-sm" style="max-width: 100%; max-height: 35px; width: auto; height: auto; object-fit: contain;">
+                <img src="{{ $webCustomization['sidebarLogoUrl'] }}" alt="Sidebar logo" class="logo logo-lg" onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';" style="max-width: 100%; max-height: 50px; width: auto; height: auto; object-fit: contain;">
+                <img src="{{ $webCustomization['sidebarLogoUrl'] }}" alt="Sidebar logo small" class="logo logo-sm" onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';" style="max-width: 100%; max-height: 35px; width: auto; height: auto; object-fit: contain;">
             </a>
         </div>
         <div class="navbar-content">
@@ -78,10 +78,13 @@
                                 </li>
                             </ul>
                         </li>
+                    @endif
+
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES]))
                          <li class="pc-item">
                                 <a href="{{ route('warehouse-task.index') }}" class="pc-link ">
                                     <span class="pc-micon"><i class="material-icons-two-tone">computer</i></span>
-                                    <span class="pc-mtext">Warehouse Taks</span>
+                                    <span class="pc-mtext">Warehouse Tasks</span>
                                 </a>
                             </li>
                     @endif
@@ -130,6 +133,18 @@
                                      <a href="{{ route('sales-finance.index') }}" class="pc-link">
                                          <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
                                          <span class="pc-mtext">Order & Invoice</span>
+                                     </a>
+                                 </li>
+                                 <li class="pc-item">
+                                     <a href="{{ route('returs.index') }}" class="pc-link">
+                                         <span class="pc-micon"><i class="material-icons-two-tone">assignment_return</i></span>
+                                         <span class="pc-mtext">Retur Barang</span>
+                                     </a>
+                                 </li>
+                                 <li class="pc-item">
+                                     <a href="{{ route('internal-invoices.index') }}" class="pc-link">
+                                         <span class="pc-micon"><i class="material-icons-two-tone">swap_horiz</i></span>
+                                         <span class="pc-mtext">Invoice Internal</span>
                                      </a>
                                  </li>
                              </ul>
@@ -261,6 +276,13 @@
                                     </a>
                                 </li>
                             </ul>
+                        </li>
+
+                        <li class="pc-item">
+                            <a href="{{ route('rekening-banks.index') }}" class="pc-link">
+                                <span class="pc-micon"><i class="material-icons-two-tone">account_balance</i></span>
+                                <span class="pc-mtext">Master Rekening Bank</span>
+                            </a>
                         </li>
                     @endif
 

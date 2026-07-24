@@ -18,6 +18,8 @@
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/fontawesome.css') }}">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/material.css') }}">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/style.css') }}" id="main-style-link">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/custom.css') }}?v={{ file_exists(public_path($themeBase.'/css/custom.css')) ? filemtime(public_path($themeBase.'/css/custom.css')) : time() }}">
 
 <style>

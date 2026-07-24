@@ -6,14 +6,6 @@
 
 @section('content')
 @php
-    $productOptionPayload = $productOptions->map(fn ($product) => [
-        'id' => $product->id,
-        'label' => $product->item_name.($product->sku ? ' - '.$product->sku : ''),
-        'name' => $product->item_name,
-        'unit' => $product->unit ?: 'pcs',
-        'price' => (float) ($product->custom_price ?? $product->last_purchase_price),
-        'discount_percent' => (float) ($product->discount_percent ?? 0),
-    ])->values();
     $items = old('items', $order->exists ? $order->items->map(fn ($item) => [
         'product_code' => $item->product_code,
         'product_name' => $item->product_name,
@@ -25,48 +17,6 @@
 
 @push('styles')
 <style>
-    .product-picker {
-        position: relative;
-        min-width: 260px;
-    }
-
-    .product-picker-menu {
-        display: none;
-        position: fixed;
-        z-index: 2000;
-        max-height: 320px;
-        overflow-y: auto;
-        background: #fff;
-        border: 1px solid #ced4da;
-        border-radius: 4px;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-    }
-
-    .product-picker-menu.open {
-        display: block;
-    }
-
-    .product-picker-option,
-    .product-picker-empty {
-        display: block;
-        width: 100%;
-        padding: 8px 12px;
-        border: 0;
-        background: transparent;
-        text-align: left;
-        font-size: 14px;
-        line-height: 1.4;
-    }
-
-    .product-picker-option:hover,
-    .product-picker-option:focus {
-        background: #f3f6f9;
-    }
-
-    .product-picker-empty {
-        color: #6c757d;
-    }
-
     #items-table th:first-child,
     #items-table td:first-child {
         width: 34%;
@@ -103,11 +53,17 @@
                 <div class="row">
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Customer Terdaftar</label>
-                        <select name="customer_id" class="form-select">
-                            <option value="">Manual / belum terdaftar</option>
-                            @foreach($customers as $customer)
-                                <option value="{{ $customer->id }}" @selected(old('customer_id', $order->customer_id) === $customer->id)>{{ $customer->nama_customer }}</option>
-                            @endforeach
+                        <select name="customer_id" id="customer-select2" class="form-select no-select2">
+                            @if(old('customer_id', $order->customer_id))
+                                @php
+                                    $selCust = $customers->firstWhere('id', old('customer_id', $order->customer_id));
+                                @endphp
+                                @if($selCust)
+                                    <option value="{{ $selCust->id }}" selected>{{ $selCust->nama_customer }} ({{ $selCust->id }})</option>
+                                @endif
+                            @else
+                                <option value="">Manual / belum terdaftar</option>
+                            @endif
                         </select>
                     </div>
                     <div class="col-md-4 mb-3">
@@ -134,6 +90,20 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Pilih Toko <span class="text-danger">*</span></label>
+                        <select name="toko" class="form-select" required>
+                            <option value="js" @selected(old('toko', $order->toko) === 'js')>JS</option>
+                            <option value="sjb" @selected(old('toko', $order->toko) === 'sjb')>SJB</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Jenis Invoice <span class="text-danger">*</span></label>
+                        <select name="jenis_invoice" class="form-select" required>
+                            <option value="normal" @selected(old('jenis_invoice', $order->jenis_invoice) === 'normal')>Invoice Normal</option>
+                            <option value="gabungan" @selected(old('jenis_invoice', $order->jenis_invoice) === 'gabungan')>Invoice Gabungan</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
@@ -157,28 +127,24 @@
                         </thead>
                         <tbody>
                             @foreach($items as $index => $item)
-                                @php
-                                    $selectedProductId = $productOptions->first(function ($product) use ($item) {
-                                        return ($item['product_code'] ?? null) === $product->id
-                                            || ($item['product_name'] ?? null) === $product->item_name
-                                            || ($item['product_code'] ?? null) === $product->sku
-                                            || ($item['product_code'] ?? null) === $product->part_number;
-                                    })?->id;
-                                @endphp
                                 <tr>
                                     <td>
-                                        @php
-                                            $selectedProduct = $productOptions->firstWhere('id', $selectedProductId);
-                                            $selectedLabel = $selectedProduct
-                                                ? $selectedProduct->item_name.($selectedProduct->sku ? ' - '.$selectedProduct->sku : '')
-                                                : '';
-                                        @endphp
-                                         <div class="product-picker">
-                                             <input type="hidden" name="items[{{ $index }}][product_code]" class="product-code-input" value="{{ $selectedProductId }}" required>
-                                             <input type="text" class="form-control product-search-input" value="{{ $selectedLabel }}" placeholder="Cari produk..." autocomplete="off" required>
-                                             <div class="product-picker-menu"></div>
-                                             <div class="product-picker-info small text-success mt-1" style="display: none;"></div>
-                                         </div>
+                                        <select name="items[{{ $index }}][product_code]" class="form-select product-select2" required>
+                                            @if($item['product_code'])
+                                                @php
+                                                    $selectedProduct = $productOptions->firstWhere('id', $item['product_code']);
+                                                    $selectedLabel = $selectedProduct
+                                                        ? $selectedProduct->item_name.($selectedProduct->sku ? ' - '.$selectedProduct->sku : '')
+                                                        : ($item['product_name'] ?? '');
+                                                @endphp
+                                                <option value="{{ $item['product_code'] }}" selected>{{ $selectedLabel }}</option>
+                                            @else
+                                                <option value=""></option>
+                                            @endif
+                                        </select>
+                                        <div class="product-picker-info small text-success mt-1">
+                                            Harga: <strong>Rp {{ number_format($item['unit_price'] ?? 0, 0, ',', '.') }}</strong>
+                                        </div>
                                     </td>
                                     <td><input type="text" name="items[{{ $index }}][unit]" class="form-control" value="{{ $item['unit'] ?? 'pcs' }}" required></td>
                                     <td><input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control" value="{{ $item['quantity'] ?? 1 }}" required></td>
@@ -208,214 +174,104 @@
 <script>
     $(function () {
         let itemIndex = {{ count($items) }};
-        const productOptions = @json($productOptionPayload);
 
-        function escapeHtml(value) {
-            return String(value ?? '').replace(/[&<>"']/g, function (char) {
-                return {
-                    '&': '&amp;',
-                    '<': '&lt;',
-                    '>': '&gt;',
-                    '"': '&quot;',
-                    "'": '&#039;',
-                }[char];
-            });
-        }
+        function initProductSelect2(element) {
+            $(element).select2({
+                theme: 'bootstrap-5',
+                ajax: {
+                    url: '{{ route("api.search.products") }}',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return { q: params.term };
+                    },
+                    processResults: function (data) {
+                        return { results: data.results };
+                    },
+                    cache: true
+                },
+                placeholder: 'Cari produk...',
+                minimumInputLength: 1,
+                allowClear: true
+            }).on('select2:select', function(e) {
+                const data = e.params.data;
+                const $row = $(this).closest('tr');
+                $row.find('input[name$="[unit]"]').val(data.unit || 'pcs');
 
-        function updateProductPickerInfo($row, selected) {
-            const $info = $row.find('.product-picker-info');
-            if (selected) {
-                const normalPrice = Number(selected.price);
-                const discountPercent = Number(selected.discount_percent || 0);
-                
+                // Price/discount details
+                const $info = $row.find('.product-picker-info');
+                const normalPrice = Number(data.price);
+                const discountPercent = Number(data.discount_percent || 0);
                 const formattedNormal = 'Rp ' + new Intl.NumberFormat('id-ID').format(normalPrice);
 
                 if (discountPercent > 0) {
                     const discountedPrice = normalPrice * (1 - discountPercent / 100);
                     const formattedDiscounted = 'Rp ' + new Intl.NumberFormat('id-ID').format(discountedPrice);
-                    $info.html(`Harga: <span class="text-decoration-line-through">${formattedNormal}</span> | Diskon: <strong>${discountPercent}%</strong> | Harga Akhir: <strong>${formattedDiscounted}</strong>`);
-                    $info.show();
+                    $info.html(`Harga: <span class="text-decoration-line-through">${formattedNormal}</span> | Diskon: <strong>${discountPercent}%</strong> | Harga Akhir: <strong>${formattedDiscounted}</strong>`).show();
                     $row.find('input[name$="[unit_price]"]').val(discountedPrice.toFixed(2));
                 } else {
-                    $info.html(`Harga: <strong>${formattedNormal}</strong>`);
-                    $info.show();
+                    $info.html(`Harga: <strong>${formattedNormal}</strong>`).show();
                     $row.find('input[name$="[unit_price]"]').val(normalPrice.toFixed(2));
                 }
-            } else {
-                $info.html('');
-                $info.hide();
-            }
-        }
-
-        function applyProductOption($picker, selected) {
-            const $row = $picker.closest('tr');
-
-            if (!selected) {
-                return;
-            }
-
-            $picker.find('.product-code-input').val(selected.id);
-            $picker.find('.product-search-input').val(selected.label);
-            closeProductMenus();
-            $row.find('input[name$="[unit]"]').val(selected.unit || 'pcs');
-
-            updateProductPickerInfo($row, selected);
-        }
-
-        function renderProductMenu($picker, keyword = '') {
-            const normalizedKeyword = keyword.toLowerCase().trim();
-            const matches = productOptions
-                .filter((product) => product.label.toLowerCase().includes(normalizedKeyword))
-                .slice(0, 25);
-            const $menu = menuForPicker($picker);
-
-            if (!matches.length) {
-                $menu.html('<div class="product-picker-empty">Produk tidak ditemukan</div>');
-                return;
-            }
-
-            $menu.html(matches.map((product) => `
-                <button type="button" class="product-picker-option" data-product-id="${escapeHtml(product.id)}">
-                    ${escapeHtml(product.label)}
-                </button>
-            `).join(''));
-        }
-
-        function positionProductMenu($picker) {
-            const input = $picker.find('.product-search-input')[0];
-            const menu = menuForPicker($picker)[0];
-            const rect = input.getBoundingClientRect();
-            const availableBelow = window.innerHeight - rect.bottom - 12;
-            const availableAbove = rect.top - 12;
-            const menuHeight = Math.min(320, Math.max(180, availableBelow > 180 ? availableBelow : availableAbove));
-            const top = availableBelow > 180 ? rect.bottom + 4 : Math.max(12, rect.top - menuHeight - 4);
-
-            $(menu).css({
-                top: `${top}px`,
-                left: `${rect.left}px`,
-                width: `${Math.max(rect.width, 360)}px`,
-                maxHeight: `${menuHeight}px`,
+            }).on('select2:clear', function(e) {
+                const $row = $(this).closest('tr');
+                $row.find('.product-picker-info').html('').hide();
+                $row.find('input[name$="[unit_price]"]').val(0);
             });
         }
 
-        function openProductMenu($picker, keyword = '') {
-            closeProductMenus();
-            const $menu = menuForPicker($picker);
+        // Initialize Select2 on existing products
+        initProductSelect2('.product-select2');
 
-            if (!$menu.parent().is('body')) {
-                $menu.appendTo('body');
-            }
-
-            $picker.data('menu', $menu);
-            $menu.data('picker', $picker);
-            renderProductMenu($picker, keyword);
-            positionProductMenu($picker);
-            $menu.addClass('open');
-        }
-
-        function closeProductMenus() {
-            $('.product-picker-menu.open').removeClass('open');
-        }
-
-        function menuForPicker($picker) {
-            return $picker.data('menu') || $picker.find('.product-picker-menu');
-        }
-
-        function productPickerTemplate(index) {
-            return `
-                <div class="product-picker">
-                    <input type="hidden" name="items[${index}][product_code]" class="product-code-input" required>
-                    <input type="text" class="form-control product-search-input" placeholder="Cari produk..." autocomplete="off" required>
-                    <div class="product-picker-menu"></div>
-                    <div class="product-picker-info small text-success mt-1" style="display: none;"></div>
-                </div>
-            `;
-        }
-
+        // Add item click handler
         $('#add-item').on('click', function () {
-            $('#items-table tbody').append(`
+            const newRow = $(`
                 <tr>
-                    <td>${productPickerTemplate(itemIndex)}</td>
+                    <td>
+                        <select name="items[${itemIndex}][product_code]" class="form-select product-select2" required>
+                            <option value=""></option>
+                        </select>
+                        <div class="product-picker-info small text-success mt-1" style="display: none;"></div>
+                    </td>
                     <td><input type="text" name="items[${itemIndex}][unit]" class="form-control" value="pcs" required></td>
                     <td><input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control" value="1" required></td>
                     <td><input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control" value="0" required></td>
                     <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="material-icons-two-tone">delete</i></button></td>
                 </tr>
             `);
+            $('#items-table tbody').append(newRow);
+            initProductSelect2(newRow.find('.product-select2'));
             itemIndex++;
         });
 
         $(document).on('click', '.remove-item', function () {
             if ($('#items-table tbody tr').length > 1) {
-                const $picker = $(this).closest('tr').find('.product-picker');
-                menuForPicker($picker).remove();
                 $(this).closest('tr').remove();
             }
         });
 
-        $(document).on('focus', '.product-search-input', function () {
-            const $picker = $(this).closest('.product-picker');
-            openProductMenu($picker, this.value);
-        });
-
-        $(document).on('input', '.product-search-input', function () {
-            const $picker = $(this).closest('.product-picker');
-            $picker.find('.product-code-input').val('');
-            openProductMenu($picker, this.value);
-        });
-
-        $(document).on('click', '.product-picker-option', function () {
-            const selected = productOptions.find((product) => product.id === $(this).data('product-id'));
-            applyProductOption($(this).closest('.product-picker-menu').data('picker'), selected);
-        });
-
-        $(document).on('mousedown', function (event) {
-            if (!$(event.target).closest('.product-picker, .product-picker-menu').length) {
-                closeProductMenus();
-            }
-        });
-
-        $(window).on('scroll resize', function () {
-            const $menu = $('.product-picker-menu.open');
-            if ($menu.length) {
-                positionProductMenu($menu.data('picker'));
-            }
-        });
-
-        $('form').on('submit', function (event) {
-            const hasEmptyProduct = $('.product-code-input').filter(function () {
-                return !this.value;
-            }).length > 0;
-
-            if (hasEmptyProduct) {
-                event.preventDefault();
-                alert('Pilih produk dari hasil pencarian terlebih dahulu.');
-            }
-        });
-
-        // Initialize existing rows info
-        $('#items-table tbody tr').each(function () {
-            const $row = $(this);
-            const productId = $row.find('.product-code-input').val();
-            if (productId) {
-                const selected = productOptions.find((p) => p.id === productId);
-                if (selected) {
-                    const $info = $row.find('.product-picker-info');
-                    const normalPrice = Number(selected.price);
-                    const discountPercent = Number(selected.discount_percent || 0);
-                    const formattedNormal = 'Rp ' + new Intl.NumberFormat('id-ID').format(normalPrice);
-                    
-                    if (discountPercent > 0) {
-                        const discountedPrice = normalPrice * (1 - discountPercent / 100);
-                        const formattedDiscounted = 'Rp ' + new Intl.NumberFormat('id-ID').format(discountedPrice);
-                        $info.html(`Harga: <span class="text-decoration-line-through">${formattedNormal}</span> | Diskon: <strong>${discountPercent}%</strong> | Harga Akhir: <strong>${formattedDiscounted}</strong>`);
-                        $info.show();
-                    } else {
-                        $info.html(`Harga: <strong>${formattedNormal}</strong>`);
-                        $info.show();
-                    }
-                }
-            }
+        // Customer Select2 AJAX
+        $('#customer-select2').select2({
+            theme: 'bootstrap-5',
+            ajax: {
+                url: '{{ route("api.search.customers") }}',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return { q: params.term };
+                },
+                processResults: function (data) {
+                    return { results: data.results };
+                },
+                cache: true
+            },
+            placeholder: 'Cari customer...',
+            minimumInputLength: 1,
+            allowClear: true
+        }).on('select2:select', function(e) {
+            const data = e.params.data;
+            // Auto fill Customer Name
+            $('input[name="customer_name"]').val(data.text.replace(/\s\(MCS-\d+\)$/, ''));
         });
     });
 </script>
