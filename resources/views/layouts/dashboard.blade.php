@@ -15,7 +15,7 @@
     <x-dashboard.sidebar />
 
     <div class="pc-container">
-        <div class="pcoded-content">
+        <div class="pc-content pcoded-content">
             @isset($pageTitle)
                 <div class="page-header">
                     <div class="page-block">

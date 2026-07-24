@@ -96,7 +96,7 @@ class SupplierPOController extends Controller
     {
         $request->validate([
             'shortage_items' => 'required|array|min:1',
-            'shortage_items.*.product_code' => 'required|string',
+            'shortage_items.*.product_code' => 'nullable|string',
             'shortage_items.*.product_name' => 'required|string',
             'shortage_items.*.qty' => 'required|numeric|min:1',
             'shortage_items.*.unit' => 'nullable|string',
@@ -104,20 +104,49 @@ class SupplierPOController extends Controller
         ]);
 
         $suppliers = Supplier::where('status', 'active')->get();
-        $products = SupplierProduct::where('status', 'active')->get();
+        $defaultSupplierId = $suppliers->first()?->id ?: Supplier::first()?->id;
 
-        // Build prefill items by matching product_code to SupplierProduct
-        $prefillItems = collect($request->shortage_items)->map(function ($item) {
-            $sp = SupplierProduct::find($item['product_code']);
+        // Build prefill items by matching product_code/name to SupplierProduct or auto-creating master item
+        $prefillItems = collect($request->shortage_items)->map(function ($item) use ($defaultSupplierId) {
+            $sp = null;
+            if (!empty($item['product_code'])) {
+                $sp = SupplierProduct::find($item['product_code'])
+                    ?: SupplierProduct::where('sku', $item['product_code'])->first();
+            }
+            if (!$sp && !empty($item['product_name'])) {
+                $sp = SupplierProduct::where('item_name', $item['product_name'])->first();
+            }
+
+            // If product does not exist in supplier_products master table, auto-create it
+            if (!$sp && !empty($item['product_name'])) {
+                $spId = SupplierProduct::generateId();
+                $spData = [
+                    'id' => $spId,
+                    'item_name' => $item['product_name'],
+                    'sku' => !empty($item['product_code']) ? $item['product_code'] : 'SKU-' . strtoupper(substr(md5($item['product_name']), 0, 8)),
+                    'unit' => $item['unit'] ?? 'pcs',
+                    'last_purchase_price' => (float) ($item['price'] ?? 0),
+                    'status' => 'active',
+                ];
+                if ($defaultSupplierId) {
+                    $spData['supplier_id'] = $defaultSupplierId;
+                }
+                $sp = SupplierProduct::create($spData);
+            }
+
             return [
                 'product_id' => $sp ? $sp->id : null,
-                'product_name' => $item['product_name'],
+                'product_name' => $sp ? $sp->item_name : $item['product_name'],
                 'qty' => (int) ceil($item['qty']),
                 'price' => $sp ? (float) $sp->last_purchase_price : (float) ($item['price'] ?? 0),
-                'unit' => $item['unit'] ?? 'pcs',
+                'unit' => $sp ? ($sp->unit ?: 'pcs') : ($item['unit'] ?? 'pcs'),
                 'discount' => 0,
             ];
         });
+
+        $products = SupplierProduct::where(function($q) {
+            $q->where('status', 'active')->orWhereNull('status')->orWhere('status', 'stored');
+        })->get();
 
         return view('supplier_po.create', compact('suppliers', 'products', 'prefillItems'));
     }

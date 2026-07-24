@@ -12,25 +12,39 @@
         'unit' => $item->unit,
         'quantity' => $item->quantity,
         'unit_price' => $item->unit_price,
-    ])->toArray() : [['product_code' => '', 'product_name' => '', 'unit' => 'pcs', 'quantity' => 1, 'unit_price' => 0]]);
+        'discount' => $item->discount ?? 0,
+    ])->toArray() : [['product_code' => '', 'product_name' => '', 'unit' => 'pcs', 'quantity' => 1, 'unit_price' => 0, 'discount' => 0]]);
 @endphp
 
 @push('styles')
 <style>
     #items-table th:first-child,
     #items-table td:first-child {
-        width: 34%;
+        width: 30%;
     }
 
     #items-table th:nth-child(2),
     #items-table td:nth-child(2) {
-        width: 14%;
+        width: 10%;
     }
 
     #items-table th:nth-child(3),
-    #items-table td:nth-child(3),
+    #items-table td:nth-child(3) {
+        width: 12%;
+    }
+
     #items-table th:nth-child(4),
     #items-table td:nth-child(4) {
+        width: 16%;
+    }
+
+    #items-table th:nth-child(5),
+    #items-table td:nth-child(5) {
+        width: 12%;
+    }
+
+    #items-table th:nth-child(6),
+    #items-table td:nth-child(6) {
         width: 20%;
     }
 </style>
@@ -106,23 +120,20 @@
                     </div>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
-                    <h6 class="mb-0">Detail Item Pesanan</h6>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-item">
-                        <i class="material-icons-two-tone">add</i>
-                        Tambah Item
-                    </button>
+                <div class="mt-4 mb-2">
+                    <h6 class="mb-0 fw-semibold">Detail Item Pesanan</h6>
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-bordered" id="items-table">
+                    <table class="table table-bordered align-middle" id="items-table">
                         <thead>
                             <tr>
                                 <th>Nama Produk</th>
                                 <th>Unit</th>
-                                <th>Qty</th>
-                                <th>Harga</th>
-                                <th></th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-center">Harga</th>
+                                <th class="text-center">Diskon (%)</th>
+                                <th class="text-center" style="width: 170px;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -147,13 +158,37 @@
                                         </div>
                                     </td>
                                     <td><input type="text" name="items[{{ $index }}][unit]" class="form-control" value="{{ $item['unit'] ?? 'pcs' }}" required></td>
-                                    <td><input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control" value="{{ $item['quantity'] ?? 1 }}" required></td>
-                                    <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][unit_price]" class="form-control" value="{{ $item['unit_price'] ?? 0 }}" required></td>
-                                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="material-icons-two-tone">delete</i></button></td>
+                                    <td><input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control text-center" value="{{ $item['quantity'] ?? 1 }}" required></td>
+                                    <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][unit_price]" class="form-control text-end" value="{{ $item['unit_price'] ?? 0 }}" required></td>
+                                    <td><input type="number" step="0.1" min="0" max="100" name="items[{{ $index }}][discount]" class="form-control text-center" value="{{ $item['discount'] ?? 0 }}"></td>
+                                    <td class="text-center" style="white-space: nowrap;">
+                                        <button type="button" class="btn btn-sm btn-primary add-item-btn me-1" title="Tambah Item Baru"><i class="material-icons-two-tone text-white" style="font-size: 16px; vertical-align: middle;">add</i> Tambah Item</button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Hapus Item"><i class="material-icons-two-tone" style="font-size: 16px; vertical-align: middle;">delete</i></button>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+
+                <div class="row justify-content-end my-3">
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card bg-light border-0 shadow-sm p-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Subtotal:</span>
+                                <span class="fw-semibold text-dark" id="summary-subtotal">Rp 0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2 text-danger">
+                                <span>Total Diskon:</span>
+                                <span class="fw-semibold" id="summary-discount">- Rp 0</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center fw-bold">
+                                <span class="fs-6 text-dark">Total Belanja:</span>
+                                <span class="fs-5 text-primary" id="summary-grandtotal">Rp 0</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -175,56 +210,112 @@
     $(function () {
         let itemIndex = {{ count($items) }};
 
+        function calculateOrderSummary() {
+            let totalSubtotal = 0;
+            let totalDiscountAmount = 0;
+
+            $('#items-table tbody tr').each(function () {
+                const qty = parseFloat($(this).find('input[name$="[quantity]"]').val()) || 0;
+                const price = parseFloat($(this).find('input[name$="[unit_price]"]').val()) || 0;
+                const discount = parseFloat($(this).find('input[name$="[discount]"]').val()) || 0;
+
+                const lineSubtotal = qty * price;
+                const lineDiscount = lineSubtotal * (discount / 100);
+
+                totalSubtotal += lineSubtotal;
+                totalDiscountAmount += lineDiscount;
+            });
+
+            const grandTotal = totalSubtotal - totalDiscountAmount;
+
+            $('#summary-subtotal').text('Rp ' + new Intl.NumberFormat('id-ID').format(totalSubtotal));
+            $('#summary-discount').text('- Rp ' + new Intl.NumberFormat('id-ID').format(totalDiscountAmount));
+            $('#summary-grandtotal').text('Rp ' + new Intl.NumberFormat('id-ID').format(grandTotal));
+        }
+
+        $(document).on('input change', 'input[name$="[quantity]"], input[name$="[unit_price]"], input[name$="[discount]"]', function () {
+            calculateOrderSummary();
+        });
+
         function initProductSelect2(element) {
             $(element).select2({
                 theme: 'bootstrap-5',
                 ajax: {
                     url: '{{ route("api.search.products") }}',
                     dataType: 'json',
-                    delay: 250,
+                    delay: 150,
                     data: function (params) {
-                        return { q: params.term };
+                        return { q: params.term || '' };
                     },
                     processResults: function (data) {
                         return { results: data.results };
                     },
                     cache: true
                 },
-                placeholder: 'Cari produk...',
-                minimumInputLength: 1,
-                allowClear: true
+                placeholder: 'Pilih / Cari produk...',
+                minimumInputLength: 0,
+                allowClear: true,
+                templateResult: function (data) {
+                    if (!data.id) return data.text;
+                    const stock = data.stock !== undefined ? data.stock : 0;
+                    const rack = data.rack || '-';
+                    const location = data.location || '-';
+                    const price = data.price ? 'Rp ' + new Intl.NumberFormat('id-ID').format(data.price) : 'Rp 0';
+                    const stockClass = stock > 0 ? 'bg-success' : 'bg-secondary';
+
+                    return $(`
+                        <div class="py-1">
+                            <div class="fw-semibold text-dark">${data.text}</div>
+                            <div class="small text-muted mt-1 d-flex align-items-center flex-wrap gap-2">
+                                <span class="badge ${stockClass}">Stok: ${stock} ${data.unit || 'pcs'}</span>
+                                <span class="badge bg-light text-dark border">Rak: ${rack}</span>
+                                <span class="badge bg-light text-dark border">Gudang: ${location}</span>
+                                <span class="text-primary fw-medium">Harga: ${price}</span>
+                            </div>
+                        </div>
+                    `);
+                },
+                templateSelection: function (data) {
+                    if (!data.id) return data.text;
+                    return data.text + (data.stock !== undefined ? ` [Stok: ${data.stock} ${data.unit || 'pcs'} | Rak: ${data.rack || '-'} | Gudang: ${data.location || '-'}]` : '');
+                }
             }).on('select2:select', function(e) {
                 const data = e.params.data;
                 const $row = $(this).closest('tr');
                 $row.find('input[name$="[unit]"]').val(data.unit || 'pcs');
 
-                // Price/discount details
+                // Price/discount & Stock/Rak/Gudang details
                 const $info = $row.find('.product-picker-info');
                 const normalPrice = Number(data.price);
                 const discountPercent = Number(data.discount_percent || 0);
                 const formattedNormal = 'Rp ' + new Intl.NumberFormat('id-ID').format(normalPrice);
+                const stockText = data.stock !== undefined ? `Stok: <strong>${data.stock} ${data.unit || 'pcs'}</strong>` : '';
+                const rackText = data.rack ? ` | Rak: <strong>${data.rack}</strong>` : '';
+                const locationText = data.location ? ` | Gudang: <strong>${data.location}</strong>` : '';
 
                 if (discountPercent > 0) {
-                    const discountedPrice = normalPrice * (1 - discountPercent / 100);
-                    const formattedDiscounted = 'Rp ' + new Intl.NumberFormat('id-ID').format(discountedPrice);
-                    $info.html(`Harga: <span class="text-decoration-line-through">${formattedNormal}</span> | Diskon: <strong>${discountPercent}%</strong> | Harga Akhir: <strong>${formattedDiscounted}</strong>`).show();
-                    $row.find('input[name$="[unit_price]"]').val(discountedPrice.toFixed(2));
-                } else {
-                    $info.html(`Harga: <strong>${formattedNormal}</strong>`).show();
-                    $row.find('input[name$="[unit_price]"]').val(normalPrice.toFixed(2));
+                    $row.find('input[name$="[discount]"]').val(discountPercent);
+                } else if (!$row.find('input[name$="[discount]"]').val()) {
+                    $row.find('input[name$="[discount]"]').val(0);
                 }
+
+                $info.html(`${stockText}${rackText}${locationText} | Harga: <strong>${formattedNormal}</strong>`).show();
+                $row.find('input[name$="[unit_price]"]').val(normalPrice.toFixed(2));
+                calculateOrderSummary();
             }).on('select2:clear', function(e) {
                 const $row = $(this).closest('tr');
                 $row.find('.product-picker-info').html('').hide();
                 $row.find('input[name$="[unit_price]"]').val(0);
+                $row.find('input[name$="[discount]"]').val(0);
+                calculateOrderSummary();
             });
         }
 
         // Initialize Select2 on existing products
         initProductSelect2('.product-select2');
 
-        // Add item click handler
-        $('#add-item').on('click', function () {
+        // Add item click handler (Support both button triggers)
+        $(document).on('click', '.add-item-btn, #add-item', function () {
             const newRow = $(`
                 <tr>
                     <td>
@@ -234,19 +325,25 @@
                         <div class="product-picker-info small text-success mt-1" style="display: none;"></div>
                     </td>
                     <td><input type="text" name="items[${itemIndex}][unit]" class="form-control" value="pcs" required></td>
-                    <td><input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control" value="1" required></td>
-                    <td><input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control" value="0" required></td>
-                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="material-icons-two-tone">delete</i></button></td>
+                    <td><input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control text-center" value="1" required></td>
+                    <td><input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control text-end" value="0" required></td>
+                    <td><input type="number" step="0.1" min="0" max="100" name="items[${itemIndex}][discount]" class="form-control text-center" value="0"></td>
+                    <td class="text-center" style="white-space: nowrap;">
+                        <button type="button" class="btn btn-sm btn-primary add-item-btn me-1" title="Tambah Item Baru"><i class="material-icons-two-tone text-white" style="font-size: 16px; vertical-align: middle;">add</i> Tambah Item</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger remove-item" title="Hapus Item"><i class="material-icons-two-tone" style="font-size: 16px; vertical-align: middle;">delete</i></button>
+                    </td>
                 </tr>
             `);
             $('#items-table tbody').append(newRow);
             initProductSelect2(newRow.find('.product-select2'));
             itemIndex++;
+            calculateOrderSummary();
         });
 
         $(document).on('click', '.remove-item', function () {
             if ($('#items-table tbody tr').length > 1) {
                 $(this).closest('tr').remove();
+                calculateOrderSummary();
             }
         });
 
@@ -256,23 +353,26 @@
             ajax: {
                 url: '{{ route("api.search.customers") }}',
                 dataType: 'json',
-                delay: 250,
+                delay: 150,
                 data: function (params) {
-                    return { q: params.term };
+                    return { q: params.term || '' };
                 },
                 processResults: function (data) {
                     return { results: data.results };
                 },
                 cache: true
             },
-            placeholder: 'Cari customer...',
-            minimumInputLength: 1,
+            placeholder: 'Pilih / Cari customer...',
+            minimumInputLength: 0,
             allowClear: true
         }).on('select2:select', function(e) {
             const data = e.params.data;
             // Auto fill Customer Name
             $('input[name="customer_name"]').val(data.text.replace(/\s\(MCS-\d+\)$/, ''));
         });
+
+        // Initial summary calculation on load
+        calculateOrderSummary();
     });
 </script>
 @endpush

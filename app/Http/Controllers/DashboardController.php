@@ -219,7 +219,11 @@ class DashboardController extends Controller
     {
         $search = $request->input('q');
         $products = \App\Models\SupplierProduct::query()
-            ->where('status', 'active')
+            ->where(function ($q) {
+                $q->where('status', 'active')
+                  ->orWhereNull('status')
+                  ->orWhere('status', 'stored');
+            })
             ->when($search, function ($query, $search) {
                 $query->where(function($q) use ($search) {
                     $q->where('item_name', 'LIKE', "%{$search}%")
@@ -231,16 +235,12 @@ class DashboardController extends Controller
             ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price']);
 
         $results = $products->map(function ($product) {
-            $gProduct = \App\Models\GudangProduct::where('supplier_product_id', $product->id)
-                ->where('qty', '>', 0)
-                ->orderBy('id', 'desc')
-                ->first();
+            $gProducts = \App\Models\GudangProduct::with('rack')->where('supplier_product_id', $product->id)->get();
+            $gProduct = $gProducts->where('qty', '>', 0)->sortByDesc('id')->first() ?: $gProducts->sortByDesc('id')->first();
 
-            if (!$gProduct) {
-                $gProduct = \App\Models\GudangProduct::where('supplier_product_id', $product->id)
-                    ->orderBy('id', 'desc')
-                    ->first();
-            }
+            $totalStock = (float) $gProducts->sum('qty');
+            $rackCodes = $gProducts->pluck('rack_id')->unique()->filter()->implode(', ');
+            $locations = $gProducts->map(fn($g) => $g->rack?->location ?: $g->rack?->gudang)->filter()->unique()->implode(', ');
 
             $price = $gProduct && floatval($gProduct->price) > 0 ? floatval($gProduct->price) : floatval($product->last_purchase_price);
             $discountPercent = $gProduct ? floatval($gProduct->discount) : 0;
@@ -248,8 +248,13 @@ class DashboardController extends Controller
             return [
                 'id' => $product->id,
                 'text' => $product->item_name . ($product->sku ? ' (' . $product->sku . ')' : ''),
+                'item_name' => $product->item_name,
+                'sku' => $product->sku,
                 'unit' => $product->unit ?: 'pcs',
                 'price' => $price,
+                'stock' => $totalStock,
+                'rack' => $rackCodes ?: ($gProduct ? $gProduct->rack_id : '-'),
+                'location' => $locations ?: ($gProduct?->rack?->location ?: '-'),
                 'discount_percent' => $discountPercent
             ];
         });

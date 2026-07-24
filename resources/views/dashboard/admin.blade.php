@@ -307,11 +307,18 @@ $(document).ready(function() {
 
         $checked.each(function(i) {
             var $cb = $(this);
-            $fields.append('<input type="hidden" name="shortage_items[' + i + '][product_code]" value="' + $cb.data('product-code') + '">');
-            $fields.append('<input type="hidden" name="shortage_items[' + i + '][product_name]" value="' + $cb.data('product-name') + '">');
-            $fields.append('<input type="hidden" name="shortage_items[' + i + '][qty]" value="' + $cb.data('qty') + '">');
-            $fields.append('<input type="hidden" name="shortage_items[' + i + '][unit]" value="' + $cb.data('unit') + '">');
-            $fields.append('<input type="hidden" name="shortage_items[' + i + '][price]" value="' + $cb.data('price') + '">');
+            var code = $cb.data('product-code');
+            if (code === undefined || code === null) code = '';
+            var name = $cb.data('product-name') || '';
+            var qty = $cb.data('qty') || 1;
+            var unit = $cb.data('unit') || 'pcs';
+            var price = $cb.data('price') || 0;
+
+            $fields.append('<input type="hidden" name="shortage_items[' + i + '][product_code]" value="' + code + '">');
+            $fields.append('<input type="hidden" name="shortage_items[' + i + '][product_name]" value="' + name + '">');
+            $fields.append('<input type="hidden" name="shortage_items[' + i + '][qty]" value="' + qty + '">');
+            $fields.append('<input type="hidden" name="shortage_items[' + i + '][unit]" value="' + unit + '">');
+            $fields.append('<input type="hidden" name="shortage_items[' + i + '][price]" value="' + price + '">');
         });
 
         $('#shortageToPoForm').submit();

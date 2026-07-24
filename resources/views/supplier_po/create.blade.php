@@ -26,25 +26,25 @@
     </div>
 @endif
 
-<form action="{{ route('supplier-po.store') }}" method="POST" id="po-form">
+<form action="{{ route('supplier-po.store') }}" method="POST" id="po-form" class="mt-4">
     @csrf
     <div class="row">
         <!-- Main Form -->
-        <div class="col-md-8">
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white py-3">
-                    <h5 class="card-title mb-0 fw-semibold">Detail Barang PO</h5>
+        <div class="col-xl-8 col-lg-7 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+                    <h5 class="card-title mb-0 fw-semibold text-dark">Detail Barang PO</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table align-middle" id="items-table">
-                            <thead>
+                        <table class="table table-bordered align-middle mb-0" id="items-table">
+                            <thead class="bg-light">
                                 <tr>
-                                    <th style="width: 40%;">Nama Barang</th>
-                                    <th style="width: 15%;">Qty</th>
-                                    <th style="width: 20%;">Harga Unit</th>
-                                    <th style="width: 15%;">Diskon (%)</th>
-                                    <th style="width: 10%;"></th>
+                                    <th style="min-width: 220px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase;">Nama Barang</th>
+                                    <th style="width: 100px; min-width: 85px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase;" class="text-center">Qty</th>
+                                    <th style="width: 140px; min-width: 120px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase;" class="text-center">Harga Unit</th>
+                                    <th style="width: 100px; min-width: 85px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase;" class="text-center">Diskon (%)</th>
+                                    <th class="text-center" style="width: 70px; font-size: 0.82rem; font-weight: 600; text-transform: uppercase;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="items-body">
@@ -52,7 +52,7 @@
                                     @foreach($prefillItems as $idx => $prefill)
                                     <tr class="item-row">
                                         <td>
-                                            <select name="items[{{ $idx }}][product_id]" class="form-select product-select" required>
+                                            <select name="items[{{ $idx }}][product_id]" class="form-select product-select" required style="font-size: 0.9rem;">
                                                 <option value="">-- Pilih Barang --</option>
                                                 @foreach($products as $product)
                                                     <option value="{{ $product->id }}" data-price="{{ $product->last_purchase_price }}"
@@ -63,23 +63,23 @@
                                             </select>
                                         </td>
                                         <td>
-                                            <input type="number" name="items[{{ $idx }}][qty]" class="form-control qty-input" min="1" value="{{ $prefill['qty'] }}" required>
+                                            <input type="number" name="items[{{ $idx }}][qty]" class="form-control qty-input text-center px-1" min="1" value="{{ $prefill['qty'] }}" required style="font-size: 0.9rem;">
                                         </td>
                                         <td>
-                                            <input type="number" name="items[{{ $idx }}][price]" class="form-control price-input" min="0" step="0.01" value="{{ $prefill['price'] }}" required>
+                                            <input type="number" name="items[{{ $idx }}][price]" class="form-control price-input text-end px-2" min="0" step="0.01" value="{{ $prefill['price'] }}" required style="font-size: 0.9rem;">
                                         </td>
                                         <td>
-                                            <input type="number" name="items[{{ $idx }}][discount]" class="form-control discount-input" min="0" max="100" step="0.1" value="{{ $prefill['discount'] }}" required>
+                                            <input type="number" name="items[{{ $idx }}][discount]" class="form-control discount-input text-center px-1" min="0" max="100" step="0.1" value="{{ $prefill['discount'] }}" required style="font-size: 0.9rem;">
                                         </td>
                                         <td class="text-center">
-                                            <button type="button" class="btn btn-outline-danger btn-sm remove-row"><span class="material-icons" style="font-size: 1.2rem;">delete</span></button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger remove-row p-1 px-2" title="Hapus Baris"><i class="material-icons-two-tone" style="font-size: 18px; vertical-align: middle;">delete</i></button>
                                         </td>
                                     </tr>
                                     @endforeach
                                 @else
                                 <tr class="item-row">
                                     <td>
-                                        <select name="items[0][product_id]" class="form-select product-select" required>
+                                        <select name="items[0][product_id]" class="form-select product-select" required style="font-size: 0.9rem;">
                                             <option value="">-- Pilih Barang --</option>
                                             @foreach($products as $product)
                                                 <option value="{{ $product->id }}" data-price="{{ $product->last_purchase_price }}">
@@ -89,39 +89,39 @@
                                         </select>
                                     </td>
                                     <td>
-                                        <input type="number" name="items[0][qty]" class="form-control qty-input" min="1" value="1" required>
+                                        <input type="number" name="items[0][qty]" class="form-control qty-input text-center px-1" min="1" value="1" required style="font-size: 0.9rem;">
                                     </td>
                                     <td>
-                                        <input type="number" name="items[0][price]" class="form-control price-input" min="0" step="0.01" value="0" required>
+                                        <input type="number" name="items[0][price]" class="form-control price-input text-end px-2" min="0" step="0.01" value="0" required style="font-size: 0.9rem;">
                                     </td>
                                     <td>
-                                        <input type="number" name="items[0][discount]" class="form-control discount-input" min="0" max="100" step="0.1" value="0" required>
+                                        <input type="number" name="items[0][discount]" class="form-control discount-input text-center px-1" min="0" max="100" step="0.1" value="0" required style="font-size: 0.9rem;">
                                     </td>
                                     <td class="text-center">
-                                        <button type="button" class="btn btn-outline-danger btn-sm remove-row"><span class="material-icons" style="font-size: 1.2rem;">delete</span></button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-row p-1 px-2" title="Hapus Baris"><i class="material-icons-two-tone" style="font-size: 18px; vertical-align: middle;">delete</i></button>
                                     </td>
                                 </tr>
                                 @endif
                             </tbody>
                         </table>
                     </div>
-                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-row">
-                        <span class="material-icons" style="font-size: 1.1rem; vertical-align: middle;">add</span> Tambah Baris
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-3 fw-semibold" id="add-row">
+                        <i class="material-icons-two-tone" style="font-size: 16px; vertical-align: middle;">add</i> Tambah Baris Baru
                     </button>
                 </div>
             </div>
         </div>
 
         <!-- Info Sidebar -->
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white py-3">
-                    <h5 class="card-title mb-0 fw-semibold">Informasi PO</h5>
+        <div class="col-xl-4 col-lg-5 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="card-title mb-0 fw-semibold text-dark">Informasi PO</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">Supplier</label>
-                        <select name="supplier_id" class="form-select" required>
+                        <label class="form-label fw-medium text-dark">Supplier <span class="text-danger">*</span></label>
+                        <select name="supplier_id" class="form-select" required style="font-size: 0.9rem;">
                             <option value="">-- Pilih Supplier --</option>
                             @foreach($suppliers as $supplier)
                                 <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
@@ -130,23 +130,23 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Tanggal Order</label>
-                        <input type="date" name="order_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        <label class="form-label fw-medium text-dark">Tanggal Order <span class="text-danger">*</span></label>
+                        <input type="date" name="order_date" class="form-control" value="{{ date('Y-m-d') }}" required style="font-size: 0.9rem;">
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Catatan</label>
-                        <textarea name="notes" class="form-control" rows="3" placeholder="Masukkan catatan tambahan...">{{ isset($prefillItems) && $prefillItems->count() > 0 ? 'PO dibuat dari data kekurangan stok dashboard.' : '' }}</textarea>
+                        <label class="form-label fw-medium text-dark">Catatan</label>
+                        <textarea name="notes" class="form-control" rows="3" placeholder="Masukkan catatan tambahan..." style="font-size: 0.9rem;">{{ isset($prefillItems) && $prefillItems->count() > 0 ? 'PO dibuat dari data kekurangan stok dashboard.' : '' }}</textarea>
                     </div>
 
-                    <hr>
+                    <hr class="my-3">
 
-                    <div class="d-flex justify-content-between mb-3 fw-bold text-dark">
-                        <span>Total Akumulasi:</span>
-                        <span id="grand-total">Rp 0</span>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="fw-semibold text-dark">Total Akumulasi:</span>
+                        <span id="grand-total" class="fw-bold text-primary fs-5">Rp 0</span>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 py-2">Simpan PO Template</button>
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">Simpan PO Template</button>
                 </div>
             </div>
         </div>
@@ -188,21 +188,21 @@
 
             newRow.innerHTML = `
                 <td>
-                    <select name="items[${rowCount}][product_id]" class="form-select product-select" required>
+                    <select name="items[${rowCount}][product_id]" class="form-select product-select" required style="font-size: 0.9rem;">
                         ${optionsHtml}
                     </select>
                 </td>
                 <td>
-                    <input type="number" name="items[${rowCount}][qty]" class="form-control qty-input" min="1" value="1" required>
+                    <input type="number" name="items[${rowCount}][qty]" class="form-control qty-input text-center px-1" min="1" value="1" required style="font-size: 0.9rem;">
                 </td>
                 <td>
-                    <input type="number" name="items[${rowCount}][price]" class="form-control price-input" min="0" step="0.01" value="0" required>
+                    <input type="number" name="items[${rowCount}][price]" class="form-control price-input text-end px-2" min="0" step="0.01" value="0" required style="font-size: 0.9rem;">
                 </td>
                 <td>
-                    <input type="number" name="items[${rowCount}][discount]" class="form-control discount-input" min="0" max="100" step="0.1" value="0" required>
+                    <input type="number" name="items[${rowCount}][discount]" class="form-control discount-input text-center px-1" min="0" max="100" step="0.1" value="0" required style="font-size: 0.9rem;">
                 </td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-outline-danger btn-sm remove-row"><span class="material-icons" style="font-size: 1.2rem;">delete</span></button>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-row p-1 px-2" title="Hapus Baris"><i class="material-icons-two-tone" style="font-size: 18px; vertical-align: middle;">delete</i></button>
                 </td>
             `;
             tbody.appendChild(newRow);

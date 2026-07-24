@@ -6,8 +6,8 @@
     <div class="navbar-wrapper">
         <div class="m-header">
             <a href="{{ route('dashboard') }}" class="b-brand">
-                <img src="{{ $webCustomization['sidebarLogoUrl'] }}" alt="Sidebar logo" class="logo logo-lg" onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';" style="max-width: 100%; max-height: 50px; width: auto; height: auto; object-fit: contain;">
-                <img src="{{ $webCustomization['sidebarLogoUrl'] }}" alt="Sidebar logo small" class="logo logo-sm" onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';" style="max-width: 100%; max-height: 35px; width: auto; height: auto; object-fit: contain;">
+                <img src="{{ !empty($webCustomization['sidebarLogoUrl']) ? $webCustomization['sidebarLogoUrl'] : asset('DashboardKit-main/images/logo.svg') }}" alt="" class="logo logo-lg" onerror="this.onerror=null; this.src='{{ asset('DashboardKit-main/images/logo.svg') }}';" style="max-width: 100%; max-height: 50px; width: auto; height: auto; object-fit: contain;">
+                <img src="{{ !empty($webCustomization['sidebarLogoUrl']) ? $webCustomization['sidebarLogoUrl'] : asset('DashboardKit-main/images/logo-sm.svg') }}" alt="" class="logo logo-sm" onerror="this.onerror=null; this.src='{{ asset('DashboardKit-main/images/logo-sm.svg') }}';" style="max-width: 100%; max-height: 35px; width: auto; height: auto; object-fit: contain;">
             </a>
         </div>
         <div class="navbar-content">

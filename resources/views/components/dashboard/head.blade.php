@@ -23,6 +23,13 @@
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/custom.css') }}?v={{ file_exists(public_path($themeBase.'/css/custom.css')) ? filemtime(public_path($themeBase.'/css/custom.css')) : time() }}">
 
 <style>
+    /* Hide Mobile Header Bar on Desktop (> 991px) */
+    @media only screen and (min-width: 992px) {
+        .pc-mob-header,
+        .pc-mob-header.pc-header {
+            display: none !important;
+        }
+    }
     :root {
         --brand-primary: {{ $webCustomization['primaryColor'] ?? '#751204' }};
         --brand-primary-rgb: {{ $webCustomization['primaryRgb'] ?? '117, 18, 4' }};

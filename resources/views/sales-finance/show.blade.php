@@ -63,6 +63,7 @@
                                 <th class="text-end">Stok</th>
                                 <th>Status</th>
                                 <th class="text-end">Harga</th>
+                                <th class="text-center">Diskon</th>
                                 <th class="text-end">Total</th>
                             </tr>
                         </thead>
@@ -77,14 +78,15 @@
                                     <td class="text-end">{{ number_format((float) $item->available_stock, 2, ',', '.') }}</td>
                                     <td><span class="badge {{ $item->stock_status === 'pending' ? 'bg-light-warning' : ($item->stock_status === 'available' ? 'bg-light-success' : 'bg-light-secondary') }}">{{ ucfirst($item->stock_status) }}</span></td>
                                     <td class="text-end">Rp {{ number_format((float) $item->unit_price, 0, ',', '.') }}</td>
+                                    <td class="text-center">{{ (float) $item->discount > 0 ? (float) $item->discount . '%' : '-' }}</td>
                                     <td class="text-end">Rp {{ number_format((float) $item->line_total, 0, ',', '.') }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                         <tfoot>
-                            <tr><th colspan="5" class="text-end">Subtotal</th><th class="text-end">Rp {{ number_format((float) $order->subtotal, 0, ',', '.') }}</th></tr>
-                            <tr><th colspan="5" class="text-end">Pajak</th><th class="text-end">Rp {{ number_format((float) $order->tax_amount, 0, ',', '.') }}</th></tr>
-                            <tr><th colspan="5" class="text-end">Grand Total</th><th class="text-end">Rp {{ number_format((float) $order->grand_total, 0, ',', '.') }}</th></tr>
+                            <tr><th colspan="6" class="text-end">Subtotal</th><th class="text-end">Rp {{ number_format((float) $order->subtotal, 0, ',', '.') }}</th></tr>
+                            <tr><th colspan="6" class="text-end">Pajak</th><th class="text-end">Rp {{ number_format((float) $order->tax_amount, 0, ',', '.') }}</th></tr>
+                            <tr><th colspan="6" class="text-end">Grand Total</th><th class="text-end">Rp {{ number_format((float) $order->grand_total, 0, ',', '.') }}</th></tr>
                         </tfoot>
                     </table>
                 </div>

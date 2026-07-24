@@ -23,7 +23,7 @@ class RakController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'rak_kode' => 'required|string|max:255|unique:racks,rak_kode',
+            'rak_kode' => 'required|string|max:255|unique:raks,rak_kode',
             'location' => 'required|string|max:255',
         ]);
 
@@ -56,7 +56,7 @@ class RakController extends Controller
             'required',
             'string',
             'max:255',
-            Rule::unique('racks', 'rak_kode')->ignore($rak_kode, 'rak_kode')
+            Rule::unique('raks', 'rak_kode')->ignore($rak_kode, 'rak_kode')
         ],
         'location' => 'required|string|max:255',
     ]);

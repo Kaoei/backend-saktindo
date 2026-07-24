@@ -220,15 +220,24 @@ body:not(.minimenu) .pc-sidebar .pc-submenu .pc-item:before {
   margin-right: 10px !important;
 }
 
+/* Hide Mobile Header on Desktop (> 1024px) */
+@media only screen and (min-width: 1025px) {
+  .pc-mob-header {
+    display: none !important;
+  }
+}
+
 /* Mobile Header (Responsive Navbar) Styling */
-.pc-mob-header.pc-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 0 12px !important;
-  height: 60px !important;
-  background: var(--brand-primary, #751204) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+@media only screen and (max-width: 1024px) {
+  .pc-mob-header.pc-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 12px !important;
+    height: 60px !important;
+    background: var(--brand-primary, #751204) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
 }
 
 .pc-mob-header .pcm-left,
@@ -613,4 +622,26 @@ table.dataTable.table-hover tbody tr:hover {
     flex-wrap: wrap !important;
   }
 }
+
+/* Container Top Spacing & Layout Clearance */
+.pc-container {
+  padding-top: 25px !important;
+}
+
+@media only screen and (min-width: 1025px) {
+  .pc-container {
+    padding-top: 45px !important;
+  }
+}
+
+.pc-content,
+.pcoded-content {
+  padding-top: 15px !important;
+}
+
+.page-header {
+  margin-bottom: 25px !important;
+  padding-bottom: 10px !important;
+}
+
 

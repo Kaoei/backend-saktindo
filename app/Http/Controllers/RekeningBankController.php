@@ -29,7 +29,7 @@ class RekeningBankController extends Controller
         ]);
 
         RekeningBank::create([
-            'id' => RekeningBank::generateId() ?? ('REK-' . now()->format('YmdHis')),
+            'id' => RekeningBank::generateId(),
             'bank_name' => $request->bank_name,
             'account_name' => $request->account_name,
             'account_number' => $request->account_number,

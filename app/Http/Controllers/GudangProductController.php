@@ -295,23 +295,71 @@ class GudangProductController extends Controller
             $updatedCount = 0;
             $skippedCount = 0;
 
+            // Default column mapping (Fallback to standard positions)
+            $colMap = [
+                'id' => 'A',
+                'sku' => 'B',
+                'item_name' => 'C',
+                'brand' => 'D',
+                'category' => 'E',
+                'qty' => 'F',
+                'price' => 'G',
+                'sub_category' => 'I',
+                'rack_id' => 'J',
+                'lokasi' => 'K',
+                'status' => 'L',
+            ];
+
+            // Auto-detect headers from Row 1
+            $highestColumn = $sheet->getHighestColumn();
+            $highestColumnIndex = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+            for ($col = 1; $col <= $highestColumnIndex; $col++) {
+                $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+                $cellVal = strtolower(trim((string)$sheet->getCell($colLetter . '1')->getValue()));
+
+                if (in_array($cellVal, ['id', 'id gudang product', 'kode id'])) {
+                    $colMap['id'] = $colLetter;
+                } elseif (in_array($cellVal, ['sku', 'serial number', 'sn', 'serial_number', 'kode barang', 'kode produk'])) {
+                    $colMap['sku'] = $colLetter;
+                } elseif (in_array($cellVal, ['nama barang', 'nama produk', 'item name', 'nama', 'item'])) {
+                    $colMap['item_name'] = $colLetter;
+                } elseif (in_array($cellVal, ['brand', 'merek', 'merk'])) {
+                    $colMap['brand'] = $colLetter;
+                } elseif (in_array($cellVal, ['qty', 'quantity', 'jumlah', 'stok', 'jumlah stok'])) {
+                    $colMap['qty'] = $colLetter;
+                } elseif (in_array($cellVal, ['harga', 'price', 'harga beli', 'harga per unit'])) {
+                    $colMap['price'] = $colLetter;
+                } elseif (in_array($cellVal, ['kategori 1', 'kategori produk', 'kategori', 'category', 'main category'])) {
+                    $colMap['category'] = $colLetter;
+                } elseif (in_array($cellVal, ['kategori 2', 'sub kategori', 'sub category', 'sub-kategori', 'sub_category'])) {
+                    $colMap['sub_category'] = $colLetter;
+                } elseif (in_array($cellVal, ['rak kode', 'kode rak', 'rak', 'rack', 'rack id', 'rack_id'])) {
+                    $colMap['rack_id'] = $colLetter;
+                } elseif (in_array($cellVal, ['lokasi', 'location', 'lokasi rak'])) {
+                    $colMap['lokasi'] = $colLetter;
+                } elseif (in_array($cellVal, ['status', 'status stok'])) {
+                    $colMap['status'] = $colLetter;
+                }
+            }
+
             // First pass: validation
             $rowsToProcess = [];
             for ($row = 2; $row <= $highestRow; $row++) {
-                $id = trim((string)$sheet->getCell('A' . $row)->getValue());
-                $sku = trim((string)$sheet->getCell('B' . $row)->getValue());
-                $itemName = trim((string)$sheet->getCell('C' . $row)->getValue());
-                $brandVal = trim((string)$sheet->getCell('D' . $row)->getValue());
-                $qtyVal = $sheet->getCell('E' . $row)->getValue();
-                $hargaVal = $sheet->getCell('F' . $row)->getValue();
-                $kategori1 = trim((string)$sheet->getCell('G' . $row)->getValue());
-                $kategori2 = trim((string)$sheet->getCell('H' . $row)->getValue());
-                $rakKode = trim((string)$sheet->getCell('I' . $row)->getValue());
-                $lokasiVal = trim((string)$sheet->getCell('J' . $row)->getValue());
-                $status = trim((string)$sheet->getCell('K' . $row)->getValue());
+                $id = trim((string)$sheet->getCell($colMap['id'] . $row)->getValue());
+                $sku = trim((string)$sheet->getCell($colMap['sku'] . $row)->getValue());
+                $itemName = trim((string)$sheet->getCell($colMap['item_name'] . $row)->getValue());
+                $brandVal = trim((string)$sheet->getCell($colMap['brand'] . $row)->getValue());
+                $qtyVal = $sheet->getCell($colMap['qty'] . $row)->getValue();
+                $hargaVal = $sheet->getCell($colMap['price'] . $row)->getValue();
+                $kategori1 = trim((string)$sheet->getCell($colMap['category'] . $row)->getValue());
+                $kategori2 = trim((string)$sheet->getCell($colMap['sub_category'] . $row)->getValue());
+                $rakKode = trim((string)$sheet->getCell($colMap['rack_id'] . $row)->getValue());
+                $lokasiVal = trim((string)$sheet->getCell($colMap['lokasi'] . $row)->getValue());
+                $status = trim((string)$sheet->getCell($colMap['status'] . $row)->getValue());
 
-                // Skip completely empty rows
-                if (empty($id) && empty($sku) && $qtyVal === null && empty($rakKode)) {
+                // Skip category subheaders or completely blank rows
+                if (empty($id) && empty($sku) && ($qtyVal === null || $qtyVal === '' || !is_numeric($qtyVal)) && (empty($rakKode) || $rakKode === '-') && empty($brandVal) && empty($hargaVal)) {
                     continue;
                 }
 
@@ -320,13 +368,15 @@ class GudangProductController extends Controller
                 if (empty($sku)) {
                     if (!empty($id)) {
                         $sku = $id;
+                    } elseif (!empty($itemName)) {
+                        $sku = 'SKU-' . strtoupper(substr(md5($itemName), 0, 8));
                     } else {
                         $rowErrors[] = 'SKU / Serial Number wajib diisi.';
                     }
                 }
 
                 if ($qtyVal === '' || $qtyVal === null) {
-                    $rowErrors[] = 'Quantity (Qty) wajib diisi.';
+                    $qtyVal = 0;
                 } elseif (!is_numeric($qtyVal) || intval($qtyVal) < 0) {
                     $rowErrors[] = "Quantity '{$qtyVal}' harus berupa angka bulat positif.";
                 }
@@ -337,10 +387,8 @@ class GudangProductController extends Controller
                     $rowErrors[] = "Harga '{$hargaVal}' harus berupa angka positif.";
                 }
 
-                $discountVal = 0;
-
-                if (empty($rakKode)) {
-                    $rowErrors[] = 'Rak Kode wajib diisi.';
+                if (empty($rakKode) || $rakKode === '-') {
+                    $rakKode = 'RAK-01';
                 }
 
                 if (!empty($rowErrors)) {
@@ -352,7 +400,7 @@ class GudangProductController extends Controller
                         'item_name' => $itemName ?: $sku,
                         'qty' => intval($qtyVal),
                         'price' => floatval($hargaVal),
-                        'discount' => floatval($discountVal),
+                        'discount' => 0,
                         'rack_id' => $rakKode,
                         'lokasi' => $lokasiVal ?: 'Gudang',
                         'status' => $status ?: 'stored',

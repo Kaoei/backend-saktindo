@@ -18,6 +18,7 @@ class RekeningBank extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'bank_name',
         'account_name',
         'account_number',

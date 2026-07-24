@@ -66,10 +66,11 @@
         <thead>
             <tr>
                 <th>Produk</th>
-                <th class="text-end" width="15%">Qty</th>
+                <th class="text-end" width="12%">Qty</th>
                 <th>Unit</th>
-                <th class="text-end" width="20%">Harga Satuan</th>
-                <th class="text-end" width="20%">Total</th>
+                <th class="text-end" width="18%">Harga Satuan</th>
+                <th class="text-center" width="12%">Diskon (%)</th>
+                <th class="text-end" width="18%">Total</th>
             </tr>
         </thead>
         <tbody>
@@ -79,21 +80,22 @@
                     <td class="text-end">{{ number_format($item->quantity, 2, ',', '.') }}</td>
                     <td>{{ $item->unit }}</td>
                     <td class="text-end">Rp {{ number_format($item->unit_price, 0, ',', '.') }}</td>
+                    <td class="text-center">{{ (float)$item->discount > 0 ? (float)$item->discount . '%' : '-' }}</td>
                     <td class="text-end">Rp {{ number_format($item->line_total, 0, ',', '.') }}</td>
                 </tr>
             @endforeach
         </tbody>
         <tfoot>
             <tr>
-                <th colspan="4" class="text-end">Subtotal</th>
+                <th colspan="5" class="text-end">Subtotal</th>
                 <th class="text-end">Rp {{ number_format($salesOrder->proformaInvoice->subtotal, 0, ',', '.') }}</th>
             </tr>
             <tr>
-                <th colspan="4" class="text-end">Pajak (11%)</th>
+                <th colspan="5" class="text-end">Pajak (11%)</th>
                 <th class="text-end">Rp {{ number_format($salesOrder->proformaInvoice->tax_amount, 0, ',', '.') }}</th>
             </tr>
             <tr>
-                <th colspan="4" class="text-end">Grand Total</th>
+                <th colspan="5" class="text-end">Grand Total</th>
                 <th class="text-end">Rp {{ number_format($salesOrder->proformaInvoice->grand_total, 0, ',', '.') }}</th>
             </tr>
         </tfoot>

@@ -13,7 +13,7 @@
     }
 @endphp
 
-<div class="pc-mob-header pc-header">
+<div class="pc-mob-header pc-header d-lg-none d-xl-none" style="display: none;">
     <div class="pcm-left">
         <a href="#!" class="pc-head-link" id="mobile-collapse" title="Menu Sidebar">
             <i data-feather="menu"></i>
@@ -21,10 +21,10 @@
     </div>
     <div class="pcm-logo">
         <a href="{{ route('dashboard') }}" class="b-brand">
-            <img src="{{ $webCustomization['sidebarLogoUrl'] ?? asset('src/img/gapuraWhite.png') }}"
-                 alt="Sidebar logo"
+            <img src="{{ !empty($webCustomization['sidebarLogoUrl']) ? $webCustomization['sidebarLogoUrl'] : asset('DashboardKit-main/images/logo.svg') }}"
+                 alt=""
                  class="logo logo-lg"
-                 onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';"
+                 onerror="this.onerror=null; this.src='{{ asset('DashboardKit-main/images/logo.svg') }}';"
                  style="max-width: 100%; max-height: 42px; width: auto; height: auto; object-fit: contain;">
         </a>
     </div>

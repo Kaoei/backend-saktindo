@@ -20,10 +20,7 @@ class BrandController extends Controller
             'name' => 'required|string|max:255|unique:brands,name',
         ]);
 
-        Brand::create(array_merge($data, [
-            'image' => '',
-            'alt' => ''
-        ]));
+        Brand::create($data);
 
         return redirect()->route('brands.index')->with('status', 'Brand berhasil ditambahkan.');
     }
