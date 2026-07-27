@@ -21,27 +21,46 @@ class GudangProduct extends Model
         'rack_id',
         'gudang_type',
         'qty',
+        'price',
+        'discount',
         'status',
     ];
 
-public static function generateId()
-{
-    $last = self::withTrashed()
-        ->orderBy('id', 'desc')
-        ->first();
+    protected $casts = [
+        'qty' => 'integer',
+        'price' => 'decimal:2',
+        'discount' => 'decimal:2',
+    ];
 
-    if (!$last) {
-        return 'GPROD-000001';
+public static function generateId($sku = null)
+{
+    if (empty($sku)) {
+        $last = self::withTrashed()
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$last) {
+            return 'GPROD-000001';
+        }
+
+        $number = (int) substr($last->id, 6);
+
+        return 'GPROD-' . str_pad(
+            $number + 1,
+            6,
+            '0',
+            STR_PAD_LEFT
+        );
     }
 
-    $number = (int) substr($last->id, 6);
-
-    return 'GPROD-' . str_pad(
-        $number + 1,
-        6,
-        '0',
-        STR_PAD_LEFT
-    );
+    $base = $sku;
+    $id = $base;
+    $counter = 2;
+    while (self::withTrashed()->where('id', $id)->exists()) {
+        $id = $base . '-' . $counter;
+        $counter++;
+    }
+    return $id;
 }
     public function supplierProduct()
     {

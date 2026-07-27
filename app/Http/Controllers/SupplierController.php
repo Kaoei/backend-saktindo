@@ -7,6 +7,9 @@ use App\Models\SupplierContact;
 use App\Models\SupplierPaymentTerm;
 use App\Models\SupplierProduct;
 use App\Models\SupplierPurchaseHistory;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\SubCategory;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -143,6 +146,9 @@ class SupplierController extends Controller
         return view('suppliers.products-form', [
             'product' => new SupplierProduct(),
             'suppliers' => $this->supplierOptions(),
+            'brands' => Brand::orderBy('name')->get(),
+            'categories' => Category::orderBy('name')->get(),
+            'subCategories' => SubCategory::orderBy('name')->get(),
             'action' => route('suppliers.products.store'),
             'method' => 'POST',
             'submitLabel' => 'Simpan Barang Supplier',
@@ -162,6 +168,9 @@ class SupplierController extends Controller
         return view('suppliers.products-form', [
             'product' => $product,
             'suppliers' => $this->supplierOptions(),
+            'brands' => Brand::orderBy('name')->get(),
+            'categories' => Category::orderBy('name')->get(),
+            'subCategories' => SubCategory::orderBy('name')->get(),
             'action' => route('suppliers.products.update', $product),
             'method' => 'PUT',
             'submitLabel' => 'Update Barang Supplier',
@@ -404,6 +413,7 @@ class SupplierController extends Controller
             'part_number' => ['nullable', 'string', 'max:100'],
             'item_name' => ['required', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
+            'sub_category' => ['nullable', 'string', 'max:100'],
             'brand' => ['nullable', 'string', 'max:100'],
             'unit' => ['nullable', 'string', 'max:50'],
             'last_purchase_price' => ['nullable', 'numeric', 'min:0'],

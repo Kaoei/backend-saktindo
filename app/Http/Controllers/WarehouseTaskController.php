@@ -128,4 +128,18 @@ class WarehouseTaskController extends Controller
 
         return back()->with('success', 'Warehouse task selesai');
     }
+
+    public function print(WarehouseTask $warehouseTask)
+    {
+        $warehouseTask->load(['salesOrder.items', 'invoice']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'warehouse-task.print',
+            compact('warehouseTask')
+        );
+
+        return $pdf->download(
+            'TaskChecklist-' . $warehouseTask->id . '.pdf'
+        );
+    }
 }

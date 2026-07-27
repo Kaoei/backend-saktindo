@@ -29,9 +29,9 @@ Route::post('/logout', [AuthController::class, 'destroy'])
     ->middleware('auth')
     ->name('logout');
 
-Route::get('/dashboard', function () {
-    return view('dashboard.home');
-})->middleware(['auth', 'permission:dashboard'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])
+    ->middleware(['auth', 'permission:dashboard'])
+    ->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/users', [UserController::class, 'index'])->middleware('permission:users.view')->name('users.index');
@@ -155,6 +155,23 @@ Route::middleware('auth')->group(function () {
     Route::put('/web-customization', [WebCustomizationController::class, 'update'])
         ->middleware('permission:roles.manage')
         ->name('web-customization.update');
+
+    // Master Barang / product catalog
+    Route::post('/products/import', [\App\Http\Controllers\ProductController::class, 'import'])->name('products.import');
+    Route::get('/products/export', [\App\Http\Controllers\ProductController::class, 'export'])->name('products.export');
+    Route::resource('/products', \App\Http\Controllers\ProductController::class)->except(['show']);
+
+    Route::post('/supplier-po/create-from-shortage', [\App\Http\Controllers\SupplierPOController::class, 'createFromShortage'])
+        ->name('supplier-po.create-from-shortage');
+    Route::resource('/supplier-po', \App\Http\Controllers\SupplierPOController::class);
+    Route::resource('/brands', \App\Http\Controllers\BrandController::class);
+    Route::resource('/categories', \App\Http\Controllers\CategoryController::class);
+    Route::resource('/sub-categories', \App\Http\Controllers\SubCategoryController::class);
+    Route::resource('/returs', \App\Http\Controllers\ReturController::class)
+        ->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('/internal-invoices', \App\Http\Controllers\InternalInvoiceController::class)
+        ->only(['index', 'create', 'store', 'destroy']);
+    Route::resource('/rekening-banks', \App\Http\Controllers\RekeningBankController::class);
 
     Route::prefix('master-customer')->name('master-customer.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
         Route::get('/', [masterCustomerController::class, 'index'])->name('index');

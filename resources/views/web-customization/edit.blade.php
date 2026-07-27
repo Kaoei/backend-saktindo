@@ -78,17 +78,35 @@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Sidebar Icon / Logo</label>
                             <div class="border rounded p-3 bg-dark mb-2 text-center">
-                                <img src="{{ $webCustomization['sidebarLogoUrl'] }}" alt="Sidebar logo preview" style="max-height: 80px; max-width: 100%;">
+                                <img src="{{ $webCustomization['sidebarLogoUrl'] }}"
+                                     alt="Sidebar logo preview"
+                                     onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';"
+                                     style="max-height: 80px; max-width: 100%; object-fit: contain;">
                             </div>
                             <input type="file" name="sidebar_logo" class="form-control" accept=".png,.jpg,.jpeg,.webp,.svg">
+                            @if (!empty(App\Models\WebSetting::getValue('sidebar_logo_path')))
+                                <div class="form-check mt-2">
+                                    <input type="checkbox" name="remove_sidebar_logo" value="1" id="remove_sidebar_logo" class="form-check-input">
+                                    <label for="remove_sidebar_logo" class="form-check-label text-muted small">Reset ke Logo Sidebar Default</label>
+                                </div>
+                            @endif
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Login Page Icon / Logo</label>
                             <div class="border rounded p-3 bg-light mb-2 text-center">
-                                <img src="{{ $webCustomization['loginLogoUrl'] }}" alt="Login logo preview" style="max-height: 80px; max-width: 100%;">
+                                <img src="{{ $webCustomization['loginLogoUrl'] }}"
+                                     alt="Login logo preview"
+                                     onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraIcon.png') }}';"
+                                     style="max-height: 80px; max-width: 100%; object-fit: contain;">
                             </div>
                             <input type="file" name="login_logo" class="form-control" accept=".png,.jpg,.jpeg,.webp,.svg">
+                            @if (!empty(App\Models\WebSetting::getValue('login_logo_path')))
+                                <div class="form-check mt-2">
+                                    <input type="checkbox" name="remove_login_logo" value="1" id="remove_login_logo" class="form-check-input">
+                                    <label for="remove_login_logo" class="form-check-label text-muted small">Reset ke Logo Login Default</label>
+                                </div>
+                            @endif
                         </div>
                     </div>
 

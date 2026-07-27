@@ -17,8 +17,13 @@ protected $fillable = [
     'supplier_id',
     'supplier_product_id',
     'qty_received',
+    'qty_damaged',
+    'qty_missing',
+    'hpp',
+    'supplier_po_id',
     'received_date',
     'status',
+    'notes',
 ]; 
     public static function generateId()
     {
@@ -42,5 +47,10 @@ public function supplier()
 public function supplierProduct()
 {
     return $this->belongsTo(SupplierProduct::class);
+}
+
+public function supplierPo()
+{
+    return $this->belongsTo(SupplierPO::class, 'supplier_po_id', 'id');
 }
 }

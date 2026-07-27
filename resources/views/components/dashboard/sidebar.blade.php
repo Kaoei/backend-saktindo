@@ -4,10 +4,18 @@
 
 <nav class="pc-sidebar ">
     <div class="navbar-wrapper">
-        <div class="m-header">
+        <div class="m-header d-flex align-items-center justify-content-center">
             <a href="{{ route('dashboard') }}" class="b-brand">
-                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo" class="logo" style="height: 12rem;">
-                <img src="{{ $webCustomization['sidebarLogoUrl']  }}" alt="Sidebar logo small" class="logo logo-sm">
+                <img src="{{ $webCustomization['sidebarLogoUrl'] }}"
+                     alt="Sidebar logo"
+                     class="logo logo-lg"
+                     onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';"
+                     style="max-height: 48px; max-width: 170px; width: auto; height: auto; object-fit: contain;">
+                <img src="{{ $webCustomization['sidebarLogoUrl'] }}"
+                     alt="Sidebar logo small"
+                     class="logo logo-sm"
+                     onerror="this.onerror=null; this.src='{{ asset('src/img/gapuraWhite.png') }}';"
+                     style="max-height: 35px; max-width: 35px; width: auto; height: auto; object-fit: contain;">
             </a>
         </div>
         <div class="navbar-content">
@@ -63,7 +71,7 @@
                                 <li class="pc-item">
                                     <a href="{{ route('gudang-product.index') }}" class="pc-link">
                                         <span class="pc-micon">
-                                                <i class="material-icons-two-tone">inventory</i>
+                                                <i class="material-icons-two-tone">shopping_cart</i>
                                         </span>
                                         <span class="pc-mtext">Stok Barang</span>
                                     </a>
@@ -195,7 +203,7 @@
                                 </li>
                                 <li class="pc-item">
                                     <a href="{{ route('suppliers.products') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">inventory_2</i></span>
+                                        <span class="pc-micon"><i class="material-icons-two-tone">shopping_cart</i></span>
                                         <span class="pc-mtext">Barang Supplier</span>
                                     </a>
                                 </li>
@@ -217,7 +225,35 @@
                                         <span class="pc-mtext">Termin Pembayaran</span>
                                     </a>
                                 </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('supplier-po.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">description</i></span>
+                                        <span class="pc-mtext">Purchase Order (PO)</span>
+                                    </a>
+                                </li>
                             </ul>
+                        </li>
+                    @endif
+
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
+                        <li class="pc-item pc-hasmenu">
+                            <a href="javascript:void(0);" class="pc-link">
+                                <span class="pc-micon"><i class="material-icons-two-tone">widgets</i></span>
+                                <span class="pc-mtext">Master Barang</span>
+                                <span class="pc-arrow"><i class="material-icons-two-tone text-white">chevron_right</i></span>
+                            </a>
+                            <ul class="pc-submenu">
+                                <li class="pc-item"><a href="{{ route('products.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">shopping_cart</i></span><span class="pc-mtext">Produk</span></a></li>
+                                <li class="pc-item"><a href="{{ route('brands.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">style</i></span><span class="pc-mtext">Master Brand</span></a></li>
+                                <li class="pc-item"><a href="{{ route('categories.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">category</i></span><span class="pc-mtext">Master Kategori</span></a></li>
+                                <li class="pc-item"><a href="{{ route('sub-categories.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">layers</i></span><span class="pc-mtext">Master Sub Kategori</span></a></li>
+                            </ul>
+                        </li>
+                        <li class="pc-item">
+                            <a href="{{ route('rekening-banks.index') }}" class="pc-link">
+                                <span class="pc-micon"><i class="material-icons-two-tone">account_balance</i></span>
+                                <span class="pc-mtext">Master Rekening Bank</span>
+                            </a>
                         </li>
                     @endif
 

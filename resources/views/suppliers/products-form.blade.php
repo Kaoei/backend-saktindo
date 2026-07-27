@@ -58,12 +58,37 @@
                             <input name="item_name" type="text" class="form-control" value="{{ old('item_name', $product->item_name) }}" required>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Kategori</label>
-                            <input name="category" type="text" class="form-control" value="{{ old('category', $product->category) }}">
+                            <label class="form-label">Kategori 1</label>
+                            <select name="category" id="product-category" class="form-select">
+                                <option value="">-- Pilih Kategori 1 --</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->name }}" data-id="{{ $category->id }}" {{ old('category', $product->category) === $category->name ? 'selected' : '' }}>
+                                        {{ $category->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Merk</label>
-                            <input name="brand" type="text" class="form-control" value="{{ old('brand', $product->brand) }}">
+                            <label class="form-label">Kategori 2 (Sub Kategori)</label>
+                            <select name="sub_category" id="product-subcategory" class="form-select">
+                                <option value="">-- Pilih Kategori 2 --</option>
+                                @foreach($subCategories as $subCat)
+                                    <option value="{{ $subCat->name }}" data-category-id="{{ $subCat->category_id }}" {{ old('sub_category', $product->sub_category) === $subCat->name ? 'selected' : '' }}>
+                                        {{ $subCat->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Brand / Merk</label>
+                            <select name="brand" class="form-select">
+                                <option value="">-- Pilih Brand --</option>
+                                @foreach($brands as $brand)
+                                    <option value="{{ $brand->name }}" {{ old('brand', $product->brand) === $brand->name ? 'selected' : '' }}>
+                                        {{ $brand->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-md-3 mb-3">
                             <label class="form-label">Satuan</label>
@@ -107,3 +132,44 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const categorySelect = document.getElementById('product-category');
+        const subcategorySelect = document.getElementById('product-subcategory');
+        const originalSubOptions = Array.from(subcategorySelect.options);
+
+        function filterSubcategories() {
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            const categoryId = selectedOption ? selectedOption.getAttribute('data-id') : null;
+            const currentSelectedValue = subcategorySelect.value;
+
+            // Clear options
+            subcategorySelect.innerHTML = '';
+
+            // Filter options
+            originalSubOptions.forEach(option => {
+                const optionCategoryId = option.getAttribute('data-category-id');
+                // Show if it is placeholder OR if it belongs to selected category ID
+                if (!option.value || !categoryId || optionCategoryId === categoryId) {
+                    subcategorySelect.appendChild(option);
+                }
+            });
+
+            // Restore selection if possible, otherwise default to first option
+            subcategorySelect.value = currentSelectedValue;
+            if (subcategorySelect.selectedIndex === -1) {
+                subcategorySelect.selectedIndex = 0;
+            }
+        }
+
+        categorySelect.addEventListener('change', filterSubcategories);
+
+        // Run on initial load to match old category selection
+        if (categorySelect.value) {
+            filterSubcategories();
+        }
+    });
+</script>
+@endpush

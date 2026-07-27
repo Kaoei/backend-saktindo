@@ -24,6 +24,27 @@ class RoleSeeder extends Seeder
                 'is_system'   => true,
                 'permissions' => array_filter(array_keys(Role::PERMISSIONS), fn ($p) => $p !== 'roles.manage'),
             ],
+            [
+                'name'        => 'Sales',
+                'slug'        => 'sales',
+                'description' => 'Akses dashboard, melihat, membuat, dan mengedit data penjualan.',
+                'is_system'   => true,
+                'permissions' => ['dashboard', 'sales_finance.view', 'sales_finance.create', 'sales_finance.edit'],
+            ],
+            [
+                'name'        => 'Finance',
+                'slug'        => 'finance',
+                'description' => 'Akses dashboard, melihat, membuat, mengedit, dan memproses data keuangan/penjualan.',
+                'is_system'   => true,
+                'permissions' => ['dashboard', 'sales_finance.view', 'sales_finance.create', 'sales_finance.edit', 'sales_finance.delete'],
+            ],
+            [
+                'name'        => 'Teknisi',
+                'slug'        => 'teknisi',
+                'description' => 'Akses dashboard gudang, checklist stok, dan penyiapan barang.',
+                'is_system'   => true,
+                'permissions' => ['dashboard', 'sales_finance.view'],
+            ],
         ];
 
         foreach ($roles as $data) {

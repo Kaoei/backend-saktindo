@@ -19,6 +19,7 @@ class SalesOrderItem extends Model
         'delivered_qty',
         'available_stock',
         'unit_price',
+        'discount',
         'line_total',
         'stock_status',
     ];
@@ -28,6 +29,7 @@ class SalesOrderItem extends Model
         'delivered_qty' => 'decimal:2',
         'available_stock' => 'decimal:2',
         'unit_price' => 'decimal:2',
+        'discount' => 'decimal:2',
         'line_total' => 'decimal:2',
     ];
 
