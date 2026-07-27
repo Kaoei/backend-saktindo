@@ -28,7 +28,7 @@
                     </tr>
                     <tr>
                         <td class="text-muted">Total Amount</td>
-                        <td class="fw-bold text-success">Rp {{ number_format($supplierPo->total_amount, 0, ',', '.') }}</td>
+                        <td class="fw-bold text-success fs-5">Rp {{ number_format($supplierPo->total_amount, 0, ',', '.') }}</td>
                     </tr>
                     <tr>
                         <td class="text-muted">Status</td>
@@ -68,22 +68,21 @@
                                 <th>SKU</th>
                                 <th class="text-end">Qty</th>
                                 <th class="text-end">Harga Unit</th>
-                                <th class="text-end">Diskon</th>
+                                <th class="text-center">Diskon</th>
                                 <th class="text-end">Subtotal</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($supplierPo->items as $item)
-                                @php
-                                    $lineTotal = $item->qty * $item->price * (1 - $item->discount / 100);
-                                @endphp
                                 <tr>
                                     <td class="fw-semibold">{{ $item->supplierProduct->item_name ?? 'N/A' }}</td>
-                                    <td>{{ $item->supplierProduct->sku ?? 'N/A' }}</td>
-                                    <td class="text-end">{{ number_format($item->qty, 0) }}</td>
+                                    <td><code>{{ $item->supplierProduct->sku ?? 'N/A' }}</code></td>
+                                    <td class="text-end fw-bold">{{ number_format($item->qty, 0) }}</td>
                                     <td class="text-end">Rp {{ number_format($item->price, 0, ',', '.') }}</td>
-                                    <td class="text-end">{{ (float) $item->discount }}%</td>
-                                    <td class="text-end fw-bold">Rp {{ number_format($lineTotal, 0, ',', '.') }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info text-dark font-monospace">{{ $item->formatted_discount }}</span>
+                                    </td>
+                                    <td class="text-end fw-bold text-success">Rp {{ number_format($item->subtotal, 0, ',', '.') }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

@@ -17,10 +17,13 @@ protected $fillable = [
     'supplier_id',
     'supplier_product_id',
     'qty_received',
+    'qty_damaged',
+    'qty_missing',
     'hpp',
     'supplier_po_id',
     'received_date',
     'status',
+    'notes',
 ]; 
     public static function generateId()
     {

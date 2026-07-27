@@ -20,8 +20,8 @@ class SupplierPOController extends Controller
 
     public function create()
     {
-        $suppliers = Supplier::where('status', 'active')->get();
-        $products = SupplierProduct::where('status', 'active')->get();
+        $suppliers = Supplier::all();
+        $products = SupplierProduct::all();
         return view('supplier_po.create', compact('suppliers', 'products'));
     }
 
@@ -35,7 +35,11 @@ class SupplierPOController extends Controller
             'items.*.product_id' => 'required|exists:supplier_products,id',
             'items.*.qty' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
-            'items.*.discount' => 'required|numeric|min:0|max:100',
+            'items.*.discount' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_1' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_2' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_3' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_4' => 'nullable|numeric|min:0|max:100',
         ]);
 
         try {
@@ -48,15 +52,27 @@ class SupplierPOController extends Controller
             $itemsToInsert = [];
 
             foreach ($request->items as $item) {
-                $lineTotal = $item['qty'] * $item['price'] * (1 - $item['discount'] / 100);
+                $d1 = (float) ($item['discount_1'] ?? $item['discount'] ?? 0);
+                $d2 = (float) ($item['discount_2'] ?? 0);
+                $d3 = (float) ($item['discount_3'] ?? 0);
+                $d4 = (float) ($item['discount_4'] ?? 0);
+                $price = (float) $item['price'];
+                $qty = (int) $item['qty'];
+
+                $lineNetUnitPrice = $price * (1 - $d1 / 100) * (1 - $d2 / 100) * (1 - $d3 / 100) * (1 - $d4 / 100);
+                $lineTotal = $lineNetUnitPrice * $qty;
                 $totalAmount += $lineTotal;
 
                 $itemsToInsert[] = [
                     'supplier_po_id' => $poId,
                     'supplier_product_id' => $item['product_id'],
-                    'qty' => $item['qty'],
-                    'price' => $item['price'],
-                    'discount' => $item['discount'],
+                    'qty' => $qty,
+                    'price' => $price,
+                    'discount' => $d1,
+                    'discount_1' => $d1,
+                    'discount_2' => $d2,
+                    'discount_3' => $d3,
+                    'discount_4' => $d4,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -75,7 +91,7 @@ class SupplierPOController extends Controller
             SupplierPOItem::insert($itemsToInsert);
 
             DB::commit();
-            return redirect()->route('supplier-po.index')->with('status', 'Supplier PO Template berhasil disimpan.');
+            return redirect()->route('supplier-po.index')->with('status', 'Supplier PO berhasil disimpan.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -103,10 +119,9 @@ class SupplierPOController extends Controller
             'shortage_items.*.price' => 'nullable|numeric|min:0',
         ]);
 
-        $suppliers = Supplier::where('status', 'active')->get();
-        $defaultSupplierId = $suppliers->first()?->id ?: Supplier::first()?->id;
+        $suppliers = Supplier::all();
+        $defaultSupplierId = $suppliers->first()?->id;
 
-        // Build prefill items by matching product_code/name to SupplierProduct or auto-creating master item
         $prefillItems = collect($request->shortage_items)->map(function ($item) use ($defaultSupplierId) {
             $sp = null;
             if (!empty($item['product_code'])) {
@@ -117,7 +132,6 @@ class SupplierPOController extends Controller
                 $sp = SupplierProduct::where('item_name', $item['product_name'])->first();
             }
 
-            // If product does not exist in supplier_products master table, auto-create it
             if (!$sp && !empty($item['product_name'])) {
                 $spId = SupplierProduct::generateId();
                 $spData = [
@@ -141,12 +155,14 @@ class SupplierPOController extends Controller
                 'price' => $sp ? (float) $sp->last_purchase_price : (float) ($item['price'] ?? 0),
                 'unit' => $sp ? ($sp->unit ?: 'pcs') : ($item['unit'] ?? 'pcs'),
                 'discount' => 0,
+                'discount_1' => 0,
+                'discount_2' => 0,
+                'discount_3' => 0,
+                'discount_4' => 0,
             ];
         });
 
-        $products = SupplierProduct::where(function($q) {
-            $q->where('status', 'active')->orWhereNull('status')->orWhere('status', 'stored');
-        })->get();
+        $products = SupplierProduct::all();
 
         return view('supplier_po.create', compact('suppliers', 'products', 'prefillItems'));
     }
