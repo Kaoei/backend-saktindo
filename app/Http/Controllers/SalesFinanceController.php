@@ -592,12 +592,27 @@ class SalesFinanceController extends Controller
             'items.*.unit' => ['required', 'string', 'max:50'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.discount_1' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.discount_2' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.discount_3' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.discount_4' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
     }
 
     private function calculateOrderTotals(array $data, array $items): array
     {
-        $subtotal = collect($items)->sum(fn ($item) => (float) $item['quantity'] * (float) $item['unit_price']);
+        $subtotal = collect($items)->sum(function ($item) {
+            $qty = (float) $item['quantity'];
+            $price = (float) $item['unit_price'];
+            $d1 = (float) ($item['discount_1'] ?? 0);
+            $d2 = (float) ($item['discount_2'] ?? 0);
+            $d3 = (float) ($item['discount_3'] ?? 0);
+            $d4 = (float) ($item['discount_4'] ?? 0);
+
+            $netPrice = $price * (1 - $d1 / 100) * (1 - $d2 / 100) * (1 - $d3 / 100) * (1 - $d4 / 100);
+
+            return $qty * $netPrice;
+        });
 
         return array_merge($data, [
             'subtotal' => $subtotal,
@@ -608,6 +623,8 @@ class SalesFinanceController extends Controller
 
     private function syncItems(SalesOrder $order, array $items): void
     {
+        $order->items()->delete();
+
         $products = SupplierProduct::query()
             ->whereIn('id', collect($items)->pluck('product_code')->filter()->values())
             ->get()
@@ -617,14 +634,25 @@ class SalesFinanceController extends Controller
             $product = $products->get($item['product_code']);
             $quantity = (float) $item['quantity'];
             $unitPrice = (float) $item['unit_price'];
+            $d1 = (float) ($item['discount_1'] ?? 0);
+            $d2 = (float) ($item['discount_2'] ?? 0);
+            $d3 = (float) ($item['discount_3'] ?? 0);
+            $d4 = (float) ($item['discount_4'] ?? 0);
+
+            $netUnitPrice = $unitPrice * (1 - $d1 / 100) * (1 - $d2 / 100) * (1 - $d3 / 100) * (1 - $d4 / 100);
+            $lineTotal = $quantity * $netUnitPrice;
 
             $order->items()->create([
-                'product_code' => $product->id,
-                'product_name' => $product->item_name,
-                'unit' => $product->unit ?: $item['unit'],
+                'product_code' => $product?->id ?? $item['product_code'],
+                'product_name' => $product?->item_name ?? $item['product_name'] ?? '',
+                'unit' => $product?->unit ?: ($item['unit'] ?? 'pcs'),
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
-                'line_total' => $quantity * $unitPrice,
+                'discount_1' => $d1,
+                'discount_2' => $d2,
+                'discount_3' => $d3,
+                'discount_4' => $d4,
+                'line_total' => $lineTotal,
                 'stock_status' => 'unchecked',
             ]);
         }
@@ -642,7 +670,6 @@ class SalesFinanceController extends Controller
                 $query->where('qty', '>', 0)
                     ->where('status', 'stored');
             }], 'qty')
-            ->where('status', 'active')
             ->orderBy('item_name')
             ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price']);
     }

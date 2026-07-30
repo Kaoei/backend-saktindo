@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             SuperAdminSeeder::class,
             RakSeeder::class,
             DummyProductSeeder::class,
+            DummyFinanceSeeder::class,
         ]);
     }
 }

@@ -76,12 +76,22 @@
                                 <th class="text-end">Sisa</th>
                                 <th class="text-end">Stok</th>
                                 <th>Status</th>
-                                <th class="text-end">Harga</th>
+                                <th class="text-end">Harga Unit</th>
+                                <th class="text-center">Diskon (D1+D2+D3+D4)</th>
                                 <th class="text-end">Total</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($order->items as $item)
+                                @php
+                                    $discParts = array_filter([
+                                        $item->discount_1 ? floatval($item->discount_1).'%' : null,
+                                        $item->discount_2 ? floatval($item->discount_2).'%' : null,
+                                        $item->discount_3 ? floatval($item->discount_3).'%' : null,
+                                        $item->discount_4 ? floatval($item->discount_4).'%' : null,
+                                    ]);
+                                    $discText = !empty($discParts) ? implode(' + ', $discParts) : '-';
+                                @endphp
                                 <tr>
                                     <td>
                                         {{ $item->product_name }}
@@ -93,14 +103,15 @@
                                     <td class="text-end">{{ number_format((float) $item->available_stock, 2, ',', '.') }}</td>
                                     <td><span class="badge {{ $item->stock_status === 'pending' ? 'bg-light-warning' : ($item->stock_status === 'available' ? 'bg-light-success' : 'bg-light-secondary') }}">{{ ucfirst($item->stock_status) }}</span></td>
                                     <td class="text-end">Rp {{ number_format((float) $item->unit_price, 0, ',', '.') }}</td>
+                                    <td class="text-center"><span class="badge bg-light-primary text-primary">{{ $discText }}</span></td>
                                     <td class="text-end">Rp {{ number_format((float) $item->line_total, 0, ',', '.') }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
                         <tfoot>
-                            <tr><th colspan="7" class="text-end">Subtotal</th><th class="text-end">Rp {{ number_format((float) $order->subtotal, 0, ',', '.') }}</th></tr>
-                            <tr><th colspan="7" class="text-end">Pajak</th><th class="text-end">Rp {{ number_format((float) $order->tax_amount, 0, ',', '.') }}</th></tr>
-                            <tr><th colspan="7" class="text-end">Grand Total</th><th class="text-end">Rp {{ number_format((float) $order->grand_total, 0, ',', '.') }}</th></tr>
+                            <tr><th colspan="8" class="text-end">Subtotal</th><th class="text-end">Rp {{ number_format((float) $order->subtotal, 0, ',', '.') }}</th></tr>
+                            <tr><th colspan="8" class="text-end">Pajak</th><th class="text-end">Rp {{ number_format((float) $order->tax_amount, 0, ',', '.') }}</th></tr>
+                            <tr><th colspan="8" class="text-end">Grand Total</th><th class="text-end">Rp {{ number_format((float) $order->grand_total, 0, ',', '.') }}</th></tr>
                         </tfoot>
                     </table>
                 </div>

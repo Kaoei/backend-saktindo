@@ -68,7 +68,7 @@
                 @if(auth()->user()?->hasPermission('sales_finance.create'))
                     <a href="{{ route('sales-finance.create') }}" class="btn btn-primary">
                         <i class="material-icons-two-tone text-white">add_shopping_cart</i>
-                        Sales order
+                        Input SO
                     </a>
                 @endif
             </div>

@@ -167,6 +167,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('/brands', \App\Http\Controllers\BrandController::class);
     Route::resource('/categories', \App\Http\Controllers\CategoryController::class);
     Route::resource('/sub-categories', \App\Http\Controllers\SubCategoryController::class);
+    Route::resource('/variants', \App\Http\Controllers\VariantController::class);
     Route::resource('/returs', \App\Http\Controllers\ReturController::class)
         ->only(['index', 'store', 'update', 'destroy']);
     Route::resource('/internal-invoices', \App\Http\Controllers\InternalInvoiceController::class)

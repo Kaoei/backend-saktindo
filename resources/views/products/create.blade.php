@@ -28,6 +28,31 @@
                 <form method="POST" action="{{ route('products.store') }}">
                     @csrf
 
+                    <!-- Datalists for Master Data -->
+                    <datalist id="master-variants-list">
+                        @if(isset($masterVariants))
+                            @foreach($masterVariants as $mVar)
+                                <option value="{{ $mVar->name }}"></option>
+                            @endforeach
+                        @endif
+                    </datalist>
+
+                    <datalist id="master-categories-list">
+                        @if(isset($categories))
+                            @foreach($categories as $cat)
+                                <option value="{{ $cat->name }}"></option>
+                            @endforeach
+                        @endif
+                    </datalist>
+
+                    <datalist id="master-brands-list">
+                        @if(isset($brands))
+                            @foreach($brands as $br)
+                                <option value="{{ $br->name }}"></option>
+                            @endforeach
+                        @endif
+                    </datalist>
+
                     <!-- Navigation Tabs -->
                     <ul class="nav nav-tabs mb-4" id="productTabs" role="tablist">
                         <li class="nav-item">
@@ -70,11 +95,11 @@
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Category</label>
-                                    <input name="category" type="text" class="form-control" value="{{ old('category') }}" placeholder="e.g. Household Appliance Parts & Accessories (601106)">
+                                    <input name="category" type="text" class="form-control" value="{{ old('category') }}" list="master-categories-list" placeholder="Pilih / ketik kategori">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Brand</label>
-                                    <input name="brand" type="text" class="form-control" value="{{ old('brand') }}" placeholder="e.g. Supreme">
+                                    <input name="brand" type="text" class="form-control" value="{{ old('brand') }}" list="master-brands-list" placeholder="Pilih / ketik brand">
                                 </div>
                                 <div class="col-md-12 mb-3">
                                     <label class="form-label fw-bold">Product Description</label>
@@ -99,6 +124,36 @@
                         <div class="tab-pane fade" id="variation" role="tabpanel" aria-labelledby="variation-tab">
                             <p class="text-muted small">Configure multiple variants (e.g. colors, sizes, or spec options). Every product must have at least one variation.</p>
                             
+                            @if(isset($masterVariants) && $masterVariants->count() > 0)
+                                <div class="card bg-light border-0 shadow-sm mb-4">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <div class="fw-bold text-dark font-size-sm d-flex align-items-center">
+                                                <i class="feather icon-layers me-2 text-primary"></i> Pilih dari Master Varian
+                                            </div>
+                                            <a href="{{ route('variants.index') }}" target="_blank" class="text-primary small text-decoration-none fw-semibold">
+                                                <i class="feather icon-external-link me-1"></i> Kelola Master Varian
+                                            </a>
+                                        </div>
+                                        <div class="row align-items-center g-2">
+                                            <div class="col-md-9 col-sm-8">
+                                                <select id="quick-master-variant-select" class="form-select no-select2" multiple data-placeholder="Cari & pilih varian master (bisa pilih banyak)...">
+                                                    @foreach($masterVariants as $mVar)
+                                                        <option value="{{ $mVar->name }}">{{ $mVar->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 col-sm-4">
+                                                <button type="button" id="btn-batch-add-variants" class="btn btn-primary w-100 shadow-sm">
+                                                    <i class="feather icon-plus-circle me-1"></i> Tambahkan
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block"><i class="feather icon-info me-1"></i> Cari & pilih satu atau beberapa varian master di atas lalu klik Tambahkan.</small>
+                                    </div>
+                                </div>
+                            @endif
+
                             <div class="table-responsive mb-3">
                                 <table class="table table-bordered align-middle">
                                     <thead class="table-light">
@@ -114,7 +169,7 @@
                                     <tbody id="variations-container">
                                         <tr>
                                             <td>
-                                                <input name="variations[0][variation_value]" type="text" class="form-control" value="Default" required>
+                                                <input name="variations[0][variation_value]" type="text" class="form-control" value="Default" list="master-variants-list" required placeholder="Pilih/ketik varian">
                                             </td>
                                             <td>
                                                 <input name="variations[0][price]" type="number" class="form-control" value="0" required min="0">
@@ -301,13 +356,22 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        let varIndex = 1;
+        let varIndex = $('#variations-container tr').length;
 
-        $('#add-variation-btn').on('click', function() {
+        if ($('#quick-master-variant-select').length) {
+            $('#quick-master-variant-select').select2({
+                theme: 'bootstrap-5',
+                placeholder: 'Cari & pilih varian master (bisa pilih banyak)...',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
+        function appendVariationRow(variantValue = '') {
             let html = `
                 <tr>
                     <td>
-                        <input name="variations[${varIndex}][variation_value]" type="text" class="form-control" placeholder="e.g. Merah" required>
+                        <input name="variations[${varIndex}][variation_value]" type="text" class="form-control" value="${variantValue}" list="master-variants-list" placeholder="Pilih/ketik varian" required>
                     </td>
                     <td>
                         <input name="variations[${varIndex}][price]" type="number" class="form-control" value="0" required min="0">
@@ -328,6 +392,29 @@
             `;
             $('#variations-container').append(html);
             varIndex++;
+        }
+
+        $('#add-variation-btn').on('click', function() {
+            appendVariationRow('');
+        });
+
+        $('#btn-batch-add-variants').on('click', function() {
+            let selectedVariants = $('#quick-master-variant-select').val();
+            if (!selectedVariants || selectedVariants.length === 0) {
+                alert('Silakan pilih setidaknya satu varian master dari dropdown pencarian.');
+                return;
+            }
+
+            selectedVariants.forEach(function(variantName) {
+                let firstRowInput = $('#variations-container tr:first-child input[name$="[variation_value]"]');
+                if ($('#variations-container tr').length === 1 && (firstRowInput.val() === 'Default' || firstRowInput.val() === '')) {
+                    firstRowInput.val(variantName);
+                } else {
+                    appendVariationRow(variantName);
+                }
+            });
+
+            $('#quick-master-variant-select').val(null).trigger('change');
         });
 
         $(document).on('click', '.remove-var-btn', function() {

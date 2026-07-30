@@ -247,6 +247,7 @@
                                 <li class="pc-item"><a href="{{ route('brands.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">style</i></span><span class="pc-mtext">Master Brand</span></a></li>
                                 <li class="pc-item"><a href="{{ route('categories.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">category</i></span><span class="pc-mtext">Master Kategori</span></a></li>
                                 <li class="pc-item"><a href="{{ route('sub-categories.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">layers</i></span><span class="pc-mtext">Master Sub Kategori</span></a></li>
+                                <li class="pc-item"><a href="{{ route('variants.index') }}" class="pc-link"><span class="pc-micon"><i class="material-icons-two-tone">tune</i></span><span class="pc-mtext">Master Varian</span></a></li>
                             </ul>
                         </li>
                         <li class="pc-item">

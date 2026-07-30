@@ -72,7 +72,7 @@
                         <thead>
                             <tr>
                                 <th>Kode</th>
-                                <th>Supplier</th>
+                                <th>Perusahaan</th>
                                 <th>PIC</th>
                                 <th>Termin</th>
                                 <th>Barang</th>

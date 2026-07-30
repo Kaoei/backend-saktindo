@@ -94,7 +94,7 @@ class FinanceController extends Controller
     {
         $request->validate([
             'payment_date' => 'required|date',
-            'method' => 'required|in:cash,transfer_bank,qris,giro',
+            'method' => 'required|in:cash,transfer_bank,transfer,qris,giro,cheque',
             'receiving_account' => 'required|in:js,sjb',
             'amount' => 'required|numeric|min:1',
             'reference_number' => 'nullable|string|max:255',
