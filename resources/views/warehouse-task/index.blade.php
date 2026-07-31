@@ -10,11 +10,47 @@
 @endpush
 
 @section('content')
+<div class="row mt-3">
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Total Task</div>
+                <h3 class="mb-0">{{ $totalTask }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Waiting</div>
+                <h3 class="mb-0">{{ $waitingTask ?? 0 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Process</div>
+                <h3 class="mb-0">{{ $processTask ?? 0 }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 col-sm-6">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-muted small">Completed</div>
+                <h3 class="mb-0">{{ $completedTask ?? 0 }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
 
 @php
     $isSuperAdmin = auth()->user()?->role === \App\Models\User::ROLE_SUPER_ADMIN;
 @endphp
-
 <div class="row">
     <div class="col-12">
 

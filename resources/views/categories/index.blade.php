@@ -14,7 +14,7 @@
                     <small class="text-muted">Kelola kategori utama produk</small>
                 </div>
                 <div>
-                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#addCategoryModal">
                         <i class="feather icon-plus-circle me-1"></i> Tambah Kategori
                     </button>
                 </div>
@@ -24,7 +24,7 @@
                 @if (session('status'))
                     <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-3" role="alert">
                         {{ session('status') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                 @endif
 
@@ -86,22 +86,28 @@
 <!-- Add Category Modal -->
 <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title text-white">Tambah Kategori Baru</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white py-3 px-4">
+                <h5 class="modal-title text-white d-flex align-items-center font-weight-bold">
+                    <i class="feather icon-plus-circle me-2 font-size-lg"></i> Tambah Kategori Baru
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    <i class="feather icon-x" style="font-size: 16px;"></i>
+                </button>
             </div>
             <form action="{{ route('categories.store') }}" method="POST">
                 @csrf
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Nama Kategori <span class="text-danger">*</span></label>
-                        <input type="text" name="name" class="form-control" placeholder="Contoh: Lampu, Kabel, dll" required>
+                        <label class="form-label font-weight-bold text-dark mb-2">Nama Kategori <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control form-control-lg rounded-lg border" placeholder="Contoh: Lampu, Kabel, Peralatan Listrik" required style="font-size: 0.95rem;">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Kategori</button>
+                <div class="modal-footer bg-light py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm">
+                        <i class="feather icon-check me-1"></i> Simpan Kategori
+                    </button>
                 </div>
             </form>
         </div>
@@ -111,23 +117,29 @@
 <!-- Edit Category Modal -->
 <div class="modal fade" id="editCategoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title text-white">Edit Kategori</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-success text-white py-3 px-4">
+                <h5 class="modal-title text-white d-flex align-items-center font-weight-bold">
+                    <i class="feather icon-edit me-2 font-size-lg"></i> Edit Kategori
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    <i class="feather icon-x" style="font-size: 16px;"></i>
+                </button>
             </div>
             <form id="editForm" method="POST">
                 @csrf
                 @method('PUT')
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Nama Kategori <span class="text-danger">*</span></label>
-                        <input type="text" name="name" id="edit-name" class="form-control" required>
+                        <label class="form-label font-weight-bold text-dark mb-2">Nama Kategori <span class="text-danger">*</span></label>
+                        <input type="text" name="name" id="edit-name" class="form-control form-control-lg rounded-lg border" required style="font-size: 0.95rem;">
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">Update Kategori</button>
+                <div class="modal-footer bg-light py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm">
+                        <i class="feather icon-save me-1"></i> Update Kategori
+                    </button>
                 </div>
             </form>
         </div>
@@ -137,24 +149,35 @@
 <!-- Delete Category Modal -->
 <div class="modal fade" id="deleteCategoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title text-white">Hapus Kategori</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-danger text-white py-3 px-4">
+                <h5 class="modal-title text-white d-flex align-items-center font-weight-bold">
+                    <i class="feather icon-trash-2 me-2 font-size-lg"></i> Hapus Kategori
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                    <i class="feather icon-x" style="font-size: 16px;"></i>
+                </button>
             </div>
-            <div class="modal-body">
-                <p class="mb-0">Apakah Anda yakin ingin menghapus kategori <strong id="delete-name-display"></strong>?</p>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-danger">
+                    <i class="feather icon-alert-circle" style="font-size: 48px;"></i>
+                </div>
+                <p class="mb-1 text-secondary">Apakah Anda yakin ingin menghapus kategori ini?</p>
+                <h5 class="font-weight-bold text-dark mt-2" id="delete-name-display"></h5>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+            <div class="modal-footer bg-light py-3 px-4 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal">Batal</button>
                 <form id="deleteForm" method="POST" class="d-inline">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Hapus</button>
+                    <button type="submit" class="btn btn-danger px-4 rounded-pill shadow-sm">
+                        <i class="feather icon-trash-2 me-1"></i> Ya, Hapus
+                    </button>
                 </form>
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection
 
@@ -162,26 +185,24 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const editButtons = document.querySelectorAll('.btn-edit');
-        const editModal = new bootstrap.Modal(document.getElementById('editCategoryModal'));
         editButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const name = this.getAttribute('data-name');
                 const action = this.getAttribute('data-action');
                 document.getElementById('edit-name').value = name;
                 document.getElementById('editForm').action = action;
-                editModal.show();
+                $('#editCategoryModal').modal('show');
             });
         });
 
         const deleteButtons = document.querySelectorAll('.btn-delete');
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteCategoryModal'));
         deleteButtons.forEach(button => {
             button.addEventListener('click', function() {
                 const name = this.getAttribute('data-name');
                 const action = this.getAttribute('data-action');
                 document.getElementById('delete-name-display').textContent = name;
                 document.getElementById('deleteForm').action = action;
-                deleteModal.show();
+                $('#deleteCategoryModal').modal('show');
             });
         });
     });

@@ -137,7 +137,6 @@ class InBoundController extends Controller
             'supplier_po_id' => 'nullable|exists:supplier_pos,id',
             'invoice_number' => 'nullable|string|max:255',
             'received_date' => 'required|date',
-            'status' => 'required|in:pending,stored,cancelled',
             'notes' => 'nullable|string',
         ]);
 
@@ -151,13 +150,8 @@ class InBoundController extends Controller
             'supplier_po_id' => $request->supplier_po_id,
             'invoice_number' => $request->invoice_number,
             'received_date' => $request->received_date,
-            'status' => $request->status,
             'notes' => $request->notes,
         ]);
-
-        if ($request->supplier_po_id && $request->status === 'stored') {
-            SupplierPO::where('id', $request->supplier_po_id)->update(['status' => 'received']);
-        }
 
         return redirect()
             ->route('inbound.index')

@@ -32,7 +32,7 @@
                     <div class="alert alert-success alert-dismissible fade show d-flex align-items-center shadow-sm border-0" role="alert">
                         <i class="feather icon-check-circle me-2 fs-5"></i>
                         <div>{{ session('success') }}</div>
-                        <button type="button" class="btn-close" data-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                 @endif
 
@@ -40,7 +40,7 @@
                     <div class="alert alert-danger alert-dismissible fade show d-flex align-items-center shadow-sm border-0" role="alert">
                         <i class="feather icon-alert-triangle me-2 fs-5"></i>
                         <div>{{ session('error') }}</div>
-                        <button type="button" class="btn-close" data-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                     </div>
                 @endif
 
@@ -189,7 +189,7 @@
                 @csrf
                 <div class="modal-header bg-light border-bottom-0">
                     <h5 class="modal-title fw-bold" id="importModalLabel">Import Products</h5>
-                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="mb-2">

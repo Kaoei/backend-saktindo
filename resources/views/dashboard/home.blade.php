@@ -7,12 +7,27 @@
 @section('content')
 @php
     $themeBase = 'DashboardKit-main';
+    // This view may be rendered directly, outside DashboardController's role-specific flow.
+    // Keep every dashboard section safe when its data has not been provided.
+    $lowStockProducts = $lowStockProducts ?? collect();
+    $pendingOrders30Days = $pendingOrders30Days ?? collect();
+    $dueAR = $dueAR ?? collect();
+    $temporaryRackProducts = $temporaryRackProducts ?? collect();
+    $orderedPendingStock = $orderedPendingStock ?? collect();
+    $recentOrders = $recentOrders ?? collect();
+    $recentInvoices = $recentInvoices ?? collect();
+    $totalCustomers = $totalCustomers ?? 0;
+    $totalOrders = $totalOrders ?? 0;
+    $totalRevenue = $totalRevenue ?? 0;
+    $totalOutstandingAR = $totalOutstandingAR ?? 0;
+    $totalPhysicalProducts = $totalPhysicalProducts ?? 0;
+    $totalSupplierPOs = $totalSupplierPOs ?? 0;
 @endphp
 
 <!-- Alert & Reminder Panel -->
 <div class="row mb-4">
     <!-- Alert 1: Stok Minimum -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']) && $lowStockProducts->count() > 0)
+    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'teknisi']))
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -30,7 +45,7 @@
     @endif
 
     <!-- Alert 2: Transaksi > 30 Hari Belum Selesai -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']) && $pendingOrders30Days->count() > 0)
+    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']))
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-warning text-warning-dark h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -48,7 +63,7 @@
     @endif
 
     <!-- Alert 3: Piutang Jatuh Tempo (< 7 Hari) -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']) && $dueAR->count() > 0)
+    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'finance']))
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-primary text-primary h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -66,7 +81,7 @@
     @endif
 
     <!-- Alert 4: Putaway Rak Sementara (> 3 Hari) -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'teknisi']) && $temporaryRackProducts->count() > 0)
+    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'teknisi']))
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-info text-info h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">
@@ -84,7 +99,7 @@
     @endif
 
     <!-- Alert 5: Barang Dipesan tapi Kosong/Kurang Stok -->
-    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']) && $orderedPendingStock->count() > 0)
+    @if(in_array(auth()->user()->role, ['super_admin', 'admin', 'sales', 'finance']))
         <div class="col-xl-3 col-md-6 mb-3">
             <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
                 <div class="card-body py-3 d-flex align-items-center justify-content-between">

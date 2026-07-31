@@ -6,6 +6,7 @@ use App\Traits\HasCustomCode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -22,10 +23,9 @@ class SalesOrder extends Model
         'customer_id',
         'customer_name',
         'customer_po_number',
-        'toko',
-        'jenis_invoice',
         'po_date',
         'order_date',
+        'sales_type',
         'order_status',
         'stock_status',
         'warehouse_task_reference',
@@ -53,23 +53,13 @@ class SalesOrder extends Model
         return $this->hasMany(SalesOrderItem::class);
     }
 
-    public function invoice(): HasOne
+    public function invoices(): BelongsToMany
     {
-        return $this->hasOne(Invoice::class);
+        return $this->belongsToMany(Invoice::class, 'invoice_sales_orders');
     }
 
     public function warehouseTask(): HasOne
     {
         return $this->hasOne(WarehouseTask::class);
-    }
-
-    public function proformaInvoice(): HasOne
-    {
-        return $this->hasOne(ProformaInvoice::class);
-    }
-
-    public function retur(): HasOne
-    {
-        return $this->hasOne(Retur::class);
     }
 }

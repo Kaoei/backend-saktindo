@@ -8,58 +8,52 @@
 <!-- Alert & Reminder Panel -->
 <div class="row mb-4">
     <!-- Alert 1: Stok Minimum -->
-    @if($lowStockProducts->count() > 0)
-        <div class="col-xl-4 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
-                <div class="card-body py-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <h6 class="mb-1 text-danger fw-bold">Stok Minimum (&lt; 50)</h6>
-                        <span class="h4 mb-0 fw-bold">{{ $lowStockProducts->count() }}</span> <span class="small">Produk</span>
-                    </div>
-                    <i class="feather icon-alert-triangle f-30"></i>
+    <div class="col-xl-4 col-md-6 mb-3">
+        <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
+            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="mb-1 text-danger fw-bold">Stok Minimum (&lt; 50)</h6>
+                    <span class="h4 mb-0 fw-bold">{{ $lowStockProducts->count() }}</span> <span class="small">Produk</span>
                 </div>
-                <div class="card-footer bg-transparent border-0 pt-0 pb-3">
-                    <button class="btn btn-sm btn-danger w-100" data-toggle="modal" data-target="#lowStockModal">Detail</button>
-                </div>
+                <i class="feather icon-alert-triangle f-30"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 pb-3">
+                <button class="btn btn-sm btn-danger w-100" data-toggle="modal" data-target="#lowStockModal">Detail</button>
             </div>
         </div>
-    @endif
+    </div>
 
     <!-- Alert 4: Putaway Rak Sementara (> 3 Hari) -->
-    @if($temporaryRackProducts->count() > 0)
-        <div class="col-xl-4 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm bg-light-info text-info h-100">
-                <div class="card-body py-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <h6 class="mb-1 text-info fw-bold">Rak Temp (&gt; 3 Hari)</h6>
-                        <span class="h4 mb-0 fw-bold">{{ $temporaryRackProducts->count() }}</span> <span class="small">Barang</span>
-                    </div>
-                    <i class="feather icon-archive f-30"></i>
+    <div class="col-xl-4 col-md-6 mb-3">
+        <div class="card border-0 shadow-sm bg-light-info text-info h-100">
+            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="mb-1 text-info fw-bold">Rak Temp (&gt; 3 Hari)</h6>
+                    <span class="h4 mb-0 fw-bold">{{ $temporaryRackProducts->count() }}</span> <span class="small">Barang</span>
                 </div>
-                <div class="card-footer bg-transparent border-0 pt-0 pb-3">
-                    <button class="btn btn-sm btn-info text-white w-100" data-toggle="modal" data-target="#tempRackModal">Detail</button>
-                </div>
+                <i class="feather icon-archive f-30"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 pb-3">
+                <button class="btn btn-sm btn-info text-white w-100" data-toggle="modal" data-target="#tempRackModal">Detail</button>
             </div>
         </div>
-    @endif
+    </div>
 
     <!-- Alert 5: Barang Dipesan tapi Kosong/Kurang Stok -->
-    @if($orderedPendingStock->count() > 0)
-        <div class="col-xl-4 col-md-6 mb-3">
-            <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
-                <div class="card-body py-3 d-flex align-items-center justify-content-between">
-                    <div>
-                        <h6 class="mb-1 text-danger fw-bold">Dipesan &amp; Stok Kurang</h6>
-                        <span class="h4 mb-0 fw-bold">{{ $orderedPendingStock->count() }}</span> <span class="small">Produk</span>
-                    </div>
-                    <i class="feather icon-shopping-cart f-30"></i>
+    <div class="col-xl-4 col-md-6 mb-3">
+        <div class="card border-0 shadow-sm bg-light-danger text-danger h-100">
+            <div class="card-body py-3 d-flex align-items-center justify-content-between">
+                <div>
+                    <h6 class="mb-1 text-danger fw-bold">Dipesan &amp; Stok Kurang</h6>
+                    <span class="h4 mb-0 fw-bold">{{ $orderedPendingStock->count() }}</span> <span class="small">Produk</span>
                 </div>
-                <div class="card-footer bg-transparent border-0 pt-0 pb-3">
-                    <button class="btn btn-sm btn-danger w-100" data-toggle="modal" data-target="#orderedPendingStockModal">Detail</button>
-                </div>
+                <i class="feather icon-shopping-cart f-30"></i>
+            </div>
+            <div class="card-footer bg-transparent border-0 pt-0 pb-3">
+                <button class="btn btn-sm btn-danger w-100" data-toggle="modal" data-target="#orderedPendingStockModal">Detail</button>
             </div>
         </div>
-    @endif
+    </div>
 </div>
 
 <!-- Modal 1: Low Stock -->

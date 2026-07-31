@@ -6,6 +6,7 @@ use App\Traits\HasCustomCode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany; // PERBAIKAN: Import HasMany
 
 class DeliveryNote extends Model
 {
@@ -17,6 +18,7 @@ class DeliveryNote extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'invoice_id',
         'delivery_note_number',
         'delivery_date',
@@ -24,14 +26,28 @@ class DeliveryNote extends Model
         'pic_sales',
         'pic_gudang',
         'notes',
+        'print_count',
     ];
 
     protected $casts = [
         'delivery_date' => 'date',
     ];
 
+    /**
+     * Relasi ke model Invoice
+     */
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(DeliveryNoteItem::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SalesReturn::class);
     }
 }

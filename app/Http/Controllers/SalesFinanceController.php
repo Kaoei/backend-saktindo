@@ -203,56 +203,6 @@ class SalesFinanceController extends Controller
         return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Invoice berhasil digenerate.');
     }
 
-    public function generateProformaInvoice(SalesOrder $salesOrder): RedirectResponse
-    {
-        if ($salesOrder->proformaInvoice) {
-            return back()->with('status', 'Proforma Invoice untuk Sales Order ini sudah ada.');
-        }
-
-        $pi = DB::transaction(function () use ($salesOrder) {
-            $taxAmount = $salesOrder->toko === 'sjb' ? ((float) $salesOrder->subtotal * 0.11) : 0;
-            $grandTotal = (float) $salesOrder->subtotal + $taxAmount;
-
-            $pi = \App\Models\ProformaInvoice::query()->create([
-                'sales_order_id' => $salesOrder->id,
-                'pi_number' => $this->nextDocumentNumber('PI'),
-                'pi_date' => now(),
-                'status' => 'printed',
-                'subtotal' => $salesOrder->subtotal,
-                'tax_amount' => $taxAmount,
-                'grand_total' => $grandTotal,
-            ]);
-
-            return $pi;
-        });
-
-        ActivityLogger::log('create', 'proforma_invoice', $pi);
-
-        return back()->with('status', 'Proforma Invoice berhasil digenerate.');
-    }
-
-    public function printProformaInvoice(SalesOrder $salesOrder)
-    {
-        $salesOrder->load(['customer', 'items', 'proformaInvoice']);
-
-        if (!$salesOrder->proformaInvoice) {
-            return back()->with('error', 'Proforma Invoice belum digenerate.');
-        }
-
-        if (class_exists('Barryvdh\DomPDF\Facade\Pdf')) {
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
-                'proforma-invoice.print',
-                compact('salesOrder')
-            );
-
-            return $pdf->download(
-                'ProformaInvoice-' . $salesOrder->proformaInvoice->pi_number . '.pdf'
-            );
-        }
-
-        return view('proforma-invoice.print', compact('salesOrder'));
-    }
-
     public function mergeInvoices(Request $request): RedirectResponse
     {
         $request->validate([
@@ -408,8 +358,6 @@ class SalesFinanceController extends Controller
             'customer_id' => ['nullable', 'exists:master_customers,id'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_po_number' => ['required', 'string', 'max:100', Rule::unique('sales_orders', 'customer_po_number')->ignore($order?->id)],
-            'toko' => ['required', 'in:js,sjb'],
-            'jenis_invoice' => ['required', 'in:normal,gabungan'],
             'po_date' => ['nullable', 'date'],
             'order_date' => ['required', 'date'],
             'order_status' => ['required', 'in:draft,stock_check,ready_to_invoice,pending_stock,invoiced,delivered,completed,cancelled'],
@@ -420,18 +368,12 @@ class SalesFinanceController extends Controller
             'items.*.unit' => ['required', 'string', 'max:50'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
-            'items.*.discount' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
     }
 
     private function calculateOrderTotals(array $data, array $items): array
     {
-        $subtotal = collect($items)->sum(function ($item) {
-            $qty = (float) $item['quantity'];
-            $price = (float) $item['unit_price'];
-            $discount = (float) ($item['discount'] ?? 0);
-            return $qty * $price * (1 - $discount / 100);
-        });
+        $subtotal = collect($items)->sum(fn ($item) => (float) $item['quantity'] * (float) $item['unit_price']);
 
         return array_merge($data, [
             'subtotal' => $subtotal,
@@ -451,8 +393,6 @@ class SalesFinanceController extends Controller
             $product = $products->get($item['product_code']);
             $quantity = (float) $item['quantity'];
             $unitPrice = (float) $item['unit_price'];
-            $discount = (float) ($item['discount'] ?? 0);
-            $lineTotal = $quantity * $unitPrice * (1 - $discount / 100);
 
             $order->items()->create([
                 'product_code' => $product->id,
@@ -460,8 +400,7 @@ class SalesFinanceController extends Controller
                 'unit' => $product->unit ?: $item['unit'],
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
-                'discount' => $discount,
-                'line_total' => $lineTotal,
+                'line_total' => $quantity * $unitPrice,
                 'stock_status' => 'unchecked',
             ]);
         }

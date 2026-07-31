@@ -71,7 +71,10 @@ class ProductController extends Controller
      */
     public function create()
     {
-        return view('products.create');
+        $masterVariants = \App\Models\Variant::orderBy('name')->get();
+        $brands = \App\Models\Brand::orderBy('name')->get();
+        $categories = \App\Models\Category::orderBy('name')->get();
+        return view('products.create', compact('masterVariants', 'brands', 'categories'));
     }
 
     /**
@@ -122,7 +125,10 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         $variations = Product::where('product_name', $product->product_name)->get();
-        return view('products.edit', compact('product', 'variations'));
+        $masterVariants = \App\Models\Variant::orderBy('name')->get();
+        $brands = \App\Models\Brand::orderBy('name')->get();
+        $categories = \App\Models\Category::orderBy('name')->get();
+        return view('products.edit', compact('product', 'variations', 'masterVariants', 'brands', 'categories'));
     }
 
     /**

@@ -16,23 +16,38 @@ class SalesOrderItem extends Model
         'product_name',
         'unit',
         'quantity',
+        'delivered_qty',
         'available_stock',
         'unit_price',
         'discount',
+        'discount_1',
+        'discount_2',
+        'discount_3',
+        'discount_4',
         'line_total',
         'stock_status',
     ];
 
     protected $casts = [
         'quantity' => 'decimal:2',
+        'delivered_qty' => 'decimal:2',
         'available_stock' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'discount' => 'decimal:2',
+        'discount_1' => 'decimal:2',
+        'discount_2' => 'decimal:2',
+        'discount_3' => 'decimal:2',
+        'discount_4' => 'decimal:2',
         'line_total' => 'decimal:2',
     ];
 
     public function salesOrder(): BelongsTo
     {
         return $this->belongsTo(SalesOrder::class);
+    }
+
+    public function deliveryNoteItems()
+    {
+        return $this->hasMany(DeliveryNoteItem::class);
     }
 }

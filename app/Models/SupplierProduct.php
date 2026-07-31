@@ -38,6 +38,13 @@ class SupplierProduct extends Model
         'lead_time_days' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function (SupplierProduct $product) {
+            Supplier::syncBrand($product->brand);
+        });
+    }
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);

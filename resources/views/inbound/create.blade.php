@@ -1,5 +1,4 @@
-@extends('layouts.dashboard',
-[
+@extends('layouts.dashboard', [
     'title' => 'Tambah Barang Masuk',
     'pageTitle' => 'Barang Masuk',
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('inbound.index').'">Barang Masuk</a></li><li class="breadcrumb-item">Tambah Barang Masuk</li>'

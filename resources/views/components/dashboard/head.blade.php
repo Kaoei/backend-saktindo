@@ -63,6 +63,12 @@
         box-shadow: 0 0 0 0.2rem rgba(var(--brand-primary-rgb), 0.25) !important;
     }
 
+    .bg-primary,
+    .modal-header.bg-primary {
+        background-color: var(--brand-primary) !important;
+        border-color: var(--brand-primary) !important;
+    }
+
     .pc-sidebar,
     .pc-sidebar .m-header,
     .pc-mob-header.pc-header {

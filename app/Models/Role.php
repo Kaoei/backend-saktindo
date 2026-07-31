@@ -35,6 +35,32 @@ class Role extends Model
         'sales_finance.delete'       => 'Hapus Sales & Finance',
         'activity_logs.view'         => 'Lihat Activity Log',
         'sessions.manage'            => 'Kelola Session',
+        // Gudang - Rak
+        'rak.view'                  => 'Lihat Rak',
+        'rak.create'                => 'Tambah Rak',
+        'rak.edit'                  => 'Edit Rak',
+        'rak.delete'                => 'Hapus Rak',
+        // Gudang - Inbound
+        'inbound.view'              => 'Lihat Inbound',
+        'inbound.create'            => 'Tambah Inbound',
+        'inbound.edit'              => 'Edit Inbound',
+        'inbound.delete'            => 'Hapus Inbound',
+        // Gudang - Product
+        'gudang_product.view'       => 'Lihat Produk Gudang',
+        'gudang_product.create'     => 'Tambah Produk Gudang',
+        'gudang_product.delete'     => 'Hapus Produk Gudang',
+        // Gudang - Warehouse Task
+        'warehouse_task.view'       => 'Lihat Warehouse Task',
+        'warehouse_task.create'     => 'Tambah Warehouse Task',
+        'warehouse_task.edit'       => 'Edit Warehouse Task',
+        'warehouse_task.delete'     => 'Hapus Warehouse Task',
+        'warehouse_task.process'    => 'Proses Warehouse Task',
+        'warehouse_task.complete'   => 'Selesaikan Warehouse Task',
+        // Gudang - Outbound
+        'outbound.view'             => 'Lihat Outbound',
+        'outbound.create'           => 'Tambah Outbound',
+        'outbound.print'            => 'Cetak Outbound',
+        'outbound.delete'           => 'Hapus Outbound',
     ];
 
     /**
@@ -47,6 +73,33 @@ class Role extends Model
         'Supplier'   => ['suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete'],
         'Sales & Finance' => ['sales_finance.view', 'sales_finance.create', 'sales_finance.edit', 'sales_finance.delete'],
         'Keamanan'   => ['activity_logs.view', 'sessions.manage'],
+        'Gudang' => [
+            'rak.view',
+            'rak.create',
+            'rak.edit',
+            'rak.delete',
+
+            'inbound.view',
+            'inbound.create',
+            'inbound.edit',
+            'inbound.delete',
+
+            'gudang_product.view',
+            'gudang_product.create',
+            'gudang_product.delete',
+
+            'warehouse_task.view',
+            'warehouse_task.create',
+            'warehouse_task.edit',
+            'warehouse_task.delete',
+            'warehouse_task.process',
+            'warehouse_task.complete',
+
+            'outbound.view',
+            'outbound.create',
+            'outbound.print',
+            'outbound.delete',
+        ],
     ];
 
     protected $fillable = [
