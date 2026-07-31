@@ -158,6 +158,15 @@ class InBoundController extends Controller
             ->with('success', 'Barang masuk berhasil diperbarui.');
     }
 
+    public function cancel(InBound $inbound)
+    {
+        $inbound->update(['status' => 'cancelled']);
+
+        return redirect()
+            ->route('inbound.index')
+            ->with('success', 'Barang masuk berhasil dibatalkan.');
+    }
+
     public function destroy(InBound $inbound)
     {
         $inbound->delete();

@@ -25,10 +25,8 @@
                     </li>
                 @endif
 
-                 
-
-                @auth
-                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
+                                @auth
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]))
                         <li class="pc-item pc-caption">
                             <label>Gudang</label>
                         </li>
@@ -250,13 +248,19 @@
 
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">
-                                <span class="pc-micon"><i class="material-icons-two-tone">settings</i></span>
+                                <span class="pc-micon"><i class="material-icons-two-tone">inventory_2</i></span>
                                 <span class="pc-mtext">Master Barang</span>
                                 <span class="pc-arrow">
                                     <i class="material-icons-two-tone text-white">chevron_right</i>
                                 </span>
                             </a>
                             <ul class="pc-submenu">
+                                <li class="pc-item">
+                                    <a href="{{ route('products.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">inventory</i></span>
+                                        <span class="pc-mtext">Master Product</span>
+                                    </a>
+                                </li>
                                 <li class="pc-item">
                                     <a href="{{ route('brands.index') }}" class="pc-link">
                                         <span class="pc-micon"><i class="material-icons-two-tone">style</i></span>
@@ -273,6 +277,12 @@
                                     <a href="{{ route('sub-categories.index') }}" class="pc-link">
                                         <span class="pc-micon"><i class="material-icons-two-tone">layers</i></span>
                                         <span class="pc-mtext">Master Sub Kategori</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('variants.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="material-icons-two-tone">tune</i></span>
+                                        <span class="pc-mtext">Master Varian</span>
                                     </a>
                                 </li>
                             </ul>

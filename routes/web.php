@@ -20,6 +20,7 @@ use App\Http\Controllers\SupplierPOController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\SubCategoryController;
+use App\Http\Controllers\VariantController;
 use App\Http\Controllers\ReturController;
 use App\Http\Controllers\InternalInvoiceController;
 use App\Http\Controllers\RekeningBankController;
@@ -192,15 +193,16 @@ Route::middleware('auth')->group(function () {
         Route::put('/{rak}', [RakController::class, 'update'])->name('update');
         Route::delete('/{rak}', [RakController::class, 'destroy'])->name('destroy');
     });
-    Route::prefix('inbound')->name('inbound.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+    Route::prefix('inbound')->name('inbound.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
         Route::get('/', [InBoundController::class, 'index'])->name('index');
         Route::get('/create', [InBoundController::class, 'create'])->name('create');
         Route::post('/', [InBoundController::class, 'store'])->name('store');
         Route::get('/{inbound}/edit', [InBoundController::class, 'edit'])->name('edit');
         Route::put('/{inbound}', [InBoundController::class, 'update'])->name('update');
+        Route::patch('/{inbound}/cancel', [InBoundController::class, 'cancel'])->name('cancel');
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
     });
-    Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+    Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
         Route::get('/export', [GudangProductController::class, 'export'])->name('export');
         Route::get('/download-template', [GudangProductController::class, 'downloadTemplate'])->name('download-template');
         Route::post('/import', [GudangProductController::class, 'import'])->name('import');
@@ -213,7 +215,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{gudangProduct}', [GudangProductController::class, 'update'])->name('update');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');
     });
-    Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_SALES)->group(function () {
+    Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG . ',' . User::ROLE_SALES)->group(function () {
         Route::get('/', [WarehouseTaskController::class, 'index'])->name('index');
         Route::get('/create', [WarehouseTaskController::class, 'create'])->name('create');
         Route::post('/', [WarehouseTaskController::class, 'store'])->name('store');
@@ -225,7 +227,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{warehouseTask}/toggle-check', [WarehouseTaskController::class, 'toggleAdminCheck'])->name('toggle-check');
         Route::get('/{warehouseTask}/print', [WarehouseTaskController::class, 'print'])->name('print');
     });
-    Route::prefix('outbound')->name('outbound.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+    Route::prefix('outbound')->name('outbound.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
         Route::get('/', [OutBoundController::class, 'index'])->name('index');
         Route::get('/create/{warehouseTask}', [OutBoundController::class, 'create'])->name('create');
         Route::post('/', [OutBoundController::class, 'store'])->name('store');
@@ -236,6 +238,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('/brands', BrandController::class);
     Route::resource('/categories', CategoryController::class);
     Route::resource('/sub-categories', SubCategoryController::class);
+    Route::resource('/variants', VariantController::class);
     Route::resource('/returs', ReturController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('/internal-invoices', InternalInvoiceController::class)->only(['index', 'create', 'store', 'destroy']);
     Route::resource('/rekening-banks', RekeningBankController::class);
