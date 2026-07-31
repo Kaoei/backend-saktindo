@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Product Line Up</li>',
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-12">
@@ -14,15 +18,14 @@
                     <small class="text-muted">Manajemen produk, variasi, dan filter ala marketplace Tokopedia</small>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-light-success d-inline-flex align-items-center justify-content-center gap-1" data-toggle="modal" data-target="#importModal" style="width: 100px !important; flex: none; padding-left: 8px !important; padding-right: 8px !important;">
-                        <i class="feather icon-upload fs-6 text-success"></i> Import</button>
-                    <a href="{{ route('products.export') }}" class="btn btn-light-primary d-inline-flex align-items-center justify-content-center gap-2" style="width: max-content !important; flex: none;">
-                        <i class="material-icons-two-tone text-primary">download</i>
-                        Export
-                    </a>
-                    <a href="{{ route('products.create') }}" class="btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 shadow-sm" style="width: max-content !important; flex: none;">
-                        <i class="material-icons-two-tone text-white">add_shopping_cart</i>
-                        Add Product
+                    <button type="button" class="btn btn-light-success d-inline-flex align-items-center gap-1 shadow-sm px-3" data-toggle="modal" data-target="#importModal">
+                        <i class="feather icon-upload text-success me-1"></i> Import Produk
+                    </button>
+                    <button type="button" class="btn btn-light-primary d-inline-flex align-items-center gap-1 shadow-sm px-3" data-toggle="modal" data-target="#exportModal">
+                        <i class="feather icon-download text-primary me-1"></i> Export Produk
+                    </button>
+                    <a href="{{ route('products.create') }}" class="btn btn-primary d-inline-flex align-items-center gap-1 shadow-sm px-3">
+                        <i class="feather icon-plus me-1"></i> Add Product
                     </a>
                 </div>
             </div>
@@ -92,7 +95,7 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle m-b-0">
+                    <table id="products-table" class="table table-hover align-middle m-b-0">
                         <thead class="table-light">
                             <tr>
                                 <th>Thumbnail</th>
@@ -155,15 +158,6 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="7" class="text-center py-5 text-muted">
-                                        <i class="material-icons-two-tone f-40 d-block mb-3">production_quantity_limits</i>
-                                        <h6 class="fw-semibold text-dark mb-1">Tidak ada produk yang cocok dengan filter.</h6>
-                                        <div class="mt-2 small">
-                                            Coba reset filter atau gunakan kata kunci pencarian yang berbeda.
-                                        </div>
-                                    </td>
-                                </tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -182,35 +176,151 @@
     </div>
 </div>
 
+<!-- Modal Import Produk -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content border-0 shadow">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white py-3 px-4">
+                <h5 class="modal-title text-white d-flex align-items-center font-weight-bold" id="importModalLabel">
+                    <i class="feather icon-upload me-2 fs-5"></i> Import Data Produk via Excel
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; cursor: pointer;">
+                    <i class="feather icon-x" style="font-size: 16px;"></i>
+                </button>
+            </div>
             <form action="{{ route('products.import') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                <div class="modal-header bg-light border-bottom-0">
-                    <h5 class="modal-title fw-bold" id="importModalLabel">Import Products</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                </div>
                 <div class="modal-body p-4">
-                    <div class="mb-2">
-                        <label class="form-label fw-bold text-dark">Upload Excel File</label>
-                        <p class="text-muted small mb-3">Select the completed spreadsheet (`.xlsx` or `.xls`) to import. The data import will begin parsing product records starting from row 6.</p>
-                        
-                        <div class="p-5 border border-2 border-dashed rounded text-center bg-light position-relative transition-all hover-bg-white">
-                            <i class="material-icons-two-tone f-40 text-success mb-2">upload_file</i>
-                            <div class="text-dark"><strong>Drag and drop</strong> or click to select your spreadsheet</div>
-                            <input type="file" name="excel_file" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" accept=".xlsx, .xls" required style="cursor: pointer;">
+                    <!-- Step 1: Download Template -->
+                    <div class="card bg-light border-0 shadow-sm mb-4">
+                        <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div>
+                                <div class="fw-bold text-dark font-size-sm mb-1 d-flex align-items-center">
+                                    <span class="badge bg-primary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">1</span>
+                                    Unduh Template Excel Format Terbaru
+                                </div>
+                                <small class="text-muted">Gunakan template resmi agar header kolom sesuai secara otomatis.</small>
+                            </div>
+                            <a href="{{ route('products.download-template') }}" class="btn btn-sm btn-outline-primary fw-semibold rounded-pill px-3">
+                                <i class="feather icon-download me-1"></i> Unduh Template (.xlsx)
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Upload File -->
+                    <div class="mb-3">
+                        <div class="fw-bold text-dark font-size-sm mb-2 d-flex align-items-center">
+                            <span class="badge bg-primary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">2</span>
+                            Upload File Spreadsheet (.xlsx / .xls)
+                        </div>
+
+                        <label for="excel_file_input" class="p-4 border border-2 border-dashed rounded text-center bg-white d-block hover-bg-light transition-all cursor-pointer mb-0">
+                            <i class="feather icon-file-text f-36 text-primary mb-2 d-block"></i>
+                            <div class="text-dark fw-semibold" id="import-upload-label">
+                                Drag and drop file Excel Anda di sini, atau <span class="text-primary text-decoration-underline">Pilih File</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">Format didukung: .xlsx, .xls (Mulai membaca baris data dari baris 6)</small>
+                            <input type="file" name="excel_file" id="excel_file_input" class="d-none" accept=".xlsx, .xls" required>
+                        </label>
+
+                        <div id="file-selected-info" class="alert alert-success d-none mt-3 mb-0 align-items-center justify-content-between py-2 px-3">
+                            <div class="d-flex align-items-center">
+                                <i class="feather icon-check-circle me-2 fs-5"></i>
+                                <span id="selected-file-name" class="fw-semibold text-truncate" style="max-width: 350px;"></span>
+                            </div>
+                            <button type="button" class="btn-close" id="btn-clear-file" style="font-size: 0.8rem;"></button>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 bg-light">
-                    <button type="button" class="btn btn-light-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
-                        Process Import
+                <div class="modal-footer bg-light py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm fw-semibold">
+                        <i class="feather icon-check-circle me-1"></i> Proses Import Data
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Modal Export Produk -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white py-3 px-4">
+                <h5 class="modal-title text-white d-flex align-items-center font-weight-bold" id="exportModalLabel">
+                    <i class="feather icon-download me-2 fs-5"></i> Export Katalog Produk
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; cursor: pointer;">
+                    <i class="feather icon-x" style="font-size: 16px;"></i>
+                </button>
+            </div>
+            <div class="modal-body p-4 text-center">
+                <div class="mb-3 text-primary">
+                    <i class="feather icon-file-text" style="font-size: 48px;"></i>
+                </div>
+                <h6 class="fw-bold text-dark mb-2">Export Semua Data Produk & Variasi</h6>
+                <p class="text-secondary small mb-4">File Excel yang di-export menggunakan format standar TikTok Seller Center yang telah dirapikan secara otomatis (termasuk styling header dan auto-width).</p>
+
+                <div class="d-grid gap-2">
+                    <a href="{{ route('products.export') }}" class="btn btn-primary btn-lg rounded-pill shadow-sm fw-semibold">
+                        <i class="feather icon-download me-2"></i> Download Export Excel (.xlsx)
+                    </a>
+                    <a href="{{ route('products.download-template') }}" class="btn btn-outline-secondary rounded-pill mt-2">
+                        <i class="feather icon-file me-1"></i> Unduh Blank Template Saja
+                    </a>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-3 px-4 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#products-table').DataTable({
+                pageLength: 10,
+                order: [[1, 'asc']],
+                language: { emptyTable: 'Tidak ada produk yang cocok.' },
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [0, 6] }
+                ]
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('excel_file_input');
+            const fileInfo = document.getElementById('file-selected-info');
+            const fileNameDisplay = document.getElementById('selected-file-name');
+            const clearBtn = document.getElementById('btn-clear-file');
+            const uploadLabel = document.getElementById('import-upload-label');
+
+            if (fileInput) {
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files.length > 0) {
+                        fileNameDisplay.textContent = this.files[0].name;
+                        fileInfo.classList.remove('d-none');
+                        fileInfo.classList.add('d-flex');
+                        uploadLabel.innerHTML = 'File terpilih: <span class="text-success fw-bold">' + this.files[0].name + '</span>';
+                    }
+                });
+
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        fileInput.value = '';
+                        fileInfo.classList.add('d-none');
+                        fileInfo.classList.remove('d-flex');
+                        uploadLabel.innerHTML = 'Drag and drop file Excel Anda di sini, atau <span class="text-primary text-decoration-underline">Pilih File</span>';
+                    });
+                }
+            }
+        });
+    </script>
+@endpush

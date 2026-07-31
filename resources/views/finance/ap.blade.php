@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('finance.index').'">Finance</a></li><li class="breadcrumb-item">Hutang</li>',
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-12">
@@ -25,9 +29,9 @@
     <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
         <h5 class="card-title mb-0 fw-semibold">Daftar Tagihan Hutang ke Supplier</h5>
     </div>
-    <div class="card-body p-0">
+    <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table id="ap-table" class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Invoice Supplier</th>
@@ -72,15 +76,9 @@
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="8" class="text-center text-muted py-4">Tidak ada data hutang ditemukan.</td>
-                        </tr>
                     @endforelse
                 </tbody>
             </table>
-        </div>
-        <div class="p-3">
-            {{ $purchases->links() }}
         </div>
     </div>
 </div>
@@ -139,11 +137,20 @@
 @endsection
 
 @push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const payButtons = document.querySelectorAll('.btn-pay');
-        payButtons.forEach(button => {
-            button.addEventListener('click', function() {
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#ap-table').DataTable({
+                pageLength: 10,
+                order: [[4, 'desc']],
+                language: { emptyTable: 'Tidak ada data hutang ditemukan.' },
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [7] }
+                ]
+            });
+
+            $(document).on('click', '.btn-pay', function() {
                 const id = this.getAttribute('data-id');
                 const number = this.getAttribute('data-number');
                 const total = this.getAttribute('data-total');
@@ -154,6 +161,5 @@
                 document.getElementById('modal-payment-amount').value = total;
             });
         });
-    });
-</script>
+    </script>
 @endpush

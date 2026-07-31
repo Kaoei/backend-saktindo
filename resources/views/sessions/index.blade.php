@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Session Management</li>',
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-12">
@@ -26,7 +30,7 @@
                 @endif
 
                 <div class="table-responsive">
-                    <table class="table table-hover m-b-0">
+                    <table id="sessions-table" class="table table-hover m-b-0">
                         <thead>
                             <tr>
                                 <th>User</th>
@@ -66,7 +70,6 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="6" class="text-center text-muted">Belum ada session.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -76,3 +79,20 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#sessions-table').DataTable({
+                pageLength: 10,
+                order: [[4, 'desc']],
+                language: { emptyTable: 'Belum ada session active.' },
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [5] }
+                ]
+            });
+        });
+    </script>
+@endpush

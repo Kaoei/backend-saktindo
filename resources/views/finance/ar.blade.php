@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('finance.index').'">Finance</a></li><li class="breadcrumb-item">Piutang</li>',
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-12">
@@ -25,9 +29,9 @@
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 fw-semibold">Daftar Tagihan Piutang Customer</h5>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table id="ar-table" class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>No. Invoice</th>
@@ -162,27 +166,38 @@
 @endsection
 
 @push('scripts')
-<script>
-    $(function () {
-        $(document).on('click', '.btn-pay', function (e) {
-            e.preventDefault();
-            const action = $(this).data('action');
-            const number = $(this).data('number');
-            const customer = $(this).data('customer') || '-';
-            const outstanding = parseFloat($(this).data('outstanding')) || 0;
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#ar-table').DataTable({
+                pageLength: 10,
+                order: [[2, 'desc']],
+                language: { emptyTable: 'Tidak ada data piutang ditemukan.' },
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [8] }
+                ]
+            });
 
-            $('#arPaymentModalForm').attr('action', action);
-            $('#modal-invoice-number').val(number);
-            $('#modal-customer-name').val(customer);
-            $('#modal-invoice-outstanding').val('Rp ' + new Intl.NumberFormat('id-ID').format(outstanding));
-            $('#modal-payment-amount').val(outstanding).attr('max', outstanding);
+            $(document).on('click', '.btn-pay', function (e) {
+                e.preventDefault();
+                const action = $(this).data('action');
+                const number = $(this).data('number');
+                const customer = $(this).data('customer') || '-';
+                const outstanding = parseFloat($(this).data('outstanding')) || 0;
 
-            if (typeof $.fn.modal !== 'undefined') {
-                $('#paymentModal').modal('show');
-            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                new bootstrap.Modal(document.getElementById('paymentModal')).show();
-            }
+                $('#arPaymentModalForm').attr('action', action);
+                $('#modal-invoice-number').val(number);
+                $('#modal-customer-name').val(customer);
+                $('#modal-invoice-outstanding').val('Rp ' + new Intl.NumberFormat('id-ID').format(outstanding));
+                $('#modal-payment-amount').val(outstanding).attr('max', outstanding);
+
+                if (typeof $.fn.modal !== 'undefined') {
+                    $('#paymentModal').modal('show');
+                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    new bootstrap.Modal(document.getElementById('paymentModal')).show();
+                }
+            });
         });
-    });
-</script>
+    </script>
 @endpush

@@ -125,6 +125,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
         Route::post('/{salesOrder}/proforma-invoice', [SalesFinanceController::class, 'generateProformaInvoice'])->middleware('permission:sales_finance.create')->name('proforma.generate');
         Route::get('/{salesOrder}/proforma-invoice/print', [SalesFinanceController::class, 'printProformaInvoice'])->middleware('permission:sales_finance.view')->name('proforma.print');
+        Route::post('/invoice/consolidate', [SalesFinanceController::class, 'consolidateInvoices'])->middleware('permission:sales_finance.create')->name('invoice.consolidate');
     });
 
     Route::post('/sales-finance/merge', [SalesFinanceController::class, 'mergeInvoices'])->name('sales-finance.merge');
@@ -172,6 +173,7 @@ Route::middleware('auth')->group(function () {
         ->name('web-customization.update');
 
     // Product Management Routes
+    Route::get('/products/download-template', [App\Http\Controllers\ProductController::class, 'downloadTemplate'])->name('products.download-template');
     Route::post('/products/import', [App\Http\Controllers\ProductController::class, 'import'])->name('products.import');
     Route::get('/products/export', [App\Http\Controllers\ProductController::class, 'export'])->name('products.export');
     Route::resource('/products', App\Http\Controllers\ProductController::class);

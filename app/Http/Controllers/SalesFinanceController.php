@@ -25,7 +25,9 @@ class SalesFinanceController extends Controller
             ->latest()
             ->get();
 
-        return view('sales-finance.index', compact('orders'));
+        $customers = \App\Models\Master_customer::orderBy('nama_customer')->get();
+
+        return view('sales-finance.index', compact('orders', 'customers'));
     }
 
     public function create()
@@ -201,6 +203,33 @@ class SalesFinanceController extends Controller
         ActivityLogger::log('create', 'invoice', $invoice);
 
         return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Invoice berhasil digenerate.');
+    }
+
+    public function consolidateInvoices(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'customer_id' => ['required', 'exists:master_customers,id'],
+            'period_start' => ['required', 'date'],
+            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
+            'tax_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
+            'invoice_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date'],
+        ]);
+
+        $salesOrders = SalesOrder::where('customer_id', $request->customer_id)
+            ->where(function ($query) use ($request) {
+                $query->whereBetween('order_date', [$request->period_start, $request->period_end])
+                    ->orWhereBetween('created_at', [$request->period_start . ' 00:00:00', $request->period_end . ' 23:59:59']);
+            })
+            ->get();
+
+        if ($salesOrders->isEmpty()) {
+            return back()->with('error', 'Tidak ada Sales Order yang ditemukan untuk customer tersebut pada periode ini.');
+        }
+
+        $request->merge(['sales_order_ids' => $salesOrders->pluck('id')->toArray()]);
+
+        return $this->mergeInvoices($request);
     }
 
     public function mergeInvoices(Request $request): RedirectResponse

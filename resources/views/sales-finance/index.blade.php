@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Sales & Finance</li>',
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 @php
     $invoices = $orders->flatMap->invoices->unique('id');
@@ -23,37 +27,52 @@
 </div>
 
 @if(auth()->user()?->hasPermission('sales_finance.create'))
-    <form method="POST" action="{{ route('sales-finance.invoice.consolidate') }}" class="card">
+    <form method="POST" action="{{ route('sales-finance.invoice.consolidate') }}" class="card shadow-sm border-0 mb-4" style="border-radius: 10px; overflow: hidden;">
         @csrf
-        <div class="card-header">
-            <h5 class="mb-0">Invoice Gabungan Bulanan</h5>
-            <small class="text-muted">Gabungkan beberapa Sales Order customer yang sama dalam satu periode.</small>
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="mb-1 fw-bold text-dark d-flex align-items-center">
+                <i class="feather icon-layers text-primary me-2 fs-5"></i> Invoice Gabungan Bulanan
+            </h5>
+            <small class="text-muted">Gabungkan beberapa Sales Order dari customer yang sama dalam satu periode transaksi.</small>
         </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Customer</label>
-                    <select name="customer_id" class="form-select" required>
-                        <option value="">Pilih customer</option>
+        <div class="card-body p-4 bg-light">
+            <div class="row g-3">
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label fw-bold text-secondary small">Customer</label>
+                    <select name="customer_id" class="form-select bg-white" required>
+                        <option value="">-- Pilih Customer --</option>
                         @foreach($customers as $customer)
                             <option value="{{ $customer->id }}">{{ $customer->nama_customer }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2 mb-3"><label class="form-label">Periode Awal</label><input type="date" name="period_start" class="form-control" value="{{ now()->startOfMonth()->toDateString() }}" required></div>
-                <div class="col-md-2 mb-3"><label class="form-label">Periode Akhir</label><input type="date" name="period_end" class="form-control" value="{{ now()->endOfMonth()->toDateString() }}" required></div>
-                <div class="col-md-2 mb-3">
-                    <label class="form-label">Jenis Faktur</label>
-                    <select name="tax_type" class="form-select" required>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-bold text-secondary small">Periode Awal</label>
+                    <input type="date" name="period_start" class="form-control bg-white" value="{{ now()->startOfMonth()->toDateString() }}" required>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-bold text-secondary small">Periode Akhir</label>
+                    <input type="date" name="period_end" class="form-control bg-white" value="{{ now()->endOfMonth()->toDateString() }}" required>
+                </div>
+                <div class="col-lg-2 col-md-6">
+                    <label class="form-label fw-bold text-secondary small">Jenis Faktur</label>
+                    <select name="tax_type" class="form-select bg-white" required>
                         <option value="js">JS</option>
                         <option value="sjb_non_pajak">SJB Non Pajak</option>
                         <option value="sjb_pajak">SJB Pajak</option>
                     </select>
                 </div>
-                <div class="col-md-2 mb-3"><label class="form-label">Tanggal Invoice</label><input type="date" name="invoice_date" class="form-control" value="{{ now()->toDateString() }}" required></div>
-                <div class="col-md-1 mb-3 d-flex align-items-end"><button type="submit" class="btn btn-success w-100">Buat</button></div>
+                <div class="col-lg-3 col-md-6">
+                    <label class="form-label fw-bold text-secondary small">Tanggal Invoice</label>
+                    <input type="date" name="invoice_date" class="form-control bg-white" value="{{ now()->toDateString() }}" required>
+                </div>
+                <input type="date" name="due_date" class="form-control d-none">
             </div>
-            <input type="date" name="due_date" class="form-control d-none">
+        </div>
+        <div class="card-footer bg-white py-3 px-4 text-end border-top">
+            <button type="submit" class="btn btn-success px-4 py-2 rounded-pill shadow-sm fw-semibold">
+                <i class="feather icon-plus-circle me-1"></i> Buat Invoice Gabungan
+            </button>
         </div>
     </form>
 @endif
@@ -81,7 +100,7 @@
                 @endif
 
                 <div class="table-responsive">
-                    <table class="table table-hover m-b-0">
+                    <table id="sales-finance-table" class="table table-hover m-b-0">
                         <thead>
                             <tr>
                                 <th>Sales Order</th>
@@ -133,7 +152,6 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr><td colspan="8" class="text-center text-muted">Belum ada data Sales.</td></tr>
                             @endforelse
                         </tbody>
                     </table>
@@ -143,3 +161,20 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#sales-finance-table').DataTable({
+                pageLength: 10,
+                order: [[0, 'desc']],
+                language: { emptyTable: 'Belum ada data Sales.' },
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [7] }
+                ]
+            });
+        });
+    </script>
+@endpush

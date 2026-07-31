@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Master Kategori</li>'
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-12">
@@ -28,7 +32,7 @@
                     </div>
                 @endif
 
-                @if ($errors->any())
+                @if (isset($errors) && $errors->any())
                     <div class="alert alert-danger border-0 shadow-sm mb-3">
                         <ul class="mb-0 ps-3">
                             @foreach ($errors->all() as $error)
@@ -39,7 +43,7 @@
                 @endif
 
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table id="categories-table" class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th style="width: 80px;">No</th>
@@ -50,7 +54,7 @@
                         <tbody>
                             @forelse($categories as $index => $category)
                                 <tr>
-                                    <td>{{ $categories->firstItem() + $index }}</td>
+                                    <td>{{ $loop->iteration }}</td>
                                     <td class="fw-semibold">{{ $category->name }}</td>
                                     <td class="text-end">
                                         <button type="button" class="btn btn-sm btn-outline-success me-2 btn-edit" 
@@ -67,16 +71,9 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="3" class="text-center text-muted py-4">Belum ada data Kategori.</td>
-                                </tr>
                             @endforelse
                         </tbody>
                     </table>
-                </div>
-
-                <div class="mt-3">
-                    {{ $categories->links() }}
                 </div>
             </div>
         </div>
@@ -182,29 +179,42 @@
 @endsection
 
 @push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const editButtons = document.querySelectorAll('.btn-edit');
-        editButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const name = this.getAttribute('data-name');
-                const action = this.getAttribute('data-action');
-                document.getElementById('edit-name').value = name;
-                document.getElementById('editForm').action = action;
-                $('#editCategoryModal').modal('show');
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#categories-table').DataTable({
+                pageLength: 10,
+                order: [[1, 'asc']],
+                language: { emptyTable: 'Belum ada data Kategori.' },
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [2] }
+                ]
             });
         });
 
-        const deleteButtons = document.querySelectorAll('.btn-delete');
-        deleteButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const name = this.getAttribute('data-name');
-                const action = this.getAttribute('data-action');
-                document.getElementById('delete-name-display').textContent = name;
-                document.getElementById('deleteForm').action = action;
-                $('#deleteCategoryModal').modal('show');
+        document.addEventListener('DOMContentLoaded', function() {
+            const editButtons = document.querySelectorAll('.btn-edit');
+            editButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const name = this.getAttribute('data-name');
+                    const action = this.getAttribute('data-action');
+                    document.getElementById('edit-name').value = name;
+                    document.getElementById('editForm').action = action;
+                    $('#editCategoryModal').modal('show');
+                });
+            });
+
+            const deleteButtons = document.querySelectorAll('.btn-delete');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const name = this.getAttribute('data-name');
+                    const action = this.getAttribute('data-action');
+                    document.getElementById('delete-name-display').textContent = name;
+                    document.getElementById('deleteForm').action = action;
+                    $('#deleteCategoryModal').modal('show');
+                });
             });
         });
-    });
-</script>
+    </script>
 @endpush

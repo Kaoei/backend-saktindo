@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Rekening Bank</li>',
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-12">
@@ -18,12 +22,12 @@
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0 fw-semibold">Daftar Rekening Bank Toko</h5>
                 <a href="{{ route('rekening-banks.create') }}" class="btn btn-primary btn-sm">
-                    Tambah Rekening Bank
+                    <i class="feather icon-plus-circle me-1"></i> Tambah Rekening Bank
                 </a>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+                    <table id="rekening-bank-table" class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
                                 <th>ID</th>
@@ -52,18 +56,29 @@
                                     </td>
                                 </tr>
                             @empty
-                                <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">Tidak ada data rekening bank.</td>
-                                </tr>
                             @endforelse
                         </tbody>
                     </table>
-                </div>
-                <div class="p-3">
-                    {{ $rekenings->links() }}
                 </div>
             </div>
         </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            $('#rekening-bank-table').DataTable({
+                pageLength: 10,
+                order: [[0, 'asc']],
+                language: { emptyTable: 'Tidak ada data rekening bank.' },
+                columnDefs: [
+                    { orderable: false, searchable: false, targets: [5] }
+                ]
+            });
+        });
+    </script>
+@endpush

@@ -188,67 +188,69 @@
                          </li>
                      @endif
 
-                    @if(auth()->user()?->hasPermission('suppliers.view'))
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_ADMIN]) || auth()->user()?->hasPermission('suppliers.view'))
                         <li class="pc-item pc-caption">
                             <label>Master</label>
                         </li>
-                        <li class="pc-item pc-hasmenu">
-                            <a href="javascript:void(0);" class="pc-link">
-                                <span class="pc-micon"><i class="material-icons-two-tone">local_shipping</i></span>
-                                <span class="pc-mtext">Supplier</span>
-                                <span class="pc-arrow">
-                                    <i class="material-icons-two-tone text-white">chevron_right</i>
-                                </span>
-                            </a>
-                            <ul class="pc-submenu">
-                                <li class="pc-item">
-                                    <a href="{{ route('suppliers.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">dashboard</i></span>
-                                        <span class="pc-mtext">Overview</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('suppliers.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">business</i></span>
-                                        <span class="pc-mtext">Data Vendor</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('suppliers.products') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">inventory_2</i></span>
-                                        <span class="pc-mtext">Barang Supplier</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('suppliers.contacts') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">contacts</i></span>
-                                        <span class="pc-mtext">Kontak Supplier</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('suppliers.purchases') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
-                                        <span class="pc-mtext">Riwayat Pembelian</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('suppliers.payment-terms') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">payments</i></span>
-                                        <span class="pc-mtext">Termin Pembayaran</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('supplier-po.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">description</i></span>
-                                        <span class="pc-mtext">Purchase Order (PO)</span>
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
+                        @if(auth()->user()?->hasPermission('suppliers.view') || auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_ADMIN]))
+                            <li class="pc-item pc-hasmenu">
+                                <a href="javascript:void(0);" class="pc-link">
+                                    <span class="pc-micon"><i class="material-icons-two-tone">local_shipping</i></span>
+                                    <span class="pc-mtext">Supplier</span>
+                                    <span class="pc-arrow">
+                                        <i class="material-icons-two-tone text-white">chevron_right</i>
+                                    </span>
+                                </a>
+                                <ul class="pc-submenu">
+                                    <li class="pc-item">
+                                        <a href="{{ route('suppliers.index') }}" class="pc-link">
+                                            <span class="pc-micon"><i class="material-icons-two-tone">dashboard</i></span>
+                                            <span class="pc-mtext">Overview</span>
+                                        </a>
+                                    </li>
+                                    <li class="pc-item">
+                                        <a href="{{ route('suppliers.index') }}" class="pc-link">
+                                            <span class="pc-micon"><i class="material-icons-two-tone">business</i></span>
+                                            <span class="pc-mtext">Data Vendor</span>
+                                        </a>
+                                    </li>
+                                    <li class="pc-item">
+                                        <a href="{{ route('suppliers.products') }}" class="pc-link">
+                                            <span class="pc-micon"><i class="feather icon-box"></i></span>
+                                            <span class="pc-mtext">Barang Supplier</span>
+                                        </a>
+                                    </li>
+                                    <li class="pc-item">
+                                        <a href="{{ route('suppliers.contacts') }}" class="pc-link">
+                                            <span class="pc-micon"><i class="material-icons-two-tone">contacts</i></span>
+                                            <span class="pc-mtext">Kontak Supplier</span>
+                                        </a>
+                                    </li>
+                                    <li class="pc-item">
+                                        <a href="{{ route('suppliers.purchases') }}" class="pc-link">
+                                            <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
+                                            <span class="pc-mtext">Riwayat Pembelian</span>
+                                        </a>
+                                    </li>
+                                    <li class="pc-item">
+                                        <a href="{{ route('suppliers.payment-terms') }}" class="pc-link">
+                                            <span class="pc-micon"><i class="material-icons-two-tone">payments</i></span>
+                                            <span class="pc-mtext">Termin Pembayaran</span>
+                                        </a>
+                                    </li>
+                                    <li class="pc-item">
+                                        <a href="{{ route('supplier-po.index') }}" class="pc-link">
+                                            <span class="pc-micon"><i class="material-icons-two-tone">description</i></span>
+                                            <span class="pc-mtext">Purchase Order (PO)</span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
 
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">
-                                <span class="pc-micon"><i class="material-icons-two-tone">inventory_2</i></span>
+                                <span class="pc-micon"><i class="feather icon-box"></i></span>
                                 <span class="pc-mtext">Master Barang</span>
                                 <span class="pc-arrow">
                                     <i class="material-icons-two-tone text-white">chevron_right</i>
@@ -257,31 +259,31 @@
                             <ul class="pc-submenu">
                                 <li class="pc-item">
                                     <a href="{{ route('products.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">inventory</i></span>
+                                        <span class="pc-micon"><i class="feather icon-package"></i></span>
                                         <span class="pc-mtext">Master Product</span>
                                     </a>
                                 </li>
                                 <li class="pc-item">
                                     <a href="{{ route('brands.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">style</i></span>
+                                        <span class="pc-micon"><i class="feather icon-award"></i></span>
                                         <span class="pc-mtext">Master Brand</span>
                                     </a>
                                 </li>
                                 <li class="pc-item">
                                     <a href="{{ route('categories.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">category</i></span>
+                                        <span class="pc-micon"><i class="feather icon-grid"></i></span>
                                         <span class="pc-mtext">Master Kategori</span>
                                     </a>
                                 </li>
                                 <li class="pc-item">
                                     <a href="{{ route('sub-categories.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">layers</i></span>
+                                        <span class="pc-micon"><i class="feather icon-layers"></i></span>
                                         <span class="pc-mtext">Master Sub Kategori</span>
                                     </a>
                                 </li>
                                 <li class="pc-item">
                                     <a href="{{ route('variants.index') }}" class="pc-link">
-                                        <span class="pc-micon"><i class="material-icons-two-tone">tune</i></span>
+                                        <span class="pc-micon"><i class="feather icon-sliders"></i></span>
                                         <span class="pc-mtext">Master Varian</span>
                                     </a>
                                 </li>

@@ -62,22 +62,22 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" id="variation-tab" data-toggle="tab" href="#variation" role="tab" aria-controls="variation" aria-selected="false">
-                                <i class="material-icons-two-tone f-18 me-1 align-middle">sell</i> Variations & Pricing
+                                <i class="feather icon-sliders f-18 me-1 align-middle"></i> Variations & Pricing
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" id="shipping-tab" data-toggle="tab" href="#shipping" role="tab" aria-controls="shipping" aria-selected="false">
-                                <i class="material-icons-two-tone f-18 me-1 align-middle">local_shipping</i> Package & Shipping
+                                <i class="feather icon-package f-18 me-1 align-middle"></i> Package & Shipping
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" id="images-tab" data-toggle="tab" href="#images" role="tab" aria-controls="images" aria-selected="false">
-                                <i class="material-icons-two-tone f-18 me-1 align-middle">photo_library</i> Images
+                                <i class="feather icon-image f-18 me-1 align-middle"></i> Images
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" id="specifications-tab" data-toggle="tab" href="#specifications" role="tab" aria-controls="specifications" aria-selected="false">
-                                <i class="material-icons-two-tone f-18 me-1 align-middle">tune</i> Custom Properties
+                                <i class="feather icon-settings f-18 me-1 align-middle"></i> Custom Properties
                             </a>
                         </li>
                     </ul>
@@ -90,16 +90,95 @@
                             <div class="row">
                                 <div class="col-md-12 mb-3">
                                     <label class="form-label fw-bold">Product Name <span class="text-danger">*</span></label>
-                                    <input name="product_name" type="text" class="form-control" value="{{ old('product_name') }}" required placeholder="e.g. Kabel telpon Supreme INDOOR isi 12">
-                                    <small class="text-muted">Must be consistent across all variations of the product.</small>
+                                    <select name="product_name" id="product_name_select" class="form-select select2-tags" required data-placeholder="-- Cari / Pilih Produk Gudang atau Ketik Nama Produk --">
+                                        <option value="">-- Cari / Pilih Produk Gudang atau Ketik Nama Produk --</option>
+                                        @php
+                                            $oldName = old('product_name');
+                                            $gudangNames = [];
+                                        @endphp
+                                        @if(isset($gudangProducts))
+                                            @foreach($gudangProducts as $gProd)
+                                                @php
+                                                    $itemName = $gProd->supplierProduct?->item_name ?? $gProd->id;
+                                                    $gudangNames[] = $itemName;
+                                                    $catName = $gProd->supplierProduct?->category ?? '';
+                                                    $subCatName = $gProd->supplierProduct?->sub_category ?? '';
+                                                    $brandName = $gProd->supplierProduct?->brand ?? '';
+                                                    $skuName = $gProd->supplierProduct?->sku ?? $gProd->id;
+                                                @endphp
+                                                <option value="{{ $itemName }}" 
+                                                    data-category="{{ $catName }}" 
+                                                    data-sub-category="{{ $subCatName }}" 
+                                                    data-brand="{{ $brandName }}"
+                                                    {{ $oldName === $itemName ? 'selected' : '' }}>
+                                                    {{ $itemName }} (SKU Gudang: {{ $skuName }})
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                        @if($oldName && !in_array($oldName, $gudangNames))
+                                            <option value="{{ $oldName }}" selected>{{ $oldName }}</option>
+                                        @endif
+                                    </select>
+                                    <small class="text-muted">Pilih dari Produk Gudang (otomatis mengisi Kategori, Sub Kategori & Brand) atau ketik nama produk baru.</small>
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Category</label>
-                                    <input name="category" type="text" class="form-control" value="{{ old('category') }}" list="master-categories-list" placeholder="Pilih / ketik kategori">
+                                    <select name="category" id="category_select" class="form-select select2-tags" data-placeholder="-- Pilih / Ketik Kategori --">
+                                        <option value="">-- Pilih / Ketik Kategori --</option>
+                                        @php
+                                            $oldCat = old('category');
+                                            $catNames = [];
+                                        @endphp
+                                        @if(isset($categories))
+                                            @foreach($categories as $cat)
+                                                @php $catNames[] = $cat->name; @endphp
+                                                <option value="{{ $cat->name }}" {{ $oldCat === $cat->name ? 'selected' : '' }}>{{ $cat->name }}</option>
+                                            @endforeach
+                                        @endif
+                                        @if($oldCat && !in_array($oldCat, $catNames))
+                                            <option value="{{ $oldCat }}" selected>{{ $oldCat }}</option>
+                                        @endif
+                                    </select>
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Sub Category</label>
+                                    <select name="sub_category" id="sub_category_select" class="form-select select2-tags" data-placeholder="-- Pilih / Ketik Sub Kategori --">
+                                        <option value="">-- Pilih / Ketik Sub Kategori --</option>
+                                        @php
+                                            $oldSubCat = old('sub_category');
+                                            $subCatNames = [];
+                                        @endphp
+                                        @if(isset($subCategories))
+                                            @foreach($subCategories as $subCat)
+                                                @php $subCatNames[] = $subCat->name; @endphp
+                                                <option value="{{ $subCat->name }}" data-category="{{ $subCat->category?->name }}" {{ $oldSubCat === $subCat->name ? 'selected' : '' }}>
+                                                    {{ $subCat->name }} {{ $subCat->category ? '('.$subCat->category->name.')' : '' }}
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                        @if($oldSubCat && !in_array($oldSubCat, $subCatNames))
+                                            <option value="{{ $oldSubCat }}" selected>{{ $oldSubCat }}</option>
+                                        @endif
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Brand</label>
-                                    <input name="brand" type="text" class="form-control" value="{{ old('brand') }}" list="master-brands-list" placeholder="Pilih / ketik brand">
+                                    <select name="brand" id="brand_select" class="form-select select2-tags" data-placeholder="-- Pilih / Ketik Brand --">
+                                        <option value="">-- Pilih / Ketik Brand --</option>
+                                        @php
+                                            $oldBrand = old('brand');
+                                            $brandNames = [];
+                                        @endphp
+                                        @if(isset($brands))
+                                            @foreach($brands as $br)
+                                                @php $brandNames[] = $br->name; @endphp
+                                                <option value="{{ $br->name }}" {{ $oldBrand === $br->name ? 'selected' : '' }}>{{ $br->name }}</option>
+                                            @endforeach
+                                        @endif
+                                        @if($oldBrand && !in_array($oldBrand, $brandNames))
+                                            <option value="{{ $oldBrand }}" selected>{{ $oldBrand }}</option>
+                                        @endif
+                                    </select>
                                 </div>
                                 <div class="col-md-12 mb-3">
                                     <label class="form-label fw-bold">Product Description</label>
@@ -356,7 +435,46 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        let varIndex = $('#variations-container tr').length;
+        $('.select2-tags').select2({
+            theme: 'bootstrap-5',
+            tags: true,
+            allowClear: true,
+            width: '100%'
+        });
+
+        $('#product_name_select').on('change', function() {
+            let selectedOpt = $(this).find(':selected');
+            let cat = selectedOpt.data('category');
+            let subCat = selectedOpt.data('sub-category');
+            let brand = selectedOpt.data('brand');
+
+            if (cat && $('#category_select').length) {
+                if ($('#category_select option[value="' + cat + '"]').length === 0) {
+                    let newOption = new Option(cat, cat, true, true);
+                    $('#category_select').append(newOption).trigger('change');
+                } else {
+                    $('#category_select').val(cat).trigger('change');
+                }
+            }
+
+            if (subCat && $('#sub_category_select').length) {
+                if ($('#sub_category_select option[value="' + subCat + '"]').length === 0) {
+                    let newOption = new Option(subCat, subCat, true, true);
+                    $('#sub_category_select').append(newOption).trigger('change');
+                } else {
+                    $('#sub_category_select').val(subCat).trigger('change');
+                }
+            }
+
+            if (brand && $('#brand_select').length) {
+                if ($('#brand_select option[value="' + brand + '"]').length === 0) {
+                    let newOption = new Option(brand, brand, true, true);
+                    $('#brand_select').append(newOption).trigger('change');
+                } else {
+                    $('#brand_select').val(brand).trigger('change');
+                }
+            }
+        });
 
         if ($('#quick-master-variant-select').length) {
             $('#quick-master-variant-select').select2({

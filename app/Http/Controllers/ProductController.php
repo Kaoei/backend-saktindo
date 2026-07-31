@@ -74,7 +74,9 @@ class ProductController extends Controller
         $masterVariants = \App\Models\Variant::orderBy('name')->get();
         $brands = \App\Models\Brand::orderBy('name')->get();
         $categories = \App\Models\Category::orderBy('name')->get();
-        return view('products.create', compact('masterVariants', 'brands', 'categories'));
+        $subCategories = \App\Models\SubCategory::with('category')->orderBy('name')->get();
+        $gudangProducts = \App\Models\GudangProduct::with('supplierProduct')->get();
+        return view('products.create', compact('masterVariants', 'brands', 'categories', 'subCategories', 'gudangProducts'));
     }
 
     /**
@@ -128,7 +130,9 @@ class ProductController extends Controller
         $masterVariants = \App\Models\Variant::orderBy('name')->get();
         $brands = \App\Models\Brand::orderBy('name')->get();
         $categories = \App\Models\Category::orderBy('name')->get();
-        return view('products.edit', compact('product', 'variations', 'masterVariants', 'brands', 'categories'));
+        $subCategories = \App\Models\SubCategory::with('category')->orderBy('name')->get();
+        $gudangProducts = \App\Models\GudangProduct::with('supplierProduct')->get();
+        return view('products.edit', compact('product', 'variations', 'masterVariants', 'brands', 'categories', 'subCategories', 'gudangProducts'));
     }
 
     /**
@@ -283,7 +287,65 @@ class ProductController extends Controller
     }
 
     /**
-     * Export products into TikTok batch edit Excel template
+     * Download Excel template for product import
+     */
+    public function downloadTemplate()
+    {
+        $templatePath = base_path('Tiktoksellercenter_batchedit_20260520_all_information_template_7.xlsx');
+
+        if (file_exists($templatePath)) {
+            return response()->download($templatePath, 'Template_Import_Produk_Saktindo.xlsx');
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template');
+
+        $headers = [
+            'product_id', 'category', 'product_name', 'sku_id', 'variation_value',
+            'product_description', 'brand', 'price', 'quantity', 'seller_sku',
+            'parcel_weight', 'cod', 'main_image'
+        ];
+
+        foreach ($headers as $colIndex => $headerName) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue("{$colLetter}1", $headerName);
+        }
+
+        $sampleRow = [
+            'TEMP_1001', 'Elektronik', 'Lampu LED Bulb 15W', 'SKU_LED_15W', 'Putih (Cool Daylight)',
+            'Lampu hemat energi garansi 1 tahun', 'Saktindo', 25000, 100, 'SL-LED-15W-WHT',
+            150, 'Y', 'https://example.com/image.jpg'
+        ];
+
+        foreach ($sampleRow as $colIndex => $val) {
+            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndex + 1);
+            $sheet->setCellValue("{$colLetter}6", $val);
+        }
+
+        $sheet->getStyle('A1:M1')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'size' => 11],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => '1E293B']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]
+        ]);
+
+        foreach (range(1, count($headers)) as $col) {
+            $sheet->getColumnDimensionByColumn($col)->setAutoSize(true);
+        }
+
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $filename = 'Template_Import_Produk_Saktindo.xlsx';
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . urlencode($filename) . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer->save('php://output');
+        exit;
+    }
+
+    /**
+     * Export products into TikTok batch edit Excel template with clean layout styling
      */
     public function export()
     {
@@ -331,8 +393,24 @@ class ProductController extends Controller
                 $currentRow++;
             }
 
+            // Apply professional styling
+            $lastRow = max($currentRow - 1, 6);
+            if ($lastRow >= 6) {
+                $sheet->getStyle("A1:{$highestColumn}1")->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => '1E293B']],
+                    'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]
+                ]);
+
+                // Auto-fit column widths up to first 30 columns for performance
+                for ($c = 1; $c <= min($colsCount, 30); $c++) {
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
+                    $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+                }
+            }
+
             $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
-            $filename = 'saktindo_produk---' . date('Ymd_His') . '.xlsx';
+            $filename = 'Export_Produk_Saktindo_' . date('Ymd_His') . '.xlsx';
             
             header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             header('Content-Disposition: attachment; filename="' . urlencode($filename) . '"');
