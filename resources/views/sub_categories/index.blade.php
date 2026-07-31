@@ -94,7 +94,7 @@
                 <h5 class="modal-title text-white d-flex align-items-center font-weight-bold">
                     <i class="feather icon-plus-circle me-2 font-size-lg"></i> Tambah Sub Kategori Baru
                 </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
                     <i class="feather icon-x" style="font-size: 16px;"></i>
                 </button>
             </div>
@@ -116,7 +116,7 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-3 px-4">
-                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm">
                         <i class="feather icon-check me-1"></i> Simpan Sub Kategori
                     </button>
@@ -134,7 +134,7 @@
                 <h5 class="modal-title text-white d-flex align-items-center font-weight-bold">
                     <i class="feather icon-edit me-2 font-size-lg"></i> Edit Sub Kategori
                 </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
                     <i class="feather icon-x" style="font-size: 16px;"></i>
                 </button>
             </div>
@@ -156,7 +156,7 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-3 px-4">
-                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success px-4 rounded-pill shadow-sm">
                         <i class="feather icon-save me-1"></i> Update Sub Kategori
                     </button>
@@ -174,7 +174,7 @@
                 <h5 class="modal-title text-white d-flex align-items-center font-weight-bold">
                     <i class="feather icon-trash-2 me-2 font-size-lg"></i> Hapus Sub Kategori
                 </h5>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; opacity: 0.9; cursor: pointer;" onmouseover="this.style.background='rgba(255,255,255,0.35)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
                     <i class="feather icon-x" style="font-size: 16px;"></i>
                 </button>
             </div>
