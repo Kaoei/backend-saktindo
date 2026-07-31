@@ -30,7 +30,44 @@ class GudangProductController extends Controller
 
         $products = $query->latest()->get();
 
-        return view('gudang_product.index', compact('products'));
+        $totalProduk = $products->count();
+        $totalQty = $products->sum('qty');
+
+        $totalJS = GudangProduct::whereHas('rack', function ($q) {
+            $q->where('gudang', 'JS');
+        })->sum('qty');
+
+        $topRakJS = GudangProduct::select('rack_id', DB::raw('SUM(qty) as total_qty'))
+            ->whereHas('rack', function ($q) {
+                $q->where('gudang', 'JS');
+            })
+            ->groupBy('rack_id')
+            ->orderByDesc('total_qty')
+            ->take(3)
+            ->get();
+
+        $totalSJB = GudangProduct::whereHas('rack', function ($q) {
+            $q->where('gudang', 'SJB');
+        })->sum('qty');
+
+        $topRakSJB = GudangProduct::select('rack_id', DB::raw('SUM(qty) as total_qty'))
+            ->whereHas('rack', function ($q) {
+                $q->where('gudang', 'SJB');
+            })
+            ->groupBy('rack_id')
+            ->orderByDesc('total_qty')
+            ->take(3)
+            ->get();
+
+        return view('gudang_product.index', compact(
+            'products',
+            'totalProduk',
+            'totalQty',
+            'totalJS',
+            'topRakJS',
+            'totalSJB',
+            'topRakSJB'
+        ));
     }
 
     public function create()

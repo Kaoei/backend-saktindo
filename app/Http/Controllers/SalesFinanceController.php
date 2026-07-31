@@ -360,6 +360,7 @@ class SalesFinanceController extends Controller
             'customer_po_number' => ['required', 'string', 'max:100', Rule::unique('sales_orders', 'customer_po_number')->ignore($order?->id)],
             'po_date' => ['nullable', 'date'],
             'order_date' => ['required', 'date'],
+            'sales_type' => ['nullable', 'in:js,sjb'],
             'order_status' => ['required', 'in:draft,stock_check,ready_to_invoice,pending_stock,invoiced,delivered,completed,cancelled'],
             'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
@@ -368,12 +369,25 @@ class SalesFinanceController extends Controller
             'items.*.unit' => ['required', 'string', 'max:50'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.discount_1' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.discount_2' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.discount_3' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'items.*.discount_4' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
     }
 
     private function calculateOrderTotals(array $data, array $items): array
     {
-        $subtotal = collect($items)->sum(fn ($item) => (float) $item['quantity'] * (float) $item['unit_price']);
+        $subtotal = collect($items)->sum(function ($item) {
+            $qty = (float) ($item['quantity'] ?? 0);
+            $price = (float) ($item['unit_price'] ?? 0);
+            $net = $price
+                * (1 - (float) ($item['discount_1'] ?? 0) / 100)
+                * (1 - (float) ($item['discount_2'] ?? 0) / 100)
+                * (1 - (float) ($item['discount_3'] ?? 0) / 100)
+                * (1 - (float) ($item['discount_4'] ?? 0) / 100);
+            return $qty * $net;
+        });
 
         return array_merge($data, [
             'subtotal' => $subtotal,
@@ -393,6 +407,16 @@ class SalesFinanceController extends Controller
             $product = $products->get($item['product_code']);
             $quantity = (float) $item['quantity'];
             $unitPrice = (float) $item['unit_price'];
+            $d1 = (float) ($item['discount_1'] ?? 0);
+            $d2 = (float) ($item['discount_2'] ?? 0);
+            $d3 = (float) ($item['discount_3'] ?? 0);
+            $d4 = (float) ($item['discount_4'] ?? 0);
+
+            $netUnitPrice = $unitPrice
+                * (1 - $d1 / 100)
+                * (1 - $d2 / 100)
+                * (1 - $d3 / 100)
+                * (1 - $d4 / 100);
 
             $order->items()->create([
                 'product_code' => $product->id,
@@ -400,7 +424,11 @@ class SalesFinanceController extends Controller
                 'unit' => $product->unit ?: $item['unit'],
                 'quantity' => $quantity,
                 'unit_price' => $unitPrice,
-                'line_total' => $quantity * $unitPrice,
+                'discount_1' => $d1,
+                'discount_2' => $d2,
+                'discount_3' => $d3,
+                'discount_4' => $d4,
+                'line_total' => round($quantity * $netUnitPrice, 2),
                 'stock_status' => 'unchecked',
             ]);
         }

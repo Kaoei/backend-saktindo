@@ -21,6 +21,7 @@ class SalesOrder extends Model
 
     protected $fillable = [
         'customer_id',
+        'invoice_id',
         'customer_name',
         'customer_po_number',
         'po_date',
@@ -46,6 +47,11 @@ class SalesOrder extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Master_customer::class, 'customer_id');
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
     public function items(): HasMany

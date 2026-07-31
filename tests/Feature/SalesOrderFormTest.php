@@ -4,9 +4,10 @@ use App\Models\SalesOrder;
 use App\Models\Supplier;
 use App\Models\SupplierProduct;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
+
 
 test('user can access Input SO form and see product dropdown options', function () {
     $user = User::factory()->create([

@@ -88,7 +88,7 @@
 <!-- Payment Modal -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="{{ route('finance.payment') }}" method="POST" class="modal-content">
+        <form action="{{ route('finance.payment.store') }}" method="POST" class="modal-content">
             @csrf
             <input type="hidden" name="type" value="ap">
             <input type="hidden" name="id" id="modal-purchase-id">

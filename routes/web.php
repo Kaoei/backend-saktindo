@@ -132,8 +132,11 @@ Route::middleware('auth')->group(function () {
     Route::prefix('finance')->name('finance.')->group(function () {
         Route::get('/', [FinanceController::class, 'index'])->name('index');
         Route::get('/ar', [FinanceController::class, 'ar'])->name('ar');
+        Route::get('/receivables', [FinanceController::class, 'receivables'])->name('receivables');
+        Route::get('/receivables/{invoice}', [FinanceController::class, 'showPiutang'])->name('showPiutang');
+        Route::get('/receivables/{invoice}/payment', [FinanceController::class, 'paymentForm'])->name('payment.form');
         Route::get('/ap', [FinanceController::class, 'ap'])->name('ap');
-        Route::post('/payment', [FinanceController::class, 'storePayment'])->name('payment');
+        Route::post('/payment/{invoice?}', [FinanceController::class, 'storePayment'])->name('payment.store');
         Route::get('/report', [FinanceController::class, 'report'])->name('report');
     });
 

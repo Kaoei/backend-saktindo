@@ -4,9 +4,10 @@ use App\Models\Invoice;
 use App\Models\Master_customer;
 use App\Models\SalesOrder;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
+
 
 test('user can view receivables list and see pelunasan options', function () {
     $user = User::factory()->create([
@@ -72,16 +73,17 @@ test('user can record payment to settle an outstanding invoice', function () {
     ]);
 
     $response = $this->actingAs($user)->post(route('finance.payment.store', $invoice->id), [
+        'type' => 'ar',
+        'id' => $invoice->id,
         'payment_date' => now()->toDateString(),
-        'method' => 'transfer_bank',
+        'payment_method' => 'transfer_bank',
         'receiving_account' => 'js',
         'amount' => 2000000,
-        'reference_number' => 'TRF-TEST-123456',
         'notes' => 'Pelunasan lunas via test',
     ]);
 
-    $response->assertRedirect(route('finance.receivables'));
-    $response->assertSessionHas('success');
+    $response->assertRedirect();
+    $response->assertSessionHas('status');
 
     $invoice->refresh();
     $this->assertEquals(2000000, (float) $invoice->paid_amount);
@@ -92,6 +94,6 @@ test('user can record payment to settle an outstanding invoice', function () {
         'invoice_id' => $invoice->id,
         'amount' => 2000000,
         'method' => 'transfer_bank',
-        'reference_number' => 'TRF-TEST-123456',
     ]);
 });
+

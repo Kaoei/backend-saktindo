@@ -18,7 +18,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <p class="text-muted mb-1">Total Produk</p>
-                        <h3 class="mb-0">{{ $totalProduk }}</h3>
+                        <h3 class="mb-0">{{ $totalProduk ?? 0 }}</h3>
                     </div>
                     <i class="feather icon-package text-primary" style="font-size:32px"></i>
                 </div>
@@ -32,7 +32,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <p class="text-muted mb-1">Total Qty</p>
-                        <h3 class="mb-0">{{ $totalQty }}</h3>
+                        <h3 class="mb-0">{{ $totalQty ?? 0 }}</h3>
                     </div>
                     <i class="feather icon-boxes text-success" style="font-size:32px"></i>
                 </div>
@@ -47,7 +47,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
                         <p class="text-muted mb-1">Gudang JS</p>
-                        <h3 class="mb-0">{{ $totalJS }}</h3>
+                        <h3 class="mb-0">{{ $totalJS ?? 0 }}</h3>
                     </div>
                     <i class="feather icon-building text-warning" style="font-size:32px"></i>
                 </div>
@@ -56,7 +56,7 @@
 
                 <small class="text-muted fw-bold">Top 3 Rak</small>
 
-                @forelse($topRakJS as $rak)
+                @forelse($topRakJS ?? [] as $rak)
                     <div class="d-flex justify-content-between mt-2">
                         <span>{{ $rak->rack_id }}</span>
                         <span class="fw-bold">{{ $rak->total_qty }}</span>
@@ -76,7 +76,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
                         <p class="text-muted mb-1">Gudang SJB</p>
-                        <h3 class="mb-0">{{ $totalSJB }}</h3>
+                        <h3 class="mb-0">{{ $totalSJB ?? 0 }}</h3>
                     </div>
                     <i class="feather icon-home text-danger" style="font-size:32px"></i>
                 </div>
@@ -85,7 +85,7 @@
 
                 <small class="text-muted fw-bold">Top 3 Rak</small>
 
-                @forelse($topRakSJB as $rak)
+                @forelse($topRakSJB ?? [] as $rak)
                     <div class="d-flex justify-content-between mt-2">
                         <span>{{ $rak->rack_id }}</span>
                         <span class="fw-bold">{{ $rak->total_qty }}</span>

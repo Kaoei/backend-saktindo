@@ -4,9 +4,10 @@ use App\Models\Brand;
 use App\Models\Supplier;
 use App\Models\SupplierProduct;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(DatabaseTransactions::class);
+uses(RefreshDatabase::class);
+
 
 test('brand is automatically synced to master brand when creating supplier with brand name', function () {
     $user = User::factory()->create([

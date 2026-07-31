@@ -27,6 +27,14 @@ class FinanceController extends Controller
     }
 
     /**
+     * Accounts Receivable (Piutang) — same as ar() but also accessible via 'finance.receivables'
+     */
+    public function receivables(Request $request)
+    {
+        return $this->ar($request);
+    }
+
+    /**
      * Accounts Receivable (Piutang)
      */
     public function ar(Request $request)
@@ -40,6 +48,23 @@ class FinanceController extends Controller
         $invoices = $query->latest()->paginate(15);
 
         return view('finance.ar', compact('invoices'));
+    }
+
+    /**
+     * Show detail piutang / invoice
+     */
+    public function showPiutang(Invoice $invoice)
+    {
+        $invoice->load(['salesOrder', 'payments']);
+        return view('finance.showPiutang', compact('invoice'));
+    }
+
+    /**
+     * Show payment form for a specific invoice
+     */
+    public function paymentForm(Invoice $invoice)
+    {
+        return view('finance.paymentPiutang', compact('invoice'));
     }
 
     /**
