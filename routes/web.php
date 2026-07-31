@@ -222,6 +222,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{warehouseTask}', [WarehouseTaskController::class, 'destroy'])->name('destroy');
         Route::patch('/{warehouseTask}/process', [WarehouseTaskController::class, 'process'])->name('process');
         Route::patch('/{warehouseTask}/complete', [WarehouseTaskController::class, 'complete'])->name('complete');
+        Route::patch('/{warehouseTask}/toggle-check', [WarehouseTaskController::class, 'toggleAdminCheck'])->name('toggle-check');
         Route::get('/{warehouseTask}/print', [WarehouseTaskController::class, 'print'])->name('print');
     });
     Route::prefix('outbound')->name('outbound.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {

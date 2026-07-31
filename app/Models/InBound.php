@@ -21,6 +21,7 @@ protected $fillable = [
     'qty_missing',
     'hpp',
     'supplier_po_id',
+    'invoice_number',
     'received_date',
     'status',
     'notes',

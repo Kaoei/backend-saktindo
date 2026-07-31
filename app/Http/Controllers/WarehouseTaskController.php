@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\WarehouseTask;
 use App\Models\SalesOrder;
 use App\Models\Invoice;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class WarehouseTaskController extends Controller
@@ -124,6 +125,22 @@ class WarehouseTaskController extends Controller
         ]);
 
         return back()->with('success', 'Warehouse task selesai');
+    }
+
+    public function toggleAdminCheck(WarehouseTask $warehouseTask)
+    {
+        if (auth()->user()?->role !== User::ROLE_SUPER_ADMIN) {
+            return back()->with('error', 'Hanya Super Admin yang berhak menandai pemeriksaan task.');
+        }
+
+        $warehouseTask->update([
+            'is_checked_by_admin' => !$warehouseTask->is_checked_by_admin,
+            'checked_by_admin_at' => !$warehouseTask->is_checked_by_admin ? now() : null,
+        ]);
+
+        $statusMsg = $warehouseTask->is_checked_by_admin ? 'ditandai sudah diperiksa' : 'dibatalkan status pemeriksaannya';
+
+        return back()->with('success', "Warehouse task {$warehouseTask->id} berhasil {$statusMsg}.");
     }
 
     public function print(WarehouseTask $warehouseTask)

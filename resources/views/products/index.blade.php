@@ -1,7 +1,7 @@
 @extends('layouts.dashboard', [
-    'title' => 'Product Management',
-    'pageTitle' => 'Product Management',
-    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Product Management</li>',
+    'title' => 'Product Line Up Management',
+    'pageTitle' => 'Product Line Up',
+    'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item">Product Line Up</li>',
 ])
 
 @section('content')
@@ -9,7 +9,10 @@
     <div class="col-12">
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white pt-4 pb-3 d-flex flex-wrap align-items-center justify-content-between gap-3 border-bottom">
-                <h5 class="mb-0 fw-bold text-dark">Products</h5>
+                <div>
+                    <h5 class="mb-1 fw-bold text-dark">Katalog Product Line Up</h5>
+                    <small class="text-muted">Manajemen produk, variasi, dan filter ala marketplace Tokopedia</small>
+                </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button type="button" class="btn btn-light-success d-inline-flex align-items-center justify-content-center gap-1" data-toggle="modal" data-target="#importModal" style="width: 100px !important; flex: none; padding-left: 8px !important; padding-right: 8px !important;">
                         <i class="feather icon-upload fs-6 text-success"></i> Import</button>
@@ -41,18 +44,52 @@
                     </div>
                 @endif
 
-                <form action="{{ route('products.index') }}" method="GET" class="mb-4">
-                    <div class="input-group shadow-sm">
-                        <span class="input-group-text bg-white text-muted border-end-0">
-                            <i class="feather icon-search"></i>
-                        </span>
-                        <input type="text" name="search" class="form-control border-start-0 ps-0" placeholder="Search by name, category, product ID, or seller SKU..." value="{{ $search ?? '' }}">
-                        <button class="btn btn-primary px-4" type="submit">Search</button>
-                        @if($search)
-                            <a href="{{ route('products.index') }}" class="btn btn-light-secondary px-4 d-inline-flex align-items-center">Clear</a>
-                        @endif
+                <!-- Tokopedia Style Marketplace Filter Bar -->
+                <div class="card bg-light border-0 mb-4">
+                    <div class="card-body p-3">
+                        <form action="{{ route('products.index') }}" method="GET" class="row g-2 align-items-center">
+                            <div class="col-md-5">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="feather icon-search text-muted"></i>
+                                    </span>
+                                    <input type="text" name="search" class="form-control border-start-0" placeholder="Cari nama barang, warna, watt, SKU, ID produk..." value="{{ $search ?? '' }}">
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <select name="category" class="form-select bg-white">
+                                    <option value="">-- Semua Kategori --</option>
+                                    @foreach($categoriesList as $cat)
+                                        <option value="{{ $cat }}" {{ ($category ?? '') == $cat ? 'selected' : '' }}>
+                                            {{ $cat }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="col-md-2">
+                                <select name="stock_status" class="form-select bg-white">
+                                    <option value="">-- Status Stok --</option>
+                                    <option value="in_stock" {{ ($stockStatus ?? '') == 'in_stock' ? 'selected' : '' }}>Stok Melimpah (&gt;20)</option>
+                                    <option value="low_stock" {{ ($stockStatus ?? '') == 'low_stock' ? 'selected' : '' }}>Stok Menipis (1-20)</option>
+                                    <option value="out_of_stock" {{ ($stockStatus ?? '') == 'out_of_stock' ? 'selected' : '' }}>Habis (Out of Stock)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-2 d-flex gap-2">
+                                <button type="submit" class="btn btn-primary w-100 fw-semibold">
+                                    <i class="feather icon-filter me-1"></i> Filter
+                                </button>
+                                @if($search || $category || $stockStatus)
+                                    <a href="{{ route('products.index') }}" class="btn btn-outline-secondary" title="Reset Filter">
+                                        <i class="feather icon-rotate-ccw"></i>
+                                    </a>
+                                @endif
+                            </div>
+                        </form>
                     </div>
-                </form>
+                </div>
 
                 <div class="table-responsive">
                     <table class="table table-hover align-middle m-b-0">
@@ -121,9 +158,9 @@
                                 <tr>
                                     <td colspan="7" class="text-center py-5 text-muted">
                                         <i class="material-icons-two-tone f-40 d-block mb-3">production_quantity_limits</i>
-                                        <h6 class="fw-semibold text-dark mb-1">No products found in the database.</h6>
+                                        <h6 class="fw-semibold text-dark mb-1">Tidak ada produk yang cocok dengan filter.</h6>
                                         <div class="mt-2 small">
-                                            Import a TikTok batch edit Excel template or click "Add Product" to create one manually.
+                                            Coba reset filter atau gunakan kata kunci pencarian yang berbeda.
                                         </div>
                                     </td>
                                 </tr>

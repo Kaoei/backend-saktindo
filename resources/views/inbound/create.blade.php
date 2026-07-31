@@ -5,6 +5,16 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('inbound.index').'">Barang Masuk</a></li><li class="breadcrumb-item">Tambah Barang Masuk</li>'
 ])
 
+@push('styles')
+<style>
+    /* Force Select2 dropdown to open downwards */
+    .select2-dropdown {
+        top: 100% !important;
+        bottom: auto !important;
+    }
+</style>
+@endpush
+
 @section('content')
 
 <div class="row justify-content-center">
@@ -46,7 +56,7 @@
                                 <div class="col-md-6 mb-3 mb-md-0">
                                     <label class="form-label fw-bold text-primary mb-1">
                                         <i class="material-icons-two-tone text-primary me-1">receipt_long</i>
-                                        Gunakan Template Supplier PO (Opsional)
+                                        Pilih Supplier PO (Opsional)
                                     </label>
                                     <select name="supplier_po_id" id="po-select" class="form-select border-primary shadow-sm">
                                         <option value="">-- Tanpa Template PO --</option>
@@ -76,7 +86,19 @@
                     </div>
 
                     <div class="row mb-4">
-                        <div class="col-md-6">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">
+                                Nomor Invoice (Input Manual)
+                            </label>
+                            <input type="text"
+                                   name="invoice_number"
+                                   class="form-control"
+                                   placeholder="Contoh: INV-2026/07/001"
+                                   value="{{ old('invoice_number') }}">
+                            <small class="text-muted">Nomor Invoice pengiriman dari supplier jika ada.</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">
                                 Tanggal Masuk / Terima <span class="text-danger">*</span>
                             </label>
@@ -242,6 +264,11 @@
         const $singleQtyReceived = $('#single-qty-received');
         const $singleHppInput = $('#single-hpp-input');
 
+        // Force Select2 dropdown to open downwards (below)
+        $(document).on('select2:open', function(e) {
+            $('.select2-dropdown').removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+        });
+
         function toggleMode() {
             const selectedPoId = $poSelect.val();
 
@@ -249,28 +276,20 @@
                 const selectedPo = supplierPosData.find(p => String(p.id) === String(selectedPoId));
 
                 if (selectedPo) {
-                    // 1. Auto select Supplier and update Select2 visual representation
                     if (selectedPo.supplier_id) {
                         $supplierSelect.val(selectedPo.supplier_id).trigger('change.select2');
                     }
 
-                    // 2. Hide single item form container COMPLETELY
                     $singleItemContainer.addClass('d-none').hide();
-
-                    // 3. Show PO items container COMPLETELY
                     $poItemsContainer.removeClass('d-none').show();
-
-                    // 4. Render checklist rows
                     renderPoItems(selectedPo.items || []);
 
-                    // 5. Remove required attribute from hidden single item inputs
                     $singleProductSelect.prop('required', false);
                     $singleQtyReceived.prop('required', false);
                     return;
                 }
             }
 
-            // Single Item Input (NO PO selected)
             $poItemsContainer.addClass('d-none').hide();
             $singleItemContainer.removeClass('d-none').show();
             $poItemsBody.empty();
@@ -427,7 +446,6 @@
             updateCheckCount();
         });
 
-        // Listen for both jQuery change and Select2 change events
         $poSelect.on('change select2:select', toggleMode);
 
         $singleProductSelect.on('change select2:select', function() {
@@ -437,7 +455,6 @@
             }
         });
 
-        // Initial toggle on page load
         toggleMode();
     });
 </script>

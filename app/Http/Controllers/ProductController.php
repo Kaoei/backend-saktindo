@@ -11,37 +11,59 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 class ProductController extends Controller
 {
     /**
-     * Display a listing of the resource (Grouped by Parent Product).
+     * Display a listing of the resource (Grouped by Parent Product with Marketplace Tokopedia Filters).
      */
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $category = $request->input('category');
+        $stockStatus = $request->input('stock_status');
 
-        // Group variations of the same product name to show only one parent row
+        $categoriesList = Product::select('category')
+            ->whereNotNull('category')
+            ->where('category', '!=', '')
+            ->distinct()
+            ->pluck('category');
+
         $products = Product::select(
                 'product_name', 
                 'product_id', 
                 'category', 
                 'main_image',
-                DB::raw('MIN(id) as id'), // representative ID for actions
+                DB::raw('MIN(id) as id'),
                 DB::raw('COUNT(*) as variations_count'),
                 DB::raw('MIN(price) as min_price'),
                 DB::raw('MAX(price) as max_price'),
                 DB::raw('SUM(quantity) as total_quantity')
             )
             ->when($search, function ($query, $search) {
-                $query->where('product_name', 'like', "%{$search}%")
-                    ->orWhere('product_id', 'like', "%{$search}%")
-                    ->orWhere('sku_id', 'like', "%{$search}%")
-                    ->orWhere('seller_sku', 'like', "%{$search}%")
-                    ->orWhere('category', 'like', "%{$search}%");
+                $query->where(function($q) use ($search) {
+                    $q->where('product_name', 'like', "%{$search}%")
+                        ->orWhere('product_id', 'like', "%{$search}%")
+                        ->orWhere('sku_id', 'like', "%{$search}%")
+                        ->orWhere('seller_sku', 'like', "%{$search}%")
+                        ->orWhere('category', 'like', "%{$search}%")
+                        ->orWhere('variation_value', 'like', "%{$search}%");
+                });
+            })
+            ->when($category, function ($query, $category) {
+                $query->where('category', $category);
             })
             ->groupBy('product_name', 'product_id', 'category', 'main_image')
+            ->when($stockStatus, function ($query, $stockStatus) {
+                if ($stockStatus === 'in_stock') {
+                    $query->having(DB::raw('SUM(quantity)'), '>', 20);
+                } elseif ($stockStatus === 'low_stock') {
+                    $query->having(DB::raw('SUM(quantity)'), '>', 0)->having(DB::raw('SUM(quantity)'), '<=', 20);
+                } elseif ($stockStatus === 'out_of_stock') {
+                    $query->having(DB::raw('SUM(quantity)'), '=', 0);
+                }
+            })
             ->latest(DB::raw('MIN(created_at)'))
             ->paginate(15)
             ->withQueryString();
 
-        return view('products.index', compact('products', 'search'));
+        return view('products.index', compact('products', 'search', 'category', 'stockStatus', 'categoriesList'));
     }
 
     /**
@@ -69,7 +91,6 @@ class ProductController extends Controller
 
         $parentData = $request->except(['_token', 'variations']);
 
-        // Generate temporary product ID if empty
         if (empty($parentData['product_id'])) {
             $parentData['product_id'] = 'TEMP_' . time() . rand(10, 99);
         }
@@ -100,7 +121,6 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        // Fetch all variations sharing the same product name
         $variations = Product::where('product_name', $product->product_name)->get();
         return view('products.edit', compact('product', 'variations'));
     }
@@ -129,7 +149,6 @@ class ProductController extends Controller
 
         DB::beginTransaction();
         try {
-            // Delete old variation records first to recreate them cleanly
             Product::where('product_name', $originalName)->delete();
 
             foreach ($request->input('variations') as $var) {
