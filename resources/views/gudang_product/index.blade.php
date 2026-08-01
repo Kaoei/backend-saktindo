@@ -352,7 +352,7 @@
                 </div>
 
                 <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary px-4">
                         <i class="feather icon-save me-1"></i> Simpan Stok Barang
                     </button>
@@ -422,6 +422,18 @@ $(function () {
             } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
                 $('#importModal').modal('show');
             }
+    $(document).on('click', '[data-dismiss="modal"], [data-bs-dismiss="modal"]', function (e) {
+        e.preventDefault();
+        const modalEl = $(this).closest('.modal');
+        if (modalEl.length) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const inst = bootstrap.Modal.getInstance(modalEl[0]);
+                if (inst) {
+                    inst.hide();
+                    return;
+                }
+            }
+            modalEl.modal('hide');
         }
     });
 });
