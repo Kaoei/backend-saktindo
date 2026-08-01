@@ -111,15 +111,15 @@
 
                 <div class="d-inline-flex align-items-center flex-wrap gap-2">
                     <button type="button" class="btn btn-primary btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#manualInputModal" data-bs-toggle="modal" data-bs-target="#manualInputModal" style="width: auto !important; flex: none !important;">
-                        <i class="material-icons-two-tone text-white me-1">add_circle</i>
+                        <i class="feather icon-plus-circle me-1"></i>
                         Input Stock
                     </button>
                     <button type="button" class="btn btn-outline-success btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal" style="width: auto !important; flex: none !important;">
-                        <i class="material-icons-two-tone me-1">publish</i>
+                        <i class="feather icon-upload me-1"></i>
                         Import Stok Excel
                     </button>
                     <a href="{{ route('gudang-product.create') }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" style="width: auto !important; flex: none !important;">
-                        <i class="material-icons-two-tone me-1">view_in_ar</i>
+                        <i class="feather icon-download me-1"></i>
                         Dari Inbound
                     </a>
                 </div>
