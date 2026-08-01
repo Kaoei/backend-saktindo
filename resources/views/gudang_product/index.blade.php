@@ -103,23 +103,23 @@
     <div class="col-12">
 
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <div>
+            <div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+                <div class="mb-2 mb-md-0">
                     <h5 class="mb-1">Daftar Produk Gudang</h5>
                     <small class="text-muted">Data barang yang sudah ditempatkan ke rak</small>
                 </div>
 
-                <div>
-                    <button type="button" class="btn btn-primary btn-sm me-2" data-toggle="modal" data-target="#manualInputModal" data-bs-toggle="modal" data-bs-target="#manualInputModal">
-                        <i class="material-icons-two-tone text-white">add_circle</i>
+                <div class="d-inline-flex align-items-center flex-wrap gap-2">
+                    <button type="button" class="btn btn-primary btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#manualInputModal" data-bs-toggle="modal" data-bs-target="#manualInputModal" style="width: auto !important; flex: none !important;">
+                        <i class="material-icons-two-tone text-white me-1">add_circle</i>
                         Input Stock
                     </button>
-                    <button type="button" class="btn btn-outline-success btn-sm me-2" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal">
-                        <i class="material-icons-two-tone">publish</i>
+                    <button type="button" class="btn btn-outline-success btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal" style="width: auto !important; flex: none !important;">
+                        <i class="material-icons-two-tone me-1">publish</i>
                         Import Stok Excel
                     </button>
-                    <a href="{{ route('gudang-product.create') }}" class="btn btn-outline-primary btn-sm">
-                        <i class="material-icons-two-tone">view_in_ar</i>
+                    <a href="{{ route('gudang-product.create') }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" style="width: auto !important; flex: none !important;">
+                        <i class="material-icons-two-tone me-1">view_in_ar</i>
                         Dari Inbound
                     </a>
                 </div>
