@@ -214,6 +214,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [GudangProductController::class, 'index'])->name('index');
         Route::get('/create', [GudangProductController::class, 'create'])->name('create');
         Route::post('/', [GudangProductController::class, 'store'])->name('store');
+        Route::post('/store-manual', [GudangProductController::class, 'storeManual'])->name('storeManual');
         Route::get('/{gudangProduct}/edit', [GudangProductController::class, 'edit'])->name('edit');
         Route::put('/{gudangProduct}', [GudangProductController::class, 'update'])->name('update');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');

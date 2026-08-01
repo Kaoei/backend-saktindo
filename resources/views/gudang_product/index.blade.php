@@ -110,13 +110,17 @@
                 </div>
 
                 <div>
+                    <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#manualInputModal">
+                        <i class="material-icons-two-tone text-white">add_circle</i>
+                        Input Manual
+                    </button>
                     <button type="button" class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importModal">
                         <i class="material-icons-two-tone">publish</i>
                         Import Stok Excel
                     </button>
-                    <a href="{{ route('gudang-product.create') }}" class="btn btn-primary btn-sm">
-                        <i class="material-icons-two-tone text-white">add_circle</i>
-                        Simpan Barang ke Rak
+                    <a href="{{ route('gudang-product.create') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="material-icons-two-tone">view_in_ar</i>
+                        Dari Inbound
                     </a>
                 </div>
             </div>
@@ -249,6 +253,106 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success px-4">
                         <i class="feather icon-upload me-1"></i> Upload & Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Input Manual -->
+<div class="modal fade" id="manualInputModal" tabindex="-1" aria-labelledby="manualInputModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light py-3">
+                <h5 class="modal-title fw-bold" id="manualInputModalLabel">Input Stok Barang Secara Manual</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ route('gudang-product.storeManual') }}">
+                @csrf
+                <div class="modal-body py-4">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Nama Barang <span class="text-danger">*</span></label>
+                            <input type="text" name="item_name" class="form-control" placeholder="Contoh: Lampu LED Bulb 10W Philips" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">SKU / Serial Number</label>
+                            <input type="text" name="sku" class="form-control" placeholder="Otomatis jika kosong">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Brand / Merek</label>
+                            <input type="text" name="brand" class="form-control" list="brandOptions" placeholder="Pilih atau ketik baru">
+                            <datalist id="brandOptions">
+                                @foreach($brands ?? [] as $b)
+                                    <option value="{{ $b->name }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Kategori Utama</label>
+                            <input type="text" name="category" class="form-control" list="categoryOptions" placeholder="Pilih atau ketik baru">
+                            <datalist id="categoryOptions">
+                                @foreach($categories ?? [] as $c)
+                                    <option value="{{ $c->name }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Sub Kategori</label>
+                            <input type="text" name="sub_category" class="form-control" placeholder="Contoh: Bulb / Panel / Downlight">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Jumlah Stok (Qty) <span class="text-danger">*</span></label>
+                            <input type="number" name="qty" class="form-control" min="1" value="1" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Harga Per Unit (Rp)</label>
+                            <input type="number" name="price" class="form-control" min="0" step="100" placeholder="0">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Status Penyimpanan</label>
+                            <select name="status" class="form-select">
+                                <option value="stored" selected>Stored (Tersimpan)</option>
+                                <option value="pending">Pending</option>
+                                <option value="damaged">Damaged (Rusak)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Gudang Penyimpanan <span class="text-danger">*</span></label>
+                            <select name="gudang_type" class="form-select" required>
+                                <option value="">-- Pilih Gudang --</option>
+                                <option value="JS" selected>Gudang JS</option>
+                                <option value="SJB">Gudang SJB</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Rak Penyimpanan <span class="text-danger">*</span></label>
+                            <select name="rack_id" class="form-select" required>
+                                <option value="">-- Pilih Rak --</option>
+                                @foreach($racks ?? [] as $rack)
+                                    <option value="{{ $rack->rak_kode }}">
+                                        {{ $rack->rak_kode }} - {{ $rack->location }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="feather icon-save me-1"></i> Simpan Stok Barang
                     </button>
                 </div>
             </form>
