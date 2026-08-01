@@ -68,4 +68,35 @@ class SalesOrder extends Model
     {
         return $this->hasOne(WarehouseTask::class);
     }
+
+    public function getInvoiceRecordAttribute()
+    {
+        if ($this->invoice) {
+            return $this->invoice;
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('invoice_sales_orders')) {
+                return $this->invoices->first();
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return null;
+    }
+
+    public function getInvoicesCollectionAttribute()
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('invoice_sales_orders')) {
+                $invs = $this->invoices;
+                if ($invs && $invs->count() > 0) {
+                    return $invs;
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return $this->invoice ? collect([$this->invoice]) : collect();
+    }
 }

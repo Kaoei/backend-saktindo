@@ -6,7 +6,7 @@
 
 @section('content')
 @php
-    $invoices = $orders->flatMap->invoices->unique('id');
+    $invoices = $orders->flatMap(fn ($o) => $o->invoices_collection)->filter()->unique('id');
     $outstanding = $invoices->sum(fn ($invoice) => (float) $invoice->outstanding_amount);
 @endphp
 
@@ -96,7 +96,7 @@
                         </thead>
                         <tbody>
                             @forelse($orders as $order)
-                                @php($invoice = $order->invoices->first())
+                                @php($invoice = $order->invoice_record)
                                 <tr>
                                     <td class="align-middle"><span class="badge bg-light-secondary font-monospace">{{ $order->id }}</span></td>
                                     <td class="align-middle">{{ $order->customer_name }}</td>
