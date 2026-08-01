@@ -122,3 +122,14 @@ test('super admin can manage master subcategories', function () {
     $response->assertRedirect(route('sub-categories.index'));
     $this->assertDatabaseMissing('sub_categories', ['id' => $subCategory->id]);
 });
+
+test('super admin can access unified master product list', function () {
+    $superAdmin = User::factory()->create([
+        'role' => User::ROLE_SUPER_ADMIN,
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('products.index'))
+        ->assertOk()
+        ->assertSee('Master Produk (Katalog Terpadu)');
+});

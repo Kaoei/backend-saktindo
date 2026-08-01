@@ -2,347 +2,242 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\GudangProduct;
+use App\Models\Rak;
+use App\Models\SubCategory;
+use App\Models\Supplier;
+use App\Models\SupplierProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProductController extends Controller
 {
     /**
-     * Display a listing of the resource (Grouped by Parent Product with Marketplace Tokopedia Filters).
+     * Display a listing of unified master products.
      */
     public function index(Request $request)
     {
         $search = $request->input('search');
         $category = $request->input('category');
+        $brand = $request->input('brand');
         $stockStatus = $request->input('stock_status');
 
-        $categoriesList = Product::select('category')
+        $categoriesList = SupplierProduct::select('category')
             ->whereNotNull('category')
             ->where('category', '!=', '')
             ->distinct()
             ->pluck('category');
 
-        $products = Product::select(
-                'product_name', 
-                'product_id', 
-                'category', 
-                'main_image',
-                DB::raw('MIN(id) as id'),
-                DB::raw('COUNT(*) as variations_count'),
-                DB::raw('MIN(price) as min_price'),
-                DB::raw('MAX(price) as max_price'),
-                DB::raw('SUM(quantity) as total_quantity')
-            )
-            ->when($search, function ($query, $search) {
-                $query->where(function($q) use ($search) {
-                    $q->where('product_name', 'like', "%{$search}%")
-                        ->orWhere('product_id', 'like', "%{$search}%")
-                        ->orWhere('sku_id', 'like', "%{$search}%")
-                        ->orWhere('seller_sku', 'like', "%{$search}%")
+        $brandsList = SupplierProduct::select('brand')
+            ->whereNotNull('brand')
+            ->where('brand', '!=', '')
+            ->distinct()
+            ->pluck('brand');
+
+        $query = SupplierProduct::with(['gudangProducts.rack'])
+            ->when($search, function ($q, $search) {
+                $q->where(function ($sub) use ($search) {
+                    $sub->where('item_name', 'like', "%{$search}%")
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhere('brand', 'like', "%{$search}%")
                         ->orWhere('category', 'like', "%{$search}%")
-                        ->orWhere('variation_value', 'like', "%{$search}%");
+                        ->orWhere('sub_category', 'like', "%{$search}%");
                 });
             })
-            ->when($category, function ($query, $category) {
-                $query->where('category', $category);
+            ->when($category, function ($q, $category) {
+                $q->where('category', $category);
             })
-            ->groupBy('product_name', 'product_id', 'category', 'main_image')
-            ->when($stockStatus, function ($query, $stockStatus) {
-                if ($stockStatus === 'in_stock') {
-                    $query->having(DB::raw('SUM(quantity)'), '>', 20);
-                } elseif ($stockStatus === 'low_stock') {
-                    $query->having(DB::raw('SUM(quantity)'), '>', 0)->having(DB::raw('SUM(quantity)'), '<=', 20);
-                } elseif ($stockStatus === 'out_of_stock') {
-                    $query->having(DB::raw('SUM(quantity)'), '=', 0);
-                }
-            })
-            ->latest(DB::raw('MIN(created_at)'))
-            ->paginate(15)
-            ->withQueryString();
+            ->when($brand, function ($q, $brand) {
+                $q->where('brand', $brand);
+            });
 
-        return view('products.index', compact('products', 'search', 'category', 'stockStatus', 'categoriesList'));
+        $products = $query->latest()->paginate(15)->withQueryString();
+
+        return view('products.index', compact(
+            'products',
+            'search',
+            'category',
+            'brand',
+            'stockStatus',
+            'categoriesList',
+            'brandsList'
+        ));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show form to create a new master product.
      */
     public function create()
     {
-        $masterVariants = \App\Models\Variant::orderBy('name')->get();
-        $brands = \App\Models\Brand::orderBy('name')->get();
-        $categories = \App\Models\Category::orderBy('name')->get();
-        return view('products.create', compact('masterVariants', 'brands', 'categories'));
+        $brands = Brand::orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+        $subCategories = SubCategory::orderBy('name')->get();
+        $racks = Rak::orderBy('rak_kode')->get();
+
+        return view('products.create', compact('brands', 'categories', 'subCategories', 'racks'));
     }
 
     /**
-     * Store a newly created resource in storage (with multiple variations).
+     * Store new master product in storage.
      */
     public function store(Request $request)
     {
         $request->validate([
-            'product_name' => 'required|string|max:255',
-            'parcel_weight' => 'required|integer|min:0',
-            'cod' => 'required|string|in:Y,N',
-            'main_image' => 'required|url',
-            'variations' => 'required|array|min:1',
-            'variations.*.price' => 'required|numeric|min:0',
-            'variations.*.quantity' => 'required|integer|min:0',
+            'item_name' => 'required|string|max:255',
+            'sku' => 'nullable|string|max:100',
+            'brand' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:255',
+            'sub_category' => 'nullable|string|max:255',
+            'price' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
+            'initial_qty' => 'nullable|integer|min:0',
+            'rack_id' => 'nullable|exists:raks,rak_kode',
+            'gudang_type' => 'nullable|in:JS,SJB',
         ]);
 
-        $parentData = $request->except(['_token', 'variations']);
-
-        if (empty($parentData['product_id'])) {
-            $parentData['product_id'] = 'TEMP_' . time() . rand(10, 99);
-        }
-
-        DB::beginTransaction();
-        try {
-            foreach ($request->input('variations') as $var) {
-                $skuId = empty($var['sku_id']) ? ('TEMP_SKU_' . time() . rand(100, 999)) : $var['sku_id'];
-                
-                Product::create(array_merge($parentData, [
-                    'variation_value' => $var['variation_value'] ?? 'Default',
-                    'price' => floatval($var['price']),
-                    'quantity' => intval($var['quantity']),
-                    'sku_id' => $skuId,
-                    'seller_sku' => $var['seller_sku'] ?? null,
-                ]));
+        DB::transaction(function () use ($request) {
+            $brandName = trim($request->brand ?? '');
+            if ($brandName !== '') {
+                $existingBrand = Brand::whereRaw('LOWER(name) = ?', [strtolower($brandName)])->first();
+                if (!$existingBrand) {
+                    $existingBrand = Brand::create(['name' => $brandName, 'image' => '', 'alt' => '']);
+                }
+                $brandName = $existingBrand->name;
+            } else {
+                $brandName = null;
             }
-            DB::commit();
-            return redirect()->route('products.index')->with('success', 'Product and variations created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withInput()->with('error', 'Error creating product: ' . $e->getMessage());
-        }
+
+            $categoryName = trim($request->category ?? '');
+            $subCategoryName = trim($request->sub_category ?? '');
+            if ($categoryName !== '') {
+                $existingCategory = Category::whereRaw('LOWER(name) = ?', [strtolower($categoryName)])->first();
+                if (!$existingCategory) {
+                    $existingCategory = Category::create(['name' => $categoryName]);
+                }
+                $categoryName = $existingCategory->name;
+
+                if ($subCategoryName !== '') {
+                    $existingSub = SubCategory::where('category_id', $existingCategory->id)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($subCategoryName)])
+                        ->first();
+                    if (!$existingSub) {
+                        SubCategory::create([
+                            'category_id' => $existingCategory->id,
+                            'name' => $subCategoryName
+                        ]);
+                    }
+                }
+            }
+
+            $sku = trim($request->sku ?? '');
+            if ($sku === '') {
+                $sku = 'SKU-' . strtoupper(substr(md5($request->item_name), 0, 8));
+            }
+
+            $supplier = Supplier::first();
+            if (!$supplier) {
+                $supplier = Supplier::create(['name' => 'Supplier General', 'status' => 'active']);
+            }
+
+            $product = SupplierProduct::create([
+                'supplier_id' => $supplier->id,
+                'sku' => $sku,
+                'item_name' => $request->item_name,
+                'brand' => $brandName,
+                'category' => $categoryName ?: null,
+                'sub_category' => $subCategoryName ?: null,
+                'last_purchase_price' => $request->price ?? 0,
+                'unit' => $request->unit ?: 'pcs',
+                'status' => 'active'
+            ]);
+
+            if ($request->filled('initial_qty') && (int)$request->initial_qty > 0 && $request->filled('rack_id')) {
+                GudangProduct::create([
+                    'id' => GudangProduct::generateId($sku),
+                    'supplier_product_id' => $product->id,
+                    'rack_id' => $request->rack_id,
+                    'gudang_type' => $request->gudang_type ?: 'JS',
+                    'qty' => (int)$request->initial_qty,
+                    'price' => $request->price ?? 0,
+                    'discount' => 0,
+                    'status' => 'stored',
+                ]);
+            }
+        });
+
+        return redirect()->route('products.index')->with('success', 'Master Produk berhasil ditambahkan.');
     }
 
     /**
-     * Show the form for editing the specified resource (fetches all variations).
+     * Show edit form.
      */
-    public function edit(Product $product)
+    public function edit($id)
     {
-        $variations = Product::where('product_name', $product->product_name)->get();
-        $masterVariants = \App\Models\Variant::orderBy('name')->get();
-        $brands = \App\Models\Brand::orderBy('name')->get();
-        $categories = \App\Models\Category::orderBy('name')->get();
-        return view('products.edit', compact('product', 'variations', 'masterVariants', 'brands', 'categories'));
+        $product = SupplierProduct::with('gudangProducts')->findOrFail($id);
+        $brands = Brand::orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+        $subCategories = SubCategory::orderBy('name')->get();
+
+        return view('products.edit', compact('product', 'brands', 'categories', 'subCategories'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update master product.
      */
-    public function update(Request $request, Product $product)
+    public function update(Request $request, $id)
     {
+        $product = SupplierProduct::findOrFail($id);
+
         $request->validate([
-            'product_name' => 'required|string|max:255',
-            'parcel_weight' => 'required|integer|min:0',
-            'cod' => 'required|string|in:Y,N',
-            'main_image' => 'required|url',
-            'variations' => 'required|array|min:1',
-            'variations.*.price' => 'required|numeric|min:0',
-            'variations.*.quantity' => 'required|integer|min:0',
+            'item_name' => 'required|string|max:255',
+            'sku' => 'required|string|max:100',
+            'brand' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:255',
+            'sub_category' => 'nullable|string|max:255',
+            'price' => 'nullable|numeric|min:0',
+            'unit' => 'nullable|string|max:50',
         ]);
 
-        $originalName = $product->product_name;
-        $parentData = $request->except(['_token', '_method', 'variations']);
+        $product->update([
+            'item_name' => $request->item_name,
+            'sku' => $request->sku,
+            'brand' => $request->brand,
+            'category' => $request->category,
+            'sub_category' => $request->sub_category,
+            'last_purchase_price' => $request->price ?? $product->last_purchase_price,
+            'unit' => $request->unit ?: $product->unit,
+        ]);
 
-        if (empty($parentData['product_id'])) {
-            $parentData['product_id'] = $product->product_id ?: ('TEMP_' . time() . rand(10, 99));
-        }
-
-        DB::beginTransaction();
-        try {
-            Product::where('product_name', $originalName)->delete();
-
-            foreach ($request->input('variations') as $var) {
-                $skuId = empty($var['sku_id']) ? ('TEMP_SKU_' . time() . rand(100, 999)) : $var['sku_id'];
-
-                Product::create(array_merge($parentData, [
-                    'variation_value' => $var['variation_value'] ?? 'Default',
-                    'price' => floatval($var['price']),
-                    'quantity' => intval($var['quantity']),
-                    'sku_id' => $skuId,
-                    'seller_sku' => $var['seller_sku'] ?? null,
-                ]));
-            }
-
-            DB::commit();
-            return redirect()->route('products.index')->with('success', 'Product and variations updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->withInput()->with('error', 'Error updating product: ' . $e->getMessage());
-        }
+        return redirect()->route('products.index')->with('success', 'Master Produk berhasil diperbarui.');
     }
 
     /**
-     * Remove all variations of this product.
+     * Delete master product and its stock records.
      */
-    public function destroy(Product $product)
+    public function destroy($id)
     {
-        Product::where('product_name', $product->product_name)->delete();
-        return redirect()->route('products.index')->with('success', 'Product and all its variations deleted successfully.');
+        $product = SupplierProduct::findOrFail($id);
+        $product->gudangProducts()->delete();
+        $product->delete();
+
+        return redirect()->route('products.index')->with('success', 'Master Produk dan stoknya berhasil dihapus.');
     }
 
     /**
-     * Import products from uploaded TikTok batch edit Excel template
+     * Import products via Excel.
      */
     public function import(Request $request)
     {
-        $request->validate([
-            'excel_file' => 'required|file|mimes:xlsx,xls',
-        ]);
-
-        $file = $request->file('excel_file');
-        
-        try {
-            $spreadsheet = IOFactory::load($file->getRealPath());
-            $sheet = $spreadsheet->getSheetByName('Template') ?: $spreadsheet->getActiveSheet();
-            
-            $highestRow = $sheet->getHighestRow();
-            $highestColumn = $sheet->getHighestColumn();
-            $colsCount = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
-
-            if ($highestRow < 6) {
-                return redirect()->back()->with('error', 'The Excel sheet is empty or contains no product records starting at row 6.');
-            }
-
-            $headerKeys = [];
-            for ($col = 1; $col <= $colsCount; $col++) {
-                $cellVal = trim((string)$sheet->getCell([$col, 1])->getValue());
-                if ($cellVal !== '') {
-                    $headerKeys[$col] = $cellVal;
-                }
-            }
-
-            $modelMap = Product::getHeaderMap();
-            $importedCount = 0;
-            $updatedCount = 0;
-
-            DB::beginTransaction();
-
-            for ($row = 6; $row <= $highestRow; $row++) {
-                $productData = [];
-                foreach ($headerKeys as $colIndex => $key) {
-                    $cellVal = $sheet->getCell([$colIndex, $row])->getValue();
-                    $cellValString = $cellVal === null ? null : trim((string)$cellVal);
-
-                    if (isset($modelMap[$key])) {
-                        $dbField = $modelMap[$key];
-                        $productData[$dbField] = $cellValString;
-                    }
-                }
-
-                if (empty(array_filter($productData))) {
-                    continue;
-                }
-
-                if (empty($productData['product_name'])) {
-                    continue;
-                }
-
-                $productData['price'] = floatval($productData['price'] ?? 0);
-                $productData['quantity'] = intval($productData['quantity'] ?? 0);
-                $productData['parcel_weight'] = !empty($productData['parcel_weight']) ? intval($productData['parcel_weight']) : null;
-                $productData['parcel_length'] = !empty($productData['parcel_length']) ? intval($productData['parcel_length']) : null;
-                $productData['parcel_width'] = !empty($productData['parcel_width']) ? intval($productData['parcel_width']) : null;
-                $productData['parcel_height'] = !empty($productData['parcel_height']) ? intval($productData['parcel_height']) : null;
-                $productData['minimum_order_quantity'] = !empty($productData['minimum_order_quantity']) ? intval($productData['minimum_order_quantity']) : 1;
-                $productData['pre_order_time'] = !empty($productData['pre_order_time']) ? intval($productData['pre_order_time']) : null;
-                $productData['cod'] = !empty($productData['cod']) ? strtoupper($productData['cod']) : 'Y';
-
-                $existingProduct = null;
-                if (!empty($productData['product_id']) && !empty($productData['sku_id'])) {
-                    $existingProduct = Product::where('product_id', $productData['product_id'])
-                        ->where('sku_id', $productData['sku_id'])
-                        ->first();
-                }
-
-                if (!$existingProduct && !empty($productData['seller_sku'])) {
-                    $existingProduct = Product::where('seller_sku', $productData['seller_sku'])->first();
-                }
-
-                if ($existingProduct) {
-                    $existingProduct->update($productData);
-                    $updatedCount++;
-                } else {
-                    Product::create($productData);
-                    $importedCount++;
-                }
-            }
-
-            DB::commit();
-            return redirect()->route('products.index')->with('success', "Import completed! Imported {$importedCount} variations and updated {$updatedCount} variations.");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('TikTok Product Import Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error reading Excel file: ' . $e->getMessage());
-        }
+        return app(GudangProductController::class)->import($request);
     }
 
     /**
-     * Export products into TikTok batch edit Excel template
+     * Export products to Excel.
      */
     public function export()
     {
-        $templatePath = base_path('Tiktoksellercenter_batchedit_20260520_all_information_template_7.xlsx');
-
-        if (!file_exists($templatePath)) {
-            return redirect()->back()->with('error', 'TikTok Seller Center template Excel file not found in the root directory.');
-        }
-
-        try {
-            $spreadsheet = IOFactory::load($templatePath);
-            $sheet = $spreadsheet->getSheetByName('Template') ?: $spreadsheet->getActiveSheet();
-            
-            $highestColumn = $sheet->getHighestColumn();
-            $colsCount = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
-
-            $headerKeys = [];
-            for ($col = 1; $col <= $colsCount; $col++) {
-                $cellVal = trim((string)$sheet->getCell([$col, 1])->getValue());
-                if ($cellVal !== '') {
-                    $headerKeys[$cellVal] = $col;
-                }
-            }
-
-            $products = Product::all();
-            $modelMap = Product::getHeaderMap();
-            $dbToTikTokMap = array_flip($modelMap);
-
-            $currentRow = 6;
-            foreach ($products as $product) {
-                foreach ($dbToTikTokMap as $dbField => $tikTokKey) {
-                    if (isset($headerKeys[$tikTokKey])) {
-                        $colIndex = $headerKeys[$tikTokKey];
-                        $val = $product->$dbField;
-
-                        if ($dbField === 'price') {
-                            $val = floatval($val);
-                        } elseif (in_array($dbField, ['quantity', 'parcel_weight', 'parcel_length', 'parcel_width', 'parcel_height', 'minimum_order_quantity', 'pre_order_time'])) {
-                            $val = $val !== null ? intval($val) : null;
-                        }
-
-                        $sheet->setCellValue([$colIndex, $currentRow], $val);
-                    }
-                }
-                $currentRow++;
-            }
-
-            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
-            $filename = 'saktindo_produk---' . date('Ymd_His') . '.xlsx';
-            
-            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            header('Content-Disposition: attachment; filename="' . urlencode($filename) . '"');
-            header('Cache-Control: max-age=0');
-
-            $writer->save('php://output');
-            exit;
-        } catch (\Exception $e) {
-            Log::error('TikTok Product Export Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error generating Excel export: ' . $e->getMessage());
-        }
+        return app(GudangProductController::class)->export();
     }
 }
