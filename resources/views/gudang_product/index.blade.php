@@ -110,11 +110,11 @@
                 </div>
 
                 <div>
-                    <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#manualInputModal">
+                    <button type="button" class="btn btn-primary btn-sm me-2" data-toggle="modal" data-target="#manualInputModal" data-bs-toggle="modal" data-bs-target="#manualInputModal">
                         <i class="material-icons-two-tone text-white">add_circle</i>
                         Input Stock
                     </button>
-                    <button type="button" class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importModal">
+                    <button type="button" class="btn btn-outline-success btn-sm me-2" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal">
                         <i class="material-icons-two-tone">publish</i>
                         Import Stok Excel
                     </button>
@@ -225,7 +225,7 @@
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-light py-3">
                 <h5 class="modal-title fw-bold" id="importModalLabel">Import Stok Barang (Excel / CSV)</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ route('gudang-product.import') }}" enctype="multipart/form-data">
                 @csrf
@@ -250,7 +250,7 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success px-4">
                         <i class="feather icon-upload me-1"></i> Upload & Import
                     </button>
@@ -266,7 +266,7 @@
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-light py-3">
                 <h5 class="modal-title fw-bold" id="manualInputModalLabel">Input Stock Barang</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ route('gudang-product.storeManual') }}">
                 @csrf
@@ -389,8 +389,22 @@ $(function () {
         document.getElementById('deleteForm').action =
             this.dataset.productAction;
 
-        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-        modal.show();
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        } else {
+            $('#deleteModal').modal('show');
+        }
+    });
+
+    $(document).on('click', '[data-target="#manualInputModal"], [data-bs-target="#manualInputModal"]', function (e) {
+        e.preventDefault();
+        $('#manualInputModal').modal('show');
+    });
+
+    $(document).on('click', '[data-target="#importModal"], [data-bs-target="#importModal"]', function (e) {
+        e.preventDefault();
+        $('#importModal').modal('show');
     });
 });
 </script>
