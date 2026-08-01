@@ -219,6 +219,8 @@
 
         </div>
     </div>
+</div>
+
 <!-- Modal Import Excel -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -399,12 +401,28 @@ $(function () {
 
     $(document).on('click', '[data-target="#manualInputModal"], [data-bs-target="#manualInputModal"]', function (e) {
         e.preventDefault();
-        $('#manualInputModal').modal('show');
+        const el = document.getElementById('manualInputModal');
+        if (el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+                modal.show();
+            } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $('#manualInputModal').modal('show');
+            }
+        }
     });
 
     $(document).on('click', '[data-target="#importModal"], [data-bs-target="#importModal"]', function (e) {
         e.preventDefault();
-        $('#importModal').modal('show');
+        const el = document.getElementById('importModal');
+        if (el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+                modal.show();
+            } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $('#importModal').modal('show');
+            }
+        }
     });
 });
 </script>
