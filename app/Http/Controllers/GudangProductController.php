@@ -414,14 +414,34 @@ class GudangProductController extends Controller
 
                 if ($qtyVal === '' || $qtyVal === null) {
                     $qtyVal = 0;
-                } elseif (!is_numeric($qtyVal) || intval($qtyVal) < 0) {
-                    $rowErrors[] = "Quantity '{$qtyVal}' harus berupa angka bulat positif.";
+                } else {
+                    $rawStr = trim((string)$qtyVal);
+                    $isNegative = str_contains($rawStr, '-');
+                    $cleanQty = preg_replace('/[^0-9]/', '', $rawStr);
+                    if ($cleanQty === '') {
+                        $rowErrors[] = "Quantity '{$qtyVal}' harus berupa angka bulat positif.";
+                    } else {
+                        $qtyVal = intval($cleanQty) * ($isNegative ? -1 : 1);
+                        if ($qtyVal < 0) {
+                            $rowErrors[] = "Quantity '{$qtyVal}' harus berupa angka bulat positif.";
+                        }
+                    }
                 }
 
                 if ($hargaVal === '' || $hargaVal === null) {
                     $hargaVal = 0;
-                } elseif (!is_numeric($hargaVal) || floatval($hargaVal) < 0) {
-                    $rowErrors[] = "Harga '{$hargaVal}' harus berupa angka positif.";
+                } else {
+                    $rawPriceStr = trim((string)$hargaVal);
+                    $isPriceNegative = str_contains($rawPriceStr, '-');
+                    $cleanPrice = preg_replace('/[^0-9]/', '', $rawPriceStr);
+                    if ($cleanPrice === '') {
+                        $rowErrors[] = "Harga '{$hargaVal}' harus berupa angka positif.";
+                    } else {
+                        $hargaVal = floatval($cleanPrice) * ($isPriceNegative ? -1 : 1);
+                        if ($hargaVal < 0) {
+                            $rowErrors[] = "Harga '{$hargaVal}' harus berupa angka positif.";
+                        }
+                    }
                 }
 
                 if (empty($rakKode) || $rakKode === '-') {
