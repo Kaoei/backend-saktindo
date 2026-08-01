@@ -109,10 +109,16 @@
                     <small class="text-muted">Data barang yang sudah ditempatkan ke rak</small>
                 </div>
 
-                <a href="{{ route('gudang-product.create') }}" class="btn btn-primary btn-sm">
-                    <i class="material-icons-two-tone text-white">add_circle</i>
-                    Simpan Barang ke Rak
-                </a>
+                <div>
+                    <a href="{{ route('gudang-product.importPage') }}" class="btn btn-outline-success btn-sm me-2">
+                        <i class="material-icons-two-tone">publish</i>
+                        Import Stok Excel
+                    </a>
+                    <a href="{{ route('gudang-product.create') }}" class="btn btn-primary btn-sm">
+                        <i class="material-icons-two-tone text-white">add_circle</i>
+                        Simpan Barang ke Rak
+                    </a>
+                </div>
             </div>
 
             <div class="card-body">
