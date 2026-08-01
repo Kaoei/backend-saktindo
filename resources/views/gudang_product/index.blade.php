@@ -112,7 +112,7 @@
                 <div>
                     <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#manualInputModal">
                         <i class="material-icons-two-tone text-white">add_circle</i>
-                        Input Manual
+                        Input Stock
                     </button>
                     <button type="button" class="btn btn-outline-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importModal">
                         <i class="material-icons-two-tone">publish</i>
@@ -265,7 +265,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-light py-3">
-                <h5 class="modal-title fw-bold" id="manualInputModalLabel">Input Stok Barang Secara Manual</h5>
+                <h5 class="modal-title fw-bold" id="manualInputModalLabel">Input Stock Barang</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ route('gudang-product.storeManual') }}">
