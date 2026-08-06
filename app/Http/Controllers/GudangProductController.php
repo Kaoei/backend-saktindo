@@ -201,7 +201,7 @@ class GudangProductController extends Controller
             ->with('status', 'Stok barang berhasil ditambahkan secara manual.');
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $inbounds = InBound::with(['supplier', 'supplierProduct'])
             ->where('status', 'pending')
@@ -209,14 +209,16 @@ class GudangProductController extends Controller
             ->get();
 
         $racks = Rak::orderBy('rak_kode')->get();
+        $selectedInbound = $request->query('inbound_id');
 
-        return view('gudang_product.create', compact('inbounds', 'racks'));
+        return view('gudang_product.create', compact('inbounds', 'racks', 'selectedInbound'));
     }
 
     public function store(Request $request){
         $request->validate([
             'in_bound_id' => 'required|exists:in_bounds,id',
             'rack_id' => 'required|exists:raks,rak_kode',
+            'gudang_type' => 'nullable|in:JS,SJB',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -228,9 +230,16 @@ class GudangProductController extends Controller
                 ->where('rack_id', $request->rack_id)
                 ->first();
 
+            $gudangType = $request->gudang_type;
+            if (!$gudangType) {
+                $rack = Rak::where('rak_kode', $request->rack_id)->first();
+                $gudangType = strtoupper($rack->gudang ?? 'JS');
+            }
+
             if ($existingProduct) {
                 $existingProduct->update([
                     'qty' => $existingProduct->qty + $inBound->qty_received,
+                    'gudang_type' => $gudangType,
                     'status' => 'stored',
                 ]);
             } else {    
@@ -239,6 +248,7 @@ class GudangProductController extends Controller
                     'id' => GudangProduct::generateId($inBound->supplierProduct->sku ?? null),
                     'supplier_product_id' => $inBound->supplier_product_id,
                     'rack_id' => $request->rack_id,
+                    'gudang_type' => $gudangType,
                     'qty' => $inBound->qty_received,
                     'status' => 'stored',
                 ]);

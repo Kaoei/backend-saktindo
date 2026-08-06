@@ -66,6 +66,7 @@
                                                     data-id="{{ $invoice->id }}" 
                                                     data-number="{{ $invoice->invoice_number }}" 
                                                     data-customer="{{ $invoice->salesOrder->customer_name ?? '-' }}"
+                                                    data-due-date="{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '-' }}"
                                                     data-outstanding="{{ $invoice->outstanding_amount }}"
                                                     data-action="{{ route('finance.payment.store', $invoice->id) }}"
                                                     data-toggle="modal"
@@ -88,7 +89,7 @@
                     </table>
                 </div>
                 @if(method_exists($invoices, 'links'))
-                    <div class="p-3">
+                    <div class="d-flex justify-content-end mt-3">
                         {{ $invoices->links() }}
                     </div>
                 @endif
@@ -102,6 +103,8 @@
     <div class="modal-dialog">
         <form id="arPaymentModalForm" action="" method="POST" class="modal-content">
             @csrf
+            <input type="hidden" name="type" value="ar">
+            <input type="hidden" name="id" id="modal-invoice-id" value="">
             <div class="modal-header">
                 <h5 class="modal-title" id="paymentModalLabel">Catat Pelunasan Piutang</h5>
                 <button type="button" class="btn-close close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">&times;</button>
@@ -111,9 +114,15 @@
                     <label class="form-label text-muted mb-0">No. Invoice</label>
                     <input type="text" class="form-control-plaintext fw-bold p-0 text-dark" id="modal-invoice-number" readonly>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted mb-0">Customer</label>
-                    <input type="text" class="form-control-plaintext fw-bold p-0 text-dark" id="modal-customer-name" readonly>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted mb-0">Nama Customer</label>
+                        <input type="text" class="form-control-plaintext fw-bold p-0 text-dark" id="modal-customer-name" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-muted mb-0">Jatuh Tempo</label>
+                        <input type="text" class="form-control-plaintext fw-bold p-0 text-dark" id="modal-due-date" readonly>
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label text-muted mb-0">Sisa Tagihan (Outstanding)</label>
@@ -133,19 +142,19 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Rekening Penerimaan <span class="text-danger">*</span></label>
+                    <label class="form-label">Nama & Nomor Bank / Rekening Penerimaan <span class="text-danger">*</span></label>
                     <select name="receiving_account" class="form-select" required>
-                        <option value="js">JS</option>
-                        <option value="sjb">SJB</option>
+                        <option value="js">JS (BCA / Bank Rekening JS)</option>
+                        <option value="sjb">SJB (Mandiri / Bank Rekening SJB)</option>
                     </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nomor Giro / Referensi Bank</label>
+                    <input type="text" name="reference_number" class="form-control" placeholder="Contoh: No. Giro / No. Transfer Bank">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Jumlah Pembayaran (Rp) <span class="text-danger">*</span></label>
                     <input type="number" name="amount" id="modal-payment-amount" class="form-control" min="0.01" step="0.01" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Nomor Referensi (Opsional)</label>
-                    <input type="text" name="reference_number" class="form-control" placeholder="Contoh: No. transfer / giro">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Catatan (Opsional)</label>
@@ -167,13 +176,17 @@
         $(document).on('click', '.btn-pay', function (e) {
             e.preventDefault();
             const action = $(this).data('action');
+            const id = $(this).data('id');
             const number = $(this).data('number');
             const customer = $(this).data('customer') || '-';
+            const dueDate = $(this).data('due-date') || '-';
             const outstanding = parseFloat($(this).data('outstanding')) || 0;
 
             $('#arPaymentModalForm').attr('action', action);
+            $('#modal-invoice-id').val(id);
             $('#modal-invoice-number').val(number);
             $('#modal-customer-name').val(customer);
+            $('#modal-due-date').val(dueDate);
             $('#modal-invoice-outstanding').val('Rp ' + new Intl.NumberFormat('id-ID').format(outstanding));
             $('#modal-payment-amount').val(outstanding).attr('max', outstanding);
 

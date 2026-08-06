@@ -27,6 +27,8 @@ class SalesOrder extends Model
         'po_date',
         'order_date',
         'sales_type',
+        'toko',
+        'jenis_invoice',
         'order_status',
         'stock_status',
         'warehouse_task_reference',

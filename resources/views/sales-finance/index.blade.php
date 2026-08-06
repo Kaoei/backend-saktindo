@@ -23,7 +23,7 @@
 </div>
 
 @if(auth()->user()?->hasPermission('sales_finance.create'))
-    <form method="POST" action="{{ route('sales-finance.invoice.consolidate') }}" class="card">
+    <form method="POST" action="{{ route('sales-finance.merge') }}" class="card">
         @csrf
         <div class="card-header">
             <h5 class="mb-0">Invoice Gabungan Bulanan</h5>
