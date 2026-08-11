@@ -56,7 +56,7 @@ class RakController extends Controller
             'required',
             'string',
             'max:255',
-            Rule::unique('racks', 'rak_kode')->ignore($rak_kode, 'rak_kode')
+            Rule::unique('raks', 'rak_kode')->ignore($rak_kode, 'rak_kode')
         ],
         'location' => 'required|string|max:255',
     ]);

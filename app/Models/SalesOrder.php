@@ -6,6 +6,7 @@ use App\Traits\HasCustomCode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -20,10 +21,12 @@ class SalesOrder extends Model
 
     protected $fillable = [
         'customer_id',
+        'invoice_id',
         'customer_name',
         'customer_po_number',
         'po_date',
         'order_date',
+        'sales_type',
         'order_status',
         'stock_status',
         'warehouse_task_reference',
@@ -46,13 +49,23 @@ class SalesOrder extends Model
         return $this->belongsTo(Master_customer::class, 'customer_id');
     }
 
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class, 'invoice_id');
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(SalesOrderItem::class);
     }
 
-    public function invoice(): HasOne
+    public function invoices(): BelongsToMany
     {
-        return $this->hasOne(Invoice::class);
+        return $this->belongsToMany(Invoice::class, 'invoice_sales_orders');
+    }
+
+    public function warehouseTask(): HasOne
+    {
+        return $this->hasOne(WarehouseTask::class);
     }
 }

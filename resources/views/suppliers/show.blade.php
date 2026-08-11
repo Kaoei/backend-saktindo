@@ -24,7 +24,7 @@
             </div>
             <div class="card-body">
                 <div class="mb-3">
-                    <div class="text-muted small">Perusahaan</div>
+                    <div class="text-muted small">Nama Brand</div>
                     <div class="fw-semibold">{{ $supplier->company_name ?: '-' }}</div>
                 </div>
                 <div class="mb-3">

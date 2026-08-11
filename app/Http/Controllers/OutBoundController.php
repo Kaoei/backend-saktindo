@@ -76,6 +76,11 @@ class OutBoundController extends Controller
                 ->update([
                     'status' => 'completed',
                 ]);
+
+            $warehouseTask = WarehouseTask::find($request->warehouse_task_id);
+            $warehouseTask?->salesOrder?->update([
+                'order_status' => 'delivered',
+            ]);
         });
 
         return redirect()
@@ -86,7 +91,7 @@ class OutBoundController extends Controller
     public function print(OutBound $outBound)
     {
         $outBound->load([
-            'warehouseTask.invoice',
+            'warehouseTask.invoice.deliveryNote',
             'gudangProduct.supplierProduct',
             'gudangProduct.rack',
         ]);

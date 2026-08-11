@@ -19,31 +19,40 @@ class WarehouseTask extends Model
         'id',
         'sales_order_id',
         'invoice_id',
+        'toko',
+        'task_type',
         'assigned_to',
         'status',
         'note',
+        'is_checked_by_admin',
+        'checked_by_admin_at',
     ];
 
-   public static function generateId()
-{
-    $last = self::withTrashed()
-        ->select('id')
-        ->orderByDesc('id')
-        ->first();
+    protected $casts = [
+        'is_checked_by_admin' => 'boolean',
+        'checked_by_admin_at' => 'datetime',
+    ];
 
-    if (!$last) {
-        return 'WTASK-000001';
+    public static function generateId()
+    {
+        $last = self::withTrashed()
+            ->select('id')
+            ->orderByDesc('id')
+            ->first();
+
+        if (!$last) {
+            return 'WTASK-000001';
+        }
+
+        $number = (int) str_replace('WTASK-', '', $last->id);
+
+        return 'WTASK-' . str_pad(
+            $number + 1,
+            6,
+            '0',
+            STR_PAD_LEFT
+        );
     }
-
-    $number = (int) str_replace('WTASK-', '', $last->id);
-
-    return 'WTASK-' . str_pad(
-        $number + 1,
-        6,
-        '0',
-        STR_PAD_LEFT
-    );
-}
 
     public function salesOrder()
     {

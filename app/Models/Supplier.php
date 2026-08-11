@@ -45,6 +45,31 @@ class Supplier extends Model
         'debt_limit' => 'decimal:2',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function (Supplier $supplier) {
+            static::syncBrand($supplier->company_name);
+        });
+    }
+
+    public static function syncBrand(?string $brandName): ?Brand
+    {
+        $name = trim((string) $brandName);
+        if ($name === '') {
+            return null;
+        }
+
+        $existing = Brand::query()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return Brand::query()->create(['name' => $name]);
+    }
+
     public function contacts(): HasMany
     {
         return $this->hasMany(SupplierContact::class);

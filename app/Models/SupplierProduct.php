@@ -22,6 +22,7 @@ class SupplierProduct extends Model
         'part_number',
         'item_name',
         'category',
+        'sub_category',
         'brand',
         'unit',
         'last_purchase_price',
@@ -36,6 +37,13 @@ class SupplierProduct extends Model
         'minimum_order_qty' => 'integer',
         'lead_time_days' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::saved(function (SupplierProduct $product) {
+            Supplier::syncBrand($product->brand);
+        });
+    }
 
     public function supplier(): BelongsTo
     {

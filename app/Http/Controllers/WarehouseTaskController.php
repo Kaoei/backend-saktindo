@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\WarehouseTask;
 use App\Models\SalesOrder;
 use App\Models\Invoice;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class WarehouseTaskController extends Controller
@@ -37,25 +38,25 @@ class WarehouseTaskController extends Controller
         $invoices = Invoice::whereNotIn('id', $usedInvoiceIds)
             ->latest()
             ->get();
-        return view('warehouse-task.create', compact(
-            'salesOrders',
-            'invoices'
-        ));
+
+        return view('warehouse-task.create', compact('salesOrders', 'invoices'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'invoice_id' => 'required',
+            'invoice_id' => 'required|exists:invoices,id',
             'assigned_to' => 'nullable|string|max:255',
             'note' => 'nullable|string',
         ]);
 
-        $invoice = Invoice::findOrFail($request->invoice_id);
+        // FIX: Karena sales_order_id tidak melekat pada tabel invoice langsung, ambil SO pertama lewat relasi pivot Many-to-Many
+        $invoice = Invoice::with('salesOrders')->findOrFail($request->invoice_id);
+        $firstSalesOrder = $invoice->salesOrders->first();
 
         WarehouseTask::create([
             'id' => WarehouseTask::generateId(),
-            'sales_order_id' => $invoice->sales_order_id,
+            'sales_order_id' => $firstSalesOrder ? $firstSalesOrder->id : null,
             'invoice_id' => $invoice->id,
             'assigned_to' => $request->assigned_to,
             'status' => 'waiting',
@@ -72,11 +73,7 @@ class WarehouseTaskController extends Controller
         $salesOrders = SalesOrder::latest()->get();
         $invoices = Invoice::latest()->get();
 
-        return view('warehouse-task.edit', compact(
-            'warehouseTask',
-            'salesOrders',
-            'invoices'
-        ));
+        return view('warehouse-task.edit', compact('warehouseTask', 'salesOrders', 'invoices'));
     }
 
     public function update(Request $request, WarehouseTask $warehouseTask)
@@ -117,9 +114,7 @@ class WarehouseTaskController extends Controller
             return back()->with('error', 'Task hanya bisa diproses dari status waiting.');
         }
 
-        $warehouseTask->update([
-            'status' => 'process'
-        ]);
+        $warehouseTask->update(['status' => 'process']);
 
         return back()->with('success', 'Warehouse task mulai diproses');
     }
@@ -130,10 +125,38 @@ class WarehouseTaskController extends Controller
             return back()->with('error', 'Task hanya bisa diselesaikan dari status process.');
         }
 
-        $warehouseTask->update([
-            'status' => 'completed'
-        ]);
+        $warehouseTask->update(['status' => 'completed']);
 
         return back()->with('success', 'Warehouse task selesai');
+    }
+
+    public function toggleAdminCheck(WarehouseTask $warehouseTask)
+    {
+        if (auth()->user()?->role !== User::ROLE_SUPER_ADMIN) {
+            return back()->with('error', 'Hanya Super Admin yang berhak menandai pemeriksaan task.');
+        }
+
+        $warehouseTask->update([
+            'is_checked_by_admin' => !$warehouseTask->is_checked_by_admin,
+            'checked_by_admin_at' => !$warehouseTask->is_checked_by_admin ? now() : null,
+        ]);
+
+        $statusMsg = $warehouseTask->is_checked_by_admin ? 'ditandai sudah diperiksa' : 'dibatalkan status pemeriksaannya';
+
+        return back()->with('success', "Warehouse task {$warehouseTask->id} berhasil {$statusMsg}.");
+    }
+
+    public function print(WarehouseTask $warehouseTask)
+    {
+        $warehouseTask->load(['salesOrder.items', 'invoice']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'warehouse-task.print',
+            compact('warehouseTask')
+        );
+
+        return $pdf->download(
+            'TaskChecklist-' . $warehouseTask->id . '.pdf'
+        );
     }
 }

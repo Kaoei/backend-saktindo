@@ -20,5 +20,11 @@ class Rak extends Model
     protected $fillable = [
         'rak_kode',
         'location',
+        'gudang',
+        'is_temporary',
+    ];
+
+    protected $casts = [
+        'is_temporary' => 'boolean',
     ];
 }

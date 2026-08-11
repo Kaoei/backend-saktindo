@@ -94,8 +94,14 @@ class AppServiceProvider extends ServiceProvider
             return asset($defaultPath);
         }
 
-        if (str_starts_with($path, 'branding/')) {
-            return asset('storage/'.$path);
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+            return $path;
+        }
+
+        $cleanPath = ltrim(str_replace('public/', '', $path), '/');
+
+        if (str_starts_with($cleanPath, 'branding/')) {
+            return asset('storage/'.$cleanPath);
         }
 
         return asset($path);

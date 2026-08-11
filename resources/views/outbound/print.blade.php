@@ -67,16 +67,21 @@
             <td><strong>PIC Gudang</strong></td>
             <td>: {{ $outBound->warehouseTask?->assigned_to ?? '-' }}</td>
 
-            <td><strong>Delivery Type</strong></td>
-            <td>: {{ ucfirst($outBound->delivery_type) }}</td>
+            <td><strong>PIC Sales</strong></td>
+            <td>: {{ $outBound->warehouseTask?->invoice?->deliveryNote?->pic_sales ?? '-' }}</td>
         </tr>
 
         <tr>
+            <td><strong>Delivery Type</strong></td>
+            <td>: {{ ucfirst($outBound->delivery_type) }}</td>
+
             <td><strong>Status</strong></td>
             <td>: {{ ucfirst($outBound->status) }}</td>
+        </tr>
 
+        <tr>
             <td><strong>Note</strong></td>
-            <td>: {{ $outBound->note ?? '-' }}</td>
+            <td colspan="3">: {{ $outBound->note ?? '-' }}</td>
         </tr>
     </table>
 

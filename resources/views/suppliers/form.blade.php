@@ -28,7 +28,7 @@
                     <h6 class="mb-3">Identitas Vendor</h6>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Nama Supplier <span class="text-danger">*</span></label>
+                            <label class="form-label">Nama Perusahaan <span class="text-danger">*</span></label>
                             <input name="name" type="text" class="form-control" value="{{ old('name', $supplier->name) }}" required>
                         </div>
                         <div class="col-md-3 mb-3">
@@ -44,7 +44,7 @@
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Nama Perusahaan</label>
+                            <label class="form-label">Nama Brand</label>
                             <input name="company_name" type="text" class="form-control" value="{{ old('company_name', $supplier->company_name) }}">
                         </div>
                         <div class="col-md-3 mb-3">
