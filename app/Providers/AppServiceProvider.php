@@ -23,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Pagination\Paginator::useBootstrapFive();
+
         $defaultPrimaryColor = '#751204';
         $defaultSidebarLogo = 'src/img/gapuraWhite.png';
         $defaultLoginLogo = 'src/img/gapuraIcon.png';

@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/feather.css') }}">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/fontawesome.css') }}">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/material.css') }}">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons|Material+Icons+Two+Tone">
 <link rel="stylesheet" href="{{ asset($themeBase.'/css/style.css') }}" id="main-style-link">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
@@ -78,6 +79,24 @@
 
     .pc-sidebar * {
         --bs-primary: var(--brand-primary) !important;
+    }
+
+    /* Pagination SVG Icon Restraints */
+    .pagination svg,
+    nav[aria-label*="Pagination"] svg,
+    nav svg {
+        width: 1rem !important;
+        height: 1rem !important;
+        max-width: 1rem !important;
+        max-height: 1rem !important;
+        display: inline-block !important;
+        vertical-align: middle !important;
+    }
+    .pagination .page-link {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0.375rem 0.75rem !important;
     }
 </style>
 

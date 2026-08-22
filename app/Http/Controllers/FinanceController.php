@@ -93,6 +93,17 @@ class FinanceController extends Controller
             $request->merge(['payment_method' => $request->input('method')]);
         }
 
+        if (!$request->has('id') && $invoiceId = $request->route('invoice')) {
+            $request->merge([
+                'id' => is_object($invoiceId) ? $invoiceId->id : $invoiceId,
+                'type' => 'ar'
+            ]);
+        }
+
+        if (!$request->has('type') && $request->has('id')) {
+            $request->merge(['type' => 'ar']);
+        }
+
         $request->validate([
             'type' => 'required|in:ar,ap',
             'id' => 'required',
@@ -100,6 +111,11 @@ class FinanceController extends Controller
             'payment_date' => 'required|date',
             'payment_method' => 'required|string',
             'receiving_account' => 'required_if:type,ar|nullable|in:js,sjb',
+            'bank_name' => 'nullable|string|max:255',
+            'giro_number' => 'nullable|string|max:255',
+            'giro_due_date' => 'nullable|date',
+            'giro_status' => 'nullable|in:pending,cleared,rejected',
+            'reference_number' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
 
@@ -142,7 +158,12 @@ class FinanceController extends Controller
                     'payment_date' => $request->payment_date,
                     'method' => $method,
                     'receiving_account' => $request->receiving_account,
+                    'bank_name' => $method === 'giro' ? $request->bank_name : null,
+                    'giro_number' => $method === 'giro' ? ($request->giro_number ?: $request->reference_number) : null,
+                    'giro_due_date' => $method === 'giro' ? $request->giro_due_date : null,
+                    'giro_status' => $method === 'giro' ? ($request->giro_status ?: 'pending') : null,
                     'amount' => $amount,
+                    'reference_number' => $request->reference_number ?: ($method === 'giro' ? $request->giro_number : null),
                     'notes' => $request->notes,
                 ]);
 

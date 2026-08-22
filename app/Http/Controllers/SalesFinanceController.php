@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\GudangProduct;
 use App\Models\Master_customer;
+use App\Models\ProformaInvoice;
 use App\Models\SalesOrder;
 use App\Models\SupplierProduct;
 use App\Models\WarehouseTask;
@@ -205,6 +206,134 @@ class SalesFinanceController extends Controller
         return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Invoice berhasil digenerate.');
     }
 
+    public function preOrders(Request $request)
+    {
+        $query = SalesOrder::query()
+            ->where(function ($q) {
+                $q->where('is_pre_order', true)
+                  ->orWhere('order_status', 'pending_stock');
+            })
+            ->with(['customer', 'proformaInvoice', 'items', 'invoice']);
+
+        if ($request->filled('dp_status')) {
+            $query->where('dp_status', $request->dp_status);
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('customer_name', 'like', "%{$search}%")
+                  ->orWhere('customer_po_number', 'like', "%{$search}%")
+                  ->orWhere('id', 'like', "%{$search}%");
+            });
+        }
+
+        $preOrders = $query->latest('order_date')->paginate(15);
+        $customers = Master_customer::orderBy('nama_customer')->get(['id', 'nama_customer']);
+
+        $allPreOrders = SalesOrder::query()
+            ->where(function ($q) {
+                $q->where('is_pre_order', true)
+                  ->orWhere('order_status', 'pending_stock');
+            })->get();
+
+        $totalPreOrders = $allPreOrders->count();
+        $totalPendingDp = $allPreOrders->where('dp_status', '!=', 'paid')->count();
+        $totalDpCollected = $allPreOrders->sum('dp_paid');
+        $upcomingEtaCount = $allPreOrders->filter(function ($so) {
+            return $so->pre_order_eta && $so->pre_order_eta->isBetween(now(), now()->addDays(7));
+        })->count();
+
+        return view('sales-finance.pre-orders', compact(
+            'preOrders',
+            'customers',
+            'totalPreOrders',
+            'totalPendingDp',
+            'totalDpCollected',
+            'upcomingEtaCount'
+        ));
+    }
+
+    public function generateProformaInvoice(Request $request, SalesOrder $salesOrder): RedirectResponse
+    {
+        $subtotal = (float) $salesOrder->subtotal;
+        $taxAmount = (float) ($salesOrder->tax_amount ?? 0);
+        $grandTotal = (float) ($salesOrder->grand_total ?? ($subtotal + $taxAmount));
+
+        $pi = ProformaInvoice::updateOrCreate(
+            ['sales_order_id' => $salesOrder->id],
+            [
+                'pi_number' => $salesOrder->proformaInvoice?->pi_number ?? 'PI-' . now()->format('Ymd') . '-' . random_int(100, 999),
+                'pi_date' => now(),
+                'status' => $salesOrder->dp_status === 'paid' ? 'paid' : ($salesOrder->dp_paid > 0 ? 'partial' : 'draft'),
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'grand_total' => $grandTotal,
+            ]
+        );
+
+        ActivityLogger::log('create', 'proforma_invoice', $pi);
+
+        return back()->with('status', 'Proforma Invoice (' . $pi->pi_number . ') berhasil digenerate.');
+    }
+
+    public function printProformaInvoice(SalesOrder $salesOrder)
+    {
+        $salesOrder->load(['proformaInvoice', 'items', 'customer']);
+
+        if (!$salesOrder->proformaInvoice) {
+            $subtotal = (float) $salesOrder->subtotal;
+            $taxAmount = (float) ($salesOrder->tax_amount ?? 0);
+            $grandTotal = (float) ($salesOrder->grand_total ?? ($subtotal + $taxAmount));
+
+            ProformaInvoice::create([
+                'sales_order_id' => $salesOrder->id,
+                'pi_number' => 'PI-' . now()->format('Ymd') . '-' . random_int(100, 999),
+                'pi_date' => now(),
+                'status' => $salesOrder->dp_status === 'paid' ? 'paid' : ($salesOrder->dp_paid > 0 ? 'partial' : 'draft'),
+                'subtotal' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'grand_total' => $grandTotal,
+            ]);
+
+            $salesOrder->load('proformaInvoice');
+        }
+
+        return view('proforma-invoice.print', compact('salesOrder'));
+    }
+
+    public function recordDpPayment(Request $request, SalesOrder $salesOrder): RedirectResponse
+    {
+        $request->validate([
+            'dp_paid_amount' => 'required|numeric|min:1',
+            'payment_date' => 'required|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        $amount = (float) $request->dp_paid_amount;
+        $newDpPaid = (float) $salesOrder->dp_paid + $amount;
+        $targetDp = (float) ($salesOrder->dp_amount > 0 ? $salesOrder->dp_amount : $salesOrder->grand_total);
+        $status = $newDpPaid >= $targetDp ? 'paid' : 'partial';
+
+        $salesOrder->update([
+            'dp_paid' => $newDpPaid,
+            'dp_status' => $status,
+            'pre_order_notes' => trim(($salesOrder->pre_order_notes ?? '') . "\nDP diterima: Rp " . number_format($amount, 0, ',', '.') . " pada " . date('d M Y', strtotime($request->payment_date)) . ($request->notes ? ' (' . $request->notes . ')' : '')),
+        ]);
+
+        if ($salesOrder->proformaInvoice) {
+            $salesOrder->proformaInvoice->update(['status' => $status]);
+        }
+
+        ActivityLogger::log('dp_payment', 'sales_order', $salesOrder, ['amount' => $amount]);
+
+        return back()->with('status', 'Pembayaran DP sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil dicatat.');
+    }
+
     public function mergeInvoices(Request $request): RedirectResponse
     {
         $request->validate([
@@ -323,9 +452,20 @@ class SalesFinanceController extends Controller
             'method' => ['required', 'in:cash,transfer_bank,qris,giro'],
             'receiving_account' => ['required', 'in:js,sjb'],
             'amount' => ['required', 'numeric', 'min:1', 'max:' . max(1, (float) $invoice->outstanding_amount)],
+            'bank_name' => ['nullable', 'string', 'max:255'],
+            'giro_number' => ['nullable', 'string', 'max:255'],
+            'giro_due_date' => ['nullable', 'date'],
+            'giro_status' => ['nullable', 'in:pending,cleared,rejected'],
             'reference_number' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        if ($data['method'] === 'giro' && empty($data['giro_status'])) {
+            $data['giro_status'] = 'pending';
+        }
+        if ($data['method'] === 'giro' && !empty($data['giro_number']) && empty($data['reference_number'])) {
+            $data['reference_number'] = $data['giro_number'];
+        }
 
         $payment = DB::transaction(function () use ($data, $invoice) {
             $payment = InvoicePayment::query()->create(array_merge($data, [
@@ -356,7 +496,7 @@ class SalesFinanceController extends Controller
 
     private function validatedOrder(Request $request, ?SalesOrder $order = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'customer_id' => ['nullable', 'exists:master_customers,id'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_po_number' => ['required', 'string', 'max:100', Rule::unique('sales_orders', 'customer_po_number')->ignore($order?->id)],
@@ -364,6 +504,10 @@ class SalesFinanceController extends Controller
             'order_date' => ['required', 'date'],
             'sales_type' => ['nullable', 'in:js,sjb'],
             'order_status' => ['required', 'in:draft,stock_check,ready_to_invoice,pending_stock,invoiced,delivered,completed,cancelled'],
+            'is_pre_order' => ['nullable'],
+            'pre_order_eta' => ['nullable', 'date'],
+            'dp_amount' => ['nullable', 'numeric', 'min:0'],
+            'pre_order_notes' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_code' => ['required', 'exists:supplier_products,id'],
@@ -376,6 +520,13 @@ class SalesFinanceController extends Controller
             'items.*.discount_3' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.discount_4' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
+
+        $data['is_pre_order'] = $request->boolean('is_pre_order');
+        $data['pre_order_eta'] = $request->input('pre_order_eta') ?: null;
+        $data['dp_amount'] = (float) ($request->input('dp_amount') ?? 0);
+        $data['pre_order_notes'] = $request->input('pre_order_notes') ?: null;
+
+        return $data;
     }
 
     private function calculateOrderTotals(array $data, array $items): array
@@ -445,20 +596,40 @@ class SalesFinanceController extends Controller
     {
         return SupplierProduct::query()
             ->where('status', 'active')
+            ->with(['gudangProducts.rack'])
             ->orderBy('item_name')
             ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price'])
             ->map(function ($product) {
-                // Find first gudang product to get custom price and discount
-                $gProduct = GudangProduct::where('supplier_product_id', $product->id)
-                    ->where('qty', '>', 0)
-                    ->orderBy('id', 'desc')
-                    ->first();
-
-                if (!$gProduct) {
-                    $gProduct = GudangProduct::where('supplier_product_id', $product->id)
-                        ->orderBy('id', 'desc')
-                        ->first();
+                $gProducts = $product->gudangProducts;
+                
+                $availableStock = $gProducts->sum('qty');
+                $locations = [];
+                
+                foreach ($gProducts as $gp) {
+                    if ($gp->qty > 0) {
+                        $gType = strtoupper($gp->gudang_type ?: 'JS');
+                        $rakKode = $gp->rack->rak_kode ?? $gp->rack_id ?? '-';
+                        $unitStr = $product->unit ?: 'pcs';
+                        $locations[] = "{$gType}: {$rakKode} ({$gp->qty} {$unitStr})";
+                    }
                 }
+
+                if (empty($locations)) {
+                    $firstGp = $gProducts->first();
+                    if ($firstGp) {
+                        $gType = strtoupper($firstGp->gudang_type ?: 'JS');
+                        $rakKode = $firstGp->rack->rak_kode ?? $firstGp->rack_id ?? '-';
+                        $unitStr = $product->unit ?: 'pcs';
+                        $locations[] = "{$gType}: {$rakKode} (0 {$unitStr})";
+                    } else {
+                        $locations[] = "- Belum di Rak -";
+                    }
+                }
+
+                $product->available_stock = $availableStock;
+                $product->warehouse_location = implode(' | ', $locations);
+
+                $gProduct = $gProducts->firstWhere('qty', '>', 0) ?? $gProducts->first();
 
                 $product->custom_price = $gProduct && floatval($gProduct->price) > 0 ? floatval($gProduct->price) : floatval($product->last_purchase_price);
                 $product->discount_percent = $gProduct ? floatval($gProduct->discount) : 0;

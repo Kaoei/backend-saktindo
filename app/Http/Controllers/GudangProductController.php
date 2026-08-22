@@ -679,6 +679,7 @@ class GudangProductController extends Controller
                         'brand' => $brandName ?: null,
                         'category' => $categoryName ?: null,
                         'sub_category' => $subCategoryName ?: null,
+                        'last_purchase_price' => $data['price'] > 0 ? $data['price'] : 0,
                         'unit' => 'pcs',
                         'status' => 'active'
                     ]);
@@ -693,6 +694,9 @@ class GudangProductController extends Controller
                     }
                     if (!empty($subCategoryName)) {
                         $updateData['sub_category'] = $subCategoryName;
+                    }
+                    if ($data['price'] > 0 && (float)$supplierProduct->last_purchase_price === 0.0) {
+                        $updateData['last_purchase_price'] = $data['price'];
                     }
                     if (!empty($updateData)) {
                         $supplierProduct->update($updateData);

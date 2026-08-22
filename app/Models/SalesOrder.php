@@ -30,6 +30,12 @@ class SalesOrder extends Model
         'toko',
         'jenis_invoice',
         'order_status',
+        'is_pre_order',
+        'pre_order_eta',
+        'dp_amount',
+        'dp_paid',
+        'dp_status',
+        'pre_order_notes',
         'stock_status',
         'warehouse_task_reference',
         'notes',
@@ -41,10 +47,19 @@ class SalesOrder extends Model
     protected $casts = [
         'po_date' => 'date',
         'order_date' => 'date',
+        'pre_order_eta' => 'date',
+        'is_pre_order' => 'boolean',
+        'dp_amount' => 'decimal:2',
+        'dp_paid' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',
     ];
+
+    public function proformaInvoice(): HasOne
+    {
+        return $this->hasOne(ProformaInvoice::class);
+    }
 
     public function customer(): BelongsTo
     {

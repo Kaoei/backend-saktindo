@@ -82,10 +82,10 @@
                         <thead>
                             <tr>
                                 <th>No Payment</th>
-                                <th>Tanggal</th>
+                                <th>Tanggal Bayar</th>
                                 <th>Metode</th>
+                                <th>Detail Pembayaran / Giro</th>
                                 <th>Rekening</th>
-                                <th>Referensi</th>
                                 <th class="text-end">Nominal</th>
                             </tr>
                         </thead>
@@ -93,19 +93,38 @@
                         <tbody>
                             @forelse($invoice->payments as $payment)
                                 <tr>
-                                    <td>{{ $payment->payment_number }}</td>
+                                    <td class="fw-semibold">{{ $payment->payment_number }}</td>
 
                                     <td>
                                         {{ \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') }}
                                     </td>
 
-                                    <td>{{ ucfirst(str_replace('_', ' ', $payment->method)) }}</td>
+                                    <td>
+                                        <span class="badge bg-light-primary text-primary">{{ ucfirst(str_replace('_', ' ', $payment->method)) }}</span>
+                                    </td>
+
+                                    <td>
+                                        @if($payment->method === 'giro')
+                                            <div><strong>Bank:</strong> {{ $payment->bank_name ?? '-' }}</div>
+                                            <div><small class="text-muted">No. Giro:</small> {{ $payment->giro_number ?? $payment->reference_number ?? '-' }}</div>
+                                            <div><small class="text-muted">Jatuh Tempo:</small> {{ $payment->giro_due_date ? \Carbon\Carbon::parse($payment->giro_due_date)->format('d M Y') : '-' }}</div>
+                                            <div class="mt-1">
+                                                @if($payment->giro_status === 'cleared')
+                                                    <span class="badge bg-success">Cair</span>
+                                                @elseif($payment->giro_status === 'rejected')
+                                                    <span class="badge bg-danger">Ditolak</span>
+                                                @else
+                                                    <span class="badge bg-warning text-dark">Pending (Belum Cair)</span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <span class="text-muted">{{ $payment->reference_number ?: '-' }}</span>
+                                        @endif
+                                    </td>
 
                                     <td>{{ strtoupper($payment->receiving_account) }}</td>
 
-                                    <td>{{ $payment->reference_number ?? '-' }}</td>
-
-                                    <td class="text-end">
+                                    <td class="text-end fw-bold text-success">
                                         Rp {{ number_format($payment->amount, 0, ',', '.') }}
                                     </td>
                                 </tr>

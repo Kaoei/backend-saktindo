@@ -23,6 +23,10 @@ class InvoicePayment extends Model
         'payment_date',
         'method',
         'receiving_account',
+        'bank_name',
+        'giro_number',
+        'giro_due_date',
+        'giro_status',
         'amount',
         'reference_number',
         'notes',
@@ -30,6 +34,7 @@ class InvoicePayment extends Model
 
     protected $casts = [
         'payment_date' => 'date',
+        'giro_due_date' => 'date',
         'amount' => 'decimal:2',
     ];
 

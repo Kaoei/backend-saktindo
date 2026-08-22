@@ -78,4 +78,78 @@ class NotulenBugFixesTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Customer Test');
     }
+
+    public function test_user_can_create_manual_inbound_with_multiple_products(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_SUPER_ADMIN,
+        ]);
+
+        $supplier = Supplier::create([
+            'name' => 'Supplier Multi Inbound',
+            'status' => 'active',
+        ]);
+
+        $product1 = SupplierProduct::create([
+            'supplier_id' => $supplier->id,
+            'sku' => 'SKU-INB-001',
+            'item_name' => 'Lampu LED 15W',
+            'last_purchase_price' => 45000,
+            'status' => 'active',
+        ]);
+
+        $product2 = SupplierProduct::create([
+            'supplier_id' => $supplier->id,
+            'sku' => 'SKU-INB-002',
+            'item_name' => 'Kabel TF 2x1.5',
+            'last_purchase_price' => 120000,
+            'status' => 'active',
+        ]);
+
+        $invoiceNum = 'INV-INB-' . uniqid();
+        $response = $this->actingAs($user)
+            ->post(route('inbound.store'), [
+                'supplier_id' => $supplier->id,
+                'invoice_number' => $invoiceNum,
+                'received_date' => now()->toDateString(),
+                'items' => [
+                    [
+                        'supplier_product_id' => $product1->id,
+                        'qty_received' => 20,
+                        'qty_damaged' => 1,
+                        'qty_missing' => 0,
+                        'hpp' => 45000,
+                        'notes' => '1 unit dus penyok',
+                    ],
+                    [
+                        'supplier_product_id' => $product2->id,
+                        'qty_received' => 10,
+                        'qty_damaged' => 0,
+                        'qty_missing' => 0,
+                        'hpp' => 120000,
+                        'notes' => 'Kondisi baik',
+                    ],
+                ],
+            ]);
+
+        $response->assertRedirect(route('inbound.index'));
+
+        $this->assertDatabaseHas('in_bounds', [
+            'supplier_id' => $supplier->id,
+            'supplier_product_id' => $product1->id,
+            'invoice_number' => $invoiceNum,
+            'qty_received' => 20,
+            'qty_damaged' => 1,
+            'hpp' => 45000,
+        ]);
+
+        $this->assertDatabaseHas('in_bounds', [
+            'supplier_id' => $supplier->id,
+            'supplier_product_id' => $product2->id,
+            'invoice_number' => $invoiceNum,
+            'qty_received' => 10,
+            'qty_damaged' => 0,
+            'hpp' => 120000,
+        ]);
+    }
 }

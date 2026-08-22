@@ -100,6 +100,7 @@
                                 <th>Nama Barang</th>
                                 <th>Brand</th>
                                 <th>Kategori</th>
+                                <th>Varian</th>
                                 <th>Harga Unit</th>
                                 <th>Total Stok Gudang</th>
                                 <th>Rak Penyimpanan</th>
@@ -110,6 +111,9 @@
                             @forelse($products as $product)
                                 @php
                                     $totalQty = $product->gudangProducts->sum('qty');
+                                    $effectivePrice = (float)$product->last_purchase_price > 0 
+                                        ? (float)$product->last_purchase_price 
+                                        : (float)($product->gudangProducts->max('price') ?? 0);
                                 @endphp
                                 <tr>
                                     <td>
@@ -125,13 +129,17 @@
                                         <span class="badge bg-light-primary text-primary">{{ $product->brand ?: '-' }}</span>
                                     </td>
                                     <td>
-                                        <div class="small fw-semibold">{{ $product->category ?: '-' }}</div>
+                                        <span class="fw-semibold text-dark small">{{ $product->category ?: '-' }}</span>
+                                    </td>
+                                    <td>
                                         @if($product->sub_category)
-                                            <small class="text-muted">{{ $product->sub_category }}</small>
+                                            <span class="badge bg-light-info text-info fw-semibold px-2 py-1">{{ $product->sub_category }}</span>
+                                        @else
+                                            <span class="text-muted small">-</span>
                                         @endif
                                     </td>
                                     <td class="fw-bold text-success">
-                                        Rp {{ number_format($product->last_purchase_price, 0, ',', '.') }}
+                                        Rp {{ number_format($effectivePrice, 0, ',', '.') }}
                                     </td>
                                     <td>
                                         @if($totalQty > 20)
@@ -164,7 +172,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="text-center py-5 text-muted">
+                                    <td colspan="9" class="text-center py-5 text-muted">
                                         <i class="feather icon-box f-40 d-block mb-3 text-muted"></i>
                                         <h6 class="fw-semibold text-dark mb-1">Belum ada data Master Produk.</h6>
                                         <div class="mt-2 small">
@@ -182,7 +190,7 @@
                         Menampilkan {{ $products->firstItem() ?? 0 }} sampai {{ $products->lastItem() ?? 0 }} dari {{ $products->total() }} total barang
                     </small>
                     <div>
-                        {{ $products->links() }}
+                        {{ $products->links('pagination::bootstrap-5') }}
                     </div>
                 </div>
             </div>

@@ -94,8 +94,18 @@
                                 @endphp
                                 <tr>
                                     <td>
-                                        {{ $item->product_name }}
-                                        <div class="small text-muted">{{ $item->product_code ?: '-' }}</div>
+                                        <div class="fw-bold text-dark">{{ $item->product_name }}</div>
+                                        <div class="small text-muted">
+                                            SKU: <code>{{ $item->product_code ?: '-' }}</code>
+                                            @php
+                                                $gpLocs = \App\Models\GudangProduct::with('rack')->where('supplier_product_id', $item->product_code)->where('qty', '>', 0)->get();
+                                            @endphp
+                                            @if($gpLocs->count() > 0)
+                                                <span class="badge bg-light-info text-info ms-1">
+                                                    <i class="feather icon-map-pin me-1"></i>{{ $gpLocs->map(fn($gp) => strtoupper($gp->gudang_type ?: 'JS').' : '.($gp->rack->rak_kode ?? $gp->rack_id ?? '-'))->implode(', ') }}
+                                                </span>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td class="text-end">{{ number_format((float) $item->quantity, 2, ',', '.') }} {{ $item->unit }}</td>
                                     <td class="text-end">{{ number_format((float) $item->delivered_qty, 2, ',', '.') }}</td>
@@ -118,6 +128,100 @@
             </div>
         </div>
 
+        @if($order->is_pre_order || $order->order_status === 'pending_stock')
+            <div class="card border-primary mb-3">
+                <div class="card-header bg-light-primary d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <i class="feather icon-clock text-primary fs-4 me-2"></i>
+                        <div>
+                            <h6 class="mb-0 fw-bold text-primary">Informasi Pre-Order (Indent)</h6>
+                            <small class="text-muted">Pesanan ini dalam status indent / pre-order pengadaan barang.</small>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        @if($order->proformaInvoice)
+                            <a href="{{ route('sales-finance.proforma.print', $order) }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="feather icon-printer me-1"></i> Cetak Proforma (PI)
+                            </a>
+                        @else
+                            <form method="POST" action="{{ route('sales-finance.proforma.generate', $order) }}">
+                                @csrf
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="feather icon-file-text me-1"></i> Buat Proforma Invoice
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-3">
+                            <div class="text-muted small">Estimasi Tiba (ETA)</div>
+                            <div class="fw-bold fs-6 {{ $order->pre_order_eta ? 'text-primary' : 'text-muted' }}">
+                                {{ $order->pre_order_eta ? optional($order->pre_order_eta)->format('d M Y') : '-' }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small">Target DP</div>
+                            <div class="fw-bold text-dark fs-6">
+                                Rp {{ number_format((float) ($order->dp_amount > 0 ? $order->dp_amount : $order->grand_total), 0, ',', '.') }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small">DP Terbayar</div>
+                            <div class="fw-bold text-success fs-6">
+                                Rp {{ number_format((float) $order->dp_paid, 0, ',', '.') }}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small">Status DP</div>
+                            <div>
+                                @if($order->dp_status === 'paid')
+                                    <span class="badge bg-success">Lunas</span>
+                                @elseif($order->dp_status === 'partial')
+                                    <span class="badge bg-info">Sebagian</span>
+                                @else
+                                    <span class="badge bg-warning text-dark">Belum Bayar DP</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($order->pre_order_notes)
+                        <div class="mt-3 p-2 bg-light rounded small text-muted">
+                            <strong>Catatan Pre-Order:</strong> {{ $order->pre_order_notes }}
+                        </div>
+                    @endif
+
+                    <!-- Form Catat Pembayaran DP -->
+                    @if($order->dp_status !== 'paid')
+                        <hr class="my-3">
+                        <form method="POST" action="{{ route('sales-finance.dp-payment.store', $order) }}" class="row g-2 align-items-end">
+                            @csrf
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold">Nominal Bayar DP (Rp)</label>
+                                @php($remainingDp = max(0, ((float)($order->dp_amount > 0 ? $order->dp_amount : $order->grand_total)) - (float)$order->dp_paid))
+                                <input type="number" step="0.01" min="1" name="dp_paid_amount" class="form-control form-control-sm" value="{{ $remainingDp }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Tanggal Bayar</label>
+                                <input type="date" name="payment_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold">Catatan / Bukti Bayar</label>
+                                <input type="text" name="notes" class="form-control form-control-sm" placeholder="Contoh: Transfer BCA">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-success btn-sm w-100">
+                                    <i class="feather icon-check me-1"></i> Simpan DP
+                                </button>
+                            </div>
+                        </form>
+                    @endif
+                </div>
+            </div>
+        @endif
+
         @if($invoice)
             <div class="card">
                 <div class="card-header d-flex align-items-center justify-content-between">
@@ -137,19 +241,37 @@
 
                     <h6>Riwayat Pembayaran</h6>
                     <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead><tr><th>No.</th><th>Tanggal</th><th>Metode</th><th>Rekening</th><th class="text-end">Nominal</th></tr></thead>
+                        <table class="table table-sm align-middle">
+                            <thead><tr><th>No.</th><th>Tanggal</th><th>Metode</th><th>Detail Pembayaran / Giro</th><th>Rekening</th><th class="text-end">Nominal</th></tr></thead>
                             <tbody>
                                 @forelse($invoice->payments as $payment)
                                     <tr>
                                         <td>{{ $payment->payment_number }}</td>
                                         <td>{{ optional($payment->payment_date)->format('d M Y') }}</td>
-                                        <td>{{ str_replace('_', ' ', strtoupper($payment->method)) }}</td>
+                                        <td><span class="badge bg-light-primary text-primary">{{ str_replace('_', ' ', strtoupper($payment->method)) }}</span></td>
+                                        <td>
+                                            @if($payment->method === 'giro')
+                                                <div><strong>Bank:</strong> {{ $payment->bank_name ?? '-' }}</div>
+                                                <div><small class="text-muted">No. Giro:</small> {{ $payment->giro_number ?? $payment->reference_number ?? '-' }}</div>
+                                                <div><small class="text-muted">Jatuh Tempo:</small> {{ $payment->giro_due_date ? optional($payment->giro_due_date)->format('d M Y') : '-' }}</div>
+                                                <div class="mt-1">
+                                                    @if($payment->giro_status === 'cleared')
+                                                        <span class="badge bg-success">Cair</span>
+                                                    @elseif($payment->giro_status === 'rejected')
+                                                        <span class="badge bg-danger">Ditolak</span>
+                                                    @else
+                                                        <span class="badge bg-warning text-dark">Pending</span>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-muted">{{ $payment->reference_number ?: '-' }}</span>
+                                            @endif
+                                        </td>
                                         <td>{{ strtoupper($payment->receiving_account) }}</td>
-                                        <td class="text-end">Rp {{ number_format((float) $payment->amount, 0, ',', '.') }}</td>
+                                        <td class="text-end fw-bold text-success">Rp {{ number_format((float) $payment->amount, 0, ',', '.') }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted">Belum ada pembayaran.</td></tr>
+                                    <tr><td colspan="6" class="text-center text-muted">Belum ada pembayaran.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -248,24 +370,28 @@
 
                 <div class="card-header"><h5 class="mb-0">Surat Jalan</h5></div>
                 <div class="card-body">
-                    <div class="alert alert-light">Buat Surat Jalan baru untuk pengiriman normal maupun bertahap.</div>
-                    <div class="mb-3">
-                        <label class="form-label">Tanggal Kirim</label>
-                        <input type="date" name="delivery_date" class="form-control" value="{{ old('delivery_date', now()->toDateString()) }}" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal Kirim</label>
+                            <input type="date" name="delivery_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select" required>
+                                <option value="draft">Draft</option>
+                                <option value="process">Process</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select">
-                            @foreach(['draft', 'process', 'delivered', 'cancelled'] as $status)
-                                <option value="{{ $status }}" @selected($status === 'delivered')>{{ ucfirst($status) }}</option>
-                            @endforeach
-                        </select>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label class="form-label">PIC Sales</label><input type="text" name="pic_sales" class="form-control" value="{{ auth()->user()?->name }}"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">PIC Gudang</label><input type="text" name="pic_gudang" class="form-control"></div>
                     </div>
-                    <div class="mb-3"><label class="form-label">PIC Sales</label><input type="text" name="pic_sales" class="form-control"></div>
-                    <div class="mb-3"><label class="form-label">PIC Gudang</label><input type="text" name="pic_gudang" class="form-control"></div>
                     <div class="table-responsive mb-3">
                         <table class="table table-sm">
-                            <thead><tr><th>Produk</th><th class="text-end">Sisa</th><th class="text-end">Qty Kirim</th></tr></thead>
+                            <thead><tr><th>Item Pesanan</th><th class="text-end">Sisa Qty Kirim</th><th class="text-end">Qty Dikirim Ini</th></tr></thead>
                             <tbody>
                                 @foreach($invoiceItems as $index => $item)
                                     @php($remainingQty = max(0, (float) $item->quantity - (float) $item->delivered_qty))
@@ -281,13 +407,10 @@
                             </tbody>
                         </table>
                     </div>
-
-                    <!-- PERBAIKAN UTAMA: Tambah field textarea notes -->
                     <div class="mb-3">
                         <label class="form-label">Catatan (Notes)</label>
                         <textarea name="notes" class="form-control" rows="2">{{ old('notes') }}</textarea>
                     </div>
-
                     <button type="submit" class="btn btn-primary w-100">Simpan Surat Jalan</button>
                 </div>
             </form>
@@ -354,13 +477,42 @@
                         <div class="mb-3"><label class="form-label">Tanggal Bayar</label><input type="date" name="payment_date" class="form-control" value="{{ now()->toDateString() }}" required></div>
                         <div class="mb-3">
                             <label class="form-label">Metode</label>
-                            <select name="method" class="form-select">
+                            <select name="method" id="so-payment-method" class="form-select">
                                 <option value="cash">Cash</option>
                                 <option value="transfer_bank">Transfer Bank</option>
                                 <option value="qris">QRIS</option>
                                 <option value="giro">Giro</option>
                             </select>
                         </div>
+
+                        <!-- Giro Detail Section for SO Show -->
+                        <div id="so-giro-fields" class="card bg-light border p-3 mb-3" style="display: none;">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="feather icon-credit-card text-primary me-2"></i>
+                                <h6 class="mb-0 fw-bold text-primary">Detail Warkat Giro</h6>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Nama Bank <span class="text-danger">*</span></label>
+                                <input type="text" name="bank_name" id="so-giro-bank" class="form-control form-control-sm" placeholder="Contoh: BCA / Mandiri / BRI">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">No. Bilyet Giro <span class="text-danger">*</span></label>
+                                <input type="text" name="giro_number" id="so-giro-number" class="form-control form-control-sm" placeholder="Nomor Bilyet Giro">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Tgl Jatuh Tempo Giro <span class="text-danger">*</span></label>
+                                <input type="date" name="giro_due_date" id="so-giro-due-date" class="form-control form-control-sm" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Status Giro <span class="text-danger">*</span></label>
+                                <select name="giro_status" id="so-giro-status" class="form-select form-select-sm">
+                                    <option value="pending">Pending (Menunggu Jatuh Tempo)</option>
+                                    <option value="cleared">Cleared (Langsung Cair)</option>
+                                    <option value="rejected">Rejected (Ditolak)</option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label">Rekening Penerimaan</label>
                             <select name="receiving_account" class="form-select">
@@ -369,7 +521,7 @@
                             </select>
                         </div>
                         <div class="mb-3"><label class="form-label">Nominal</label><input type="number" step="0.01" min="1" max="{{ $invoice->outstanding_amount }}" name="amount" class="form-control" value="{{ $invoice->outstanding_amount }}" required></div>
-                        <div class="mb-3"><label class="form-label">Referensi</label><input type="text" name="reference_number" class="form-control"></div>
+                        <div class="mb-3"><label class="form-label">Referensi</label><input type="text" name="reference_number" class="form-control" placeholder="Contoh: No. transfer / bukti setor"></div>
                         <button type="submit" class="btn btn-success w-100">Simpan Pembayaran</button>
                     </div>
                 </form>
@@ -378,3 +530,19 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+$(function() {
+    $('#so-payment-method').on('change', function() {
+        if ($(this).val() === 'giro') {
+            $('#so-giro-fields').slideDown(200);
+            $('#so-giro-bank, #so-giro-number, #so-giro-due-date').prop('required', true);
+        } else {
+            $('#so-giro-fields').slideUp(200);
+            $('#so-giro-bank, #so-giro-number, #so-giro-due-date').prop('required', false);
+        }
+    });
+});
+</script>
+@endpush

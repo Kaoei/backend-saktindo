@@ -146,83 +146,39 @@
                         </div>
                     </div>
 
-                    <!-- Container for Single Item Manual Input (Only visible when NO PO selected) -->
-                    <div id="single-item-container" class="card border-0 bg-light p-3 mb-4">
-                        <h6 class="fw-bold mb-3 text-dark">
-                            <i class="material-icons-two-tone text-primary me-1">edit_note</i>
-                            Detail Barang Masuk
-                        </h6>
-                        
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">
-                                    Produk Supplier <span class="text-danger">*</span>
-                                </label>
-                                <select name="supplier_product_id" id="single-product-select" class="form-select bg-white">
-                                    <option value="">Pilih Produk</option>
-                                    @foreach($supplierProducts as $product)
-                                        <option value="{{ $product->id }}" data-price="{{ $product->last_purchase_price }}">
-                                            {{ $product->sku }} - {{ $product->item_name }}
-                                        </option>
-                                    @endforeach
-                                </select>
+                    <!-- Container for Multi-Item Manual Input (Only visible when NO PO selected) -->
+                    <div id="manual-items-container" class="card border-0 bg-light p-3 mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h6 class="fw-bold mb-1 text-dark">
+                                    <i class="material-icons-two-tone text-primary me-1">edit_note</i>
+                                    Detail Barang Masuk
+                                </h6>
+                                <small class="text-muted">Masukkan 1 atau lebih produk barang yang diterima dari supplier.</small>
                             </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-semibold">
-                                    HPP Unit (Harga Pokok Penjualan)
-                                </label>
-                                <input type="number"
-                                       name="hpp"
-                                       id="single-hpp-input"
-                                       class="form-control bg-white"
-                                       min="0"
-                                       step="0.01"
-                                       value="{{ old('hpp', 0) }}">
-                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="add-manual-row">
+                                <i class="feather icon-plus me-1"></i>
+                                Tambah Baris Barang
+                            </button>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold text-success">
-                                    Qty Baik / Diterima <span class="text-danger">*</span>
-                                </label>
-                                <input type="number"
-                                       name="qty_received"
-                                       id="single-qty-received"
-                                       class="form-control bg-white"
-                                       min="0"
-                                       value="{{ old('qty_received', 1) }}">
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold text-warning">
-                                    Qty Reject / Rusak
-                                </label>
-                                <input type="number"
-                                       name="qty_damaged"
-                                       class="form-control bg-white"
-                                       min="0"
-                                       value="{{ old('qty_damaged', 0) }}">
-                            </div>
-
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label fw-semibold text-danger">
-                                    Qty Tidak Ada / Kurang
-                                </label>
-                                <input type="number"
-                                       name="qty_missing"
-                                       class="form-control bg-white"
-                                       min="0"
-                                       value="{{ old('qty_missing', 0) }}">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-12">
-                                <label class="form-label fw-semibold">Catatan Kondisi Barang</label>
-                                <textarea name="notes" class="form-control bg-white" rows="2" placeholder="Catatan kondisi barang..."></textarea>
-                            </div>
+                        <div class="table-responsive border rounded bg-white mb-2 shadow-sm">
+                            <table class="table table-hover align-middle mb-0" id="manual-items-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="min-width: 260px;">Produk Supplier <span class="text-danger">*</span></th>
+                                        <th style="width: 120px;">Qty Baik <span class="text-danger">*</span></th>
+                                        <th style="width: 120px;">Qty Reject</th>
+                                        <th style="width: 120px;">Qty Kurang</th>
+                                        <th style="width: 140px;">HPP Unit (Rp)</th>
+                                        <th style="min-width: 180px;">Catatan Kondisi</th>
+                                        <th class="text-center" style="width: 50px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="manual-items-body">
+                                    <!-- Dynamic manual rows from JS -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -251,6 +207,7 @@
 <script>
     $(document).ready(function() {
         const supplierPosData = @json($supplierPos);
+        const supplierProductsData = @json($supplierProducts);
 
         const $poSelect = $('#po-select');
         const $supplierSelect = $('#supplier-select');
@@ -258,14 +215,78 @@
         const $poItemsBody = $('#po-items-body');
         const $poItemsCount = $('#po-items-count');
         const $checkAllItems = $('#check-all-items');
-        const $singleItemContainer = $('#single-item-container');
-        const $singleProductSelect = $('#single-product-select');
-        const $singleQtyReceived = $('#single-qty-received');
-        const $singleHppInput = $('#single-hpp-input');
+        const $manualItemsContainer = $('#manual-items-container');
+        const $manualItemsBody = $('#manual-items-body');
+        const $addManualRowBtn = $('#add-manual-row');
+        let manualRowIndex = 0;
 
         // Force Select2 dropdown to open downwards (below)
         $(document).on('select2:open', function(e) {
             $('.select2-dropdown').removeClass('select2-dropdown--above').addClass('select2-dropdown--below');
+        });
+
+        function addManualRow(data = {}) {
+            let optionsHtml = '<option value="">Pilih Produk</option>';
+            supplierProductsData.forEach(p => {
+                const selected = (data.supplier_product_id && String(p.id) === String(data.supplier_product_id)) ? 'selected' : '';
+                const skuText = p.sku ? ` (${p.sku})` : '';
+                const nameEsc = String(p.item_name || '').replace(/"/g, '&quot;');
+                optionsHtml += `<option value="${p.id}" data-price="${p.last_purchase_price || 0}" ${selected}>${nameEsc}${skuText}</option>`;
+            });
+
+            const index = manualRowIndex++;
+            const trHtml = `
+                <tr class="manual-row">
+                    <td>
+                        <select name="items[${index}][supplier_product_id]" class="form-select form-select-sm manual-product-select" required>
+                            ${optionsHtml}
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" name="items[${index}][qty_received]" class="form-control form-control-sm qty-received-input" min="0" value="${data.qty_received || 1}" required>
+                    </td>
+                    <td>
+                        <input type="number" name="items[${index}][qty_damaged]" class="form-control form-control-sm" min="0" value="${data.qty_damaged || 0}">
+                    </td>
+                    <td>
+                        <input type="number" name="items[${index}][qty_missing]" class="form-control form-control-sm" min="0" value="${data.qty_missing || 0}">
+                    </td>
+                    <td>
+                        <input type="number" name="items[${index}][hpp]" class="form-control form-control-sm manual-hpp-input" min="0" step="0.01" value="${data.hpp || 0}">
+                    </td>
+                    <td>
+                        <input type="text" name="items[${index}][notes]" class="form-control form-control-sm" placeholder="Catatan kondisi..." value="${data.notes || ''}">
+                    </td>
+                    <td class="text-center align-middle">
+                        <button type="button" class="btn btn-sm btn-outline-danger p-1 remove-manual-row" title="Hapus Baris">
+                            <i class="feather icon-trash-2"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+
+            const $tr = $(trHtml);
+
+            $tr.find('.manual-product-select').on('change', function() {
+                const price = $(this).find('option:selected').attr('data-price') || 0;
+                $tr.find('.manual-hpp-input').val(price);
+            });
+
+            $tr.find('.remove-manual-row').on('click', function() {
+                if ($manualItemsBody.find('.manual-row').length > 1) {
+                    $tr.remove();
+                } else {
+                    $tr.find('input').val('');
+                    $tr.find('.qty-received-input').val(1);
+                    $tr.find('.manual-product-select').val('').trigger('change');
+                }
+            });
+
+            $manualItemsBody.append($tr);
+        }
+
+        $addManualRowBtn.on('click', function() {
+            addManualRow();
         });
 
         function toggleMode() {
@@ -279,22 +300,20 @@
                         $supplierSelect.val(selectedPo.supplier_id).trigger('change.select2');
                     }
 
-                    $singleItemContainer.addClass('d-none').hide();
+                    $manualItemsContainer.addClass('d-none').hide();
                     $poItemsContainer.removeClass('d-none').show();
                     renderPoItems(selectedPo.items || []);
-
-                    $singleProductSelect.prop('required', false);
-                    $singleQtyReceived.prop('required', false);
                     return;
                 }
             }
 
             $poItemsContainer.addClass('d-none').hide();
-            $singleItemContainer.removeClass('d-none').show();
+            $manualItemsContainer.removeClass('d-none').show();
             $poItemsBody.empty();
 
-            $singleProductSelect.prop('required', true);
-            $singleQtyReceived.prop('required', true);
+            if ($manualItemsBody.find('.manual-row').length === 0) {
+                addManualRow();
+            }
         }
 
         function updateCheckCount() {
@@ -446,13 +465,6 @@
         });
 
         $poSelect.on('change select2:select', toggleMode);
-
-        $singleProductSelect.on('change select2:select', function() {
-            const selectedOpt = $(this).find('option:selected');
-            if (selectedOpt.length && selectedOpt.attr('data-price')) {
-                $singleHppInput.val(selectedOpt.attr('data-price'));
-            }
-        });
 
         toggleMode();
     });

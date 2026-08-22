@@ -207,13 +207,44 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
-                    <select name="method" class="form-select" required>
+                    <select name="method" id="modal-payment-method" class="form-select" required>
                         <option value="transfer_bank">Transfer Bank</option>
                         <option value="cash">Tunai / Cash</option>
                         <option value="qris">QRIS</option>
                         <option value="giro">Giro / Cheque</option>
                     </select>
                 </div>
+
+                <!-- Detail Giro Container (Tampil hanya jika metode Giro) -->
+                <div id="modal-giro-fields" class="card bg-light border p-3 mb-3" style="display: none;">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="feather icon-credit-card text-primary me-2"></i>
+                        <h6 class="mb-0 fw-bold text-primary">Detail Warkat Giro</h6>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small fw-semibold">Nama Bank <span class="text-danger">*</span></label>
+                            <input type="text" name="bank_name" id="modal-giro-bank" class="form-control form-control-sm" placeholder="Contoh: BCA / Mandiri / BRI">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small fw-semibold">No. Bilyet Giro <span class="text-danger">*</span></label>
+                            <input type="text" name="giro_number" id="modal-giro-number" class="form-control form-control-sm" placeholder="Nomor Bilyet Giro">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small fw-semibold">Tgl Jatuh Tempo Giro <span class="text-danger">*</span></label>
+                            <input type="date" name="giro_due_date" id="modal-giro-due-date" class="form-control form-control-sm" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <label class="form-label small fw-semibold">Status Giro <span class="text-danger">*</span></label>
+                            <select name="giro_status" id="modal-giro-status" class="form-select form-select-sm">
+                                <option value="pending">Pending (Menunggu Jatuh Tempo)</option>
+                                <option value="cleared">Cleared (Langsung Cair)</option>
+                                <option value="rejected">Rejected (Ditolak)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label">Rekening Penerimaan <span class="text-danger">*</span></label>
                     <select name="receiving_account" class="form-select" required>
@@ -227,7 +258,7 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Nomor Referensi (Opsional)</label>
-                    <input type="text" name="reference_number" class="form-control" placeholder="Contoh: No. transfer / giro">
+                    <input type="text" name="reference_number" class="form-control" placeholder="Contoh: No. transfer / bukti setor">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Catatan (Opsional)</label>
@@ -263,6 +294,18 @@ $(function () {
         ]
     });
 
+    function toggleGiroFields() {
+        if ($('#modal-payment-method').val() === 'giro') {
+            $('#modal-giro-fields').slideDown(200);
+            $('#modal-giro-bank, #modal-giro-number, #modal-giro-due-date').prop('required', true);
+        } else {
+            $('#modal-giro-fields').slideUp(200);
+            $('#modal-giro-bank, #modal-giro-number, #modal-giro-due-date').prop('required', false);
+        }
+    }
+
+    $('#modal-payment-method').on('change', toggleGiroFields);
+
     $(document).on('click', '.btn-pay', function (e) {
         e.preventDefault();
         const action = $(this).data('action');
@@ -275,6 +318,9 @@ $(function () {
         $('#modal-customer-name').val(customer);
         $('#modal-invoice-outstanding-display').val('Rp ' + new Intl.NumberFormat('id-ID').format(outstanding));
         $('#modal-payment-amount').val(outstanding).attr('max', outstanding);
+
+        $('#modal-payment-method').val('transfer_bank');
+        toggleGiroFields();
 
         if (typeof $.fn.modal !== 'undefined') {
             $('#paymentModal').modal('show');

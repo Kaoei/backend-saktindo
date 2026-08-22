@@ -127,18 +127,24 @@
                                  </span>
                              </a>
                              <ul class="pc-submenu">
-                                 <li class="pc-item">
-                                     <a href="{{ route('sales-finance.index') }}" class="pc-link">
-                                         <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
-                                         <span class="pc-mtext">Order & Invoice</span>
-                                     </a>
-                                 </li>
-                                 <li class="pc-item">
-                                     <a href="{{ route('returs.index') }}" class="pc-link">
-                                         <span class="pc-micon"><i class="material-icons-two-tone">assignment_return</i></span>
-                                         <span class="pc-mtext">Retur Barang</span>
-                                     </a>
-                                 </li>
+                                  <li class="pc-item">
+                                      <a href="{{ route('sales-finance.index') }}" class="pc-link">
+                                          <span class="pc-micon"><i class="material-icons-two-tone">receipt_long</i></span>
+                                          <span class="pc-mtext">Order & Invoice</span>
+                                      </a>
+                                  </li>
+                                  <li class="pc-item">
+                                      <a href="{{ route('sales-finance.pre-orders.index') }}" class="pc-link">
+                                          <span class="pc-micon"><i class="material-icons-two-tone">schedule</i></span>
+                                          <span class="pc-mtext">Pre-Order (Indent)</span>
+                                      </a>
+                                  </li>
+                                  <li class="pc-item">
+                                      <a href="{{ route('returs.index') }}" class="pc-link">
+                                          <span class="pc-micon"><i class="material-icons-two-tone">assignment_return</i></span>
+                                          <span class="pc-mtext">Retur Barang</span>
+                                      </a>
+                                  </li>
                                  <li class="pc-item">
                                      <a href="{{ route('internal-invoices.index') }}" class="pc-link">
                                          <span class="pc-micon"><i class="material-icons-two-tone">swap_horiz</i></span>
@@ -248,7 +254,7 @@
 
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">
-                                <span class="pc-micon"><i class="material-icons-two-tone">inventory_2</i></span>
+                                <span class="pc-micon"><i class="material-icons-two-tone">widgets</i></span>
                                 <span class="pc-mtext">Master Barang</span>
                                 <span class="pc-arrow">
                                     <i class="material-icons-two-tone text-white">chevron_right</i>
@@ -298,7 +304,7 @@
 
                     @if(auth()->user()?->hasPermission('users.view') || auth()->user()?->hasPermission('roles.manage') || auth()->user()?->hasPermission('activity_logs.view') || auth()->user()?->hasPermission('sessions.manage'))
                         <li class="pc-item pc-caption">
-                            <label><i class="material-icons-two-tone me-1" style="font-size: 16px;">manage_accounts</i>Management</label>
+                            <label>Management</label>
                         </li>
                         <li class="pc-item pc-hasmenu">
                             <a href="javascript:void(0);" class="pc-link">

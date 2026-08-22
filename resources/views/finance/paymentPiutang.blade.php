@@ -43,16 +43,51 @@
                     <div class="mb-3">
                         <label class="form-label">Metode Pembayaran</label>
                         <select name="method"
-                                class="form-select @error('method') is-invalid @enderror">
+                                id="payment-method-select"
+                                class="form-select @error('method') is-invalid @enderror" required>
                             <option value="">Pilih Metode</option>
                             <option value="cash" {{ old('method') == 'cash' ? 'selected' : '' }}>Cash</option>
-                            <option value="transfer_bank" {{ old('method') == 'transfer_bank' ? 'selected' : '' }}>Transfer Bank</option>
+                            <option value="transfer_bank" {{ old('method', 'transfer_bank') == 'transfer_bank' ? 'selected' : '' }}>Transfer Bank</option>
                             <option value="qris" {{ old('method') == 'qris' ? 'selected' : '' }}>QRIS</option>
                             <option value="giro" {{ old('method') == 'giro' ? 'selected' : '' }}>Giro</option>
                         </select>
                         @error('method')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+                    </div>
+
+                    <!-- Detail Giro Section -->
+                    <div id="giro-detail-box" class="card bg-light border p-3 mb-3" style="display: {{ old('method') == 'giro' ? 'block' : 'none' }};">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="feather icon-credit-card text-primary me-2"></i>
+                            <h6 class="mb-0 fw-bold text-primary">Detail Warkat Giro</h6>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label small fw-semibold">Nama Bank <span class="text-danger">*</span></label>
+                                <input type="text" name="bank_name" id="giro-bank" class="form-control @error('bank_name') is-invalid @enderror" value="{{ old('bank_name') }}" placeholder="Contoh: BCA / Mandiri / BRI">
+                                @error('bank_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label small fw-semibold">No. Bilyet Giro <span class="text-danger">*</span></label>
+                                <input type="text" name="giro_number" id="giro-number" class="form-control @error('giro_number') is-invalid @enderror" value="{{ old('giro_number') }}" placeholder="Nomor Bilyet Giro">
+                                @error('giro_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label small fw-semibold">Tgl Jatuh Tempo Giro <span class="text-danger">*</span></label>
+                                <input type="date" name="giro_due_date" id="giro-due-date" class="form-control @error('giro_due_date') is-invalid @enderror" value="{{ old('giro_due_date', date('Y-m-d', strtotime('+30 days'))) }}">
+                                @error('giro_due_date') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label small fw-semibold">Status Giro <span class="text-danger">*</span></label>
+                                <select name="giro_status" id="giro-status" class="form-select @error('giro_status') is-invalid @enderror">
+                                    <option value="pending" {{ old('giro_status', 'pending') == 'pending' ? 'selected' : '' }}>Pending (Menunggu Jatuh Tempo)</option>
+                                    <option value="cleared" {{ old('giro_status') == 'cleared' ? 'selected' : '' }}>Cleared (Langsung Cair)</option>
+                                    <option value="rejected" {{ old('giro_status') == 'rejected' ? 'selected' : '' }}>Rejected (Ditolak)</option>
+                                </select>
+                                @error('giro_status') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -92,7 +127,7 @@
                                name="reference_number"
                                class="form-control @error('reference_number') is-invalid @enderror"
                                value="{{ old('reference_number') }}"
-                               placeholder="Contoh: No transfer / giro">
+                               placeholder="Contoh: No transfer / bukti setor">
                         @error('reference_number')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -112,7 +147,7 @@
                 </div>
 
                 <div class="card-footer text-end">
-                    <a href="{{ route('finance.show', $invoice->id) }}"
+                    <a href="{{ route('finance.showPiutang', $invoice->id) }}"
                        class="btn btn-secondary">
                         Batal
                     </a>
@@ -208,6 +243,22 @@
 
     </div>
 
-</div>
-
 @endsection
+
+@push('scripts')
+<script>
+$(function() {
+    function toggleGiro() {
+        if ($('#payment-method-select').val() === 'giro') {
+            $('#giro-detail-box').slideDown(200);
+            $('#giro-bank, #giro-number, #giro-due-date').prop('required', true);
+        } else {
+            $('#giro-detail-box').slideUp(200);
+            $('#giro-bank, #giro-number, #giro-due-date').prop('required', false);
+        }
+    }
+
+    $('#payment-method-select').on('change', toggleGiro);
+});
+</script>
+@endpush

@@ -7,6 +7,50 @@
 
 @push('styles')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+<style>
+    .dataTables_wrapper .dataTables_filter {
+        margin-bottom: 1.25rem;
+        text-align: right;
+    }
+    .dataTables_wrapper .dataTables_filter label {
+        font-weight: 500;
+        color: #495057;
+    }
+    .dataTables_wrapper .dataTables_filter input {
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        padding: 6px 14px;
+        margin-left: 8px;
+        font-size: 0.9rem;
+        outline: none;
+        transition: all 0.2s ease-in-out;
+        min-width: 250px;
+    }
+    .dataTables_wrapper .dataTables_filter input:focus {
+        border-color: #4680ff;
+        box-shadow: 0 0 0 0.2rem rgba(70, 128, 255, 0.15);
+    }
+    .dataTables_wrapper .dataTables_length {
+        margin-bottom: 1.25rem;
+        font-weight: 500;
+        color: #495057;
+    }
+    .dataTables_wrapper .dataTables_length select {
+        border: 1px solid #dbe2ea;
+        border-radius: 8px;
+        padding: 5px 10px;
+        margin: 0 6px;
+        outline: none;
+    }
+    .dataTables_wrapper .dataTables_info {
+        padding-top: 1rem;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    .dataTables_wrapper .dataTables_paginate {
+        padding-top: 1rem;
+    }
+</style>
 @endpush
 
 @section('content')
@@ -168,10 +212,16 @@
                                         </span>
                                     </td>
                                     <td class="text-end">
+                                        <a href="{{ route('gudang-product.edit', $product->id) }}"
+                                           class="text-success me-2"
+                                           title="Edit Stok & Rak">
+                                            <i class="feather icon-edit f-18"></i>
+                                        </a>
                                         <button type="button"
                                                 class="btn p-0 border-0 bg-transparent text-danger btn-delete-product"
                                                 data-product-name="{{ $product->id }}"
-                                                data-product-action="{{ route('gudang-product.destroy', $product->id) }}">
+                                                data-product-action="{{ route('gudang-product.destroy', $product->id) }}"
+                                                title="Hapus">
                                             <i class="feather icon-trash-2 f-18"></i>
                                         </button>
                                     </td>
@@ -373,7 +423,21 @@
 $(function () {
     $('#gudang-product-table').DataTable({
         pageLength: 25,
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
         language: {
+            search: "Cari Produk:",
+            searchPlaceholder: "Ketik nama barang, SKU, brand, rak...",
+            lengthMenu: "Tampilkan _MENU_ data",
+            zeroRecords: "Data produk gudang tidak ditemukan.",
+            info: "Menampilkan _START_ - _END_ dari _TOTAL_ produk",
+            infoEmpty: "Menampilkan 0 - 0 dari 0 produk",
+            infoFiltered: "(disaring dari _MAX_ total produk)",
+            paginate: {
+                first: "Pertama",
+                last: "Terakhir",
+                next: "▶",
+                previous: "◀"
+            },
             emptyTable: 'Belum ada produk gudang.'
         },
         columnDefs: [
@@ -422,6 +486,9 @@ $(function () {
             } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
                 $('#importModal').modal('show');
             }
+        }
+    });
+
     $(document).on('click', '[data-dismiss="modal"], [data-bs-dismiss="modal"]', function (e) {
         e.preventDefault();
         const modalEl = $(this).closest('.modal');

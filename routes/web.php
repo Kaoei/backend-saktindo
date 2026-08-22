@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('sales-finance')->name('sales-finance.')->group(function () {
+        Route::get('/pre-orders', [SalesFinanceController::class, 'preOrders'])->middleware('permission:sales_finance.view')->name('pre-orders.index');
         Route::get('/', [SalesFinanceController::class, 'index'])->middleware('permission:sales_finance.view')->name('index');
         Route::get('/create', [SalesFinanceController::class, 'create'])->middleware('permission:sales_finance.create')->name('create');
         Route::post('/', [SalesFinanceController::class, 'store'])->middleware('permission:sales_finance.create')->name('store');
@@ -125,6 +126,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
         Route::post('/{salesOrder}/proforma-invoice', [SalesFinanceController::class, 'generateProformaInvoice'])->middleware('permission:sales_finance.create')->name('proforma.generate');
         Route::get('/{salesOrder}/proforma-invoice/print', [SalesFinanceController::class, 'printProformaInvoice'])->middleware('permission:sales_finance.view')->name('proforma.print');
+        Route::post('/{salesOrder}/dp-payment', [SalesFinanceController::class, 'recordDpPayment'])->middleware('permission:sales_finance.create')->name('dp-payment.store');
     });
 
     Route::post('/sales-finance/merge', [SalesFinanceController::class, 'mergeInvoices'])->name('sales-finance.merge');
