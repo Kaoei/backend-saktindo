@@ -139,6 +139,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/receivables/{invoice}/payment', [FinanceController::class, 'paymentForm'])->name('payment.form');
         Route::get('/ap', [FinanceController::class, 'ap'])->name('ap');
         Route::post('/payment/{invoice?}', [FinanceController::class, 'storePayment'])->name('payment.store');
+        Route::post('/invoices/{invoice}/send-email', [FinanceController::class, 'sendInvoiceEmail'])->name('invoices.send-email');
         Route::get('/report', [FinanceController::class, 'report'])->name('report');
     });
 
@@ -152,6 +153,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/invoices/{invoice}/payments', [SalesFinanceController::class, 'storePayment'])
         ->middleware('permission:sales_finance.create')
         ->name('invoices.payments.store');
+
+    Route::patch('/invoices/{invoice}/check-faktur', [SalesFinanceController::class, 'checkFaktur'])
+        ->middleware('permission:sales_finance.edit')
+        ->name('invoices.check-faktur');
+
+    Route::post('/invoices/{invoice}/send-email', [FinanceController::class, 'sendInvoiceEmail'])
+        ->name('invoices.send-email.global');
 
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])
         ->middleware('permission:activity_logs.view')
@@ -205,6 +213,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{inbound}/edit', [InBoundController::class, 'edit'])->name('edit');
         Route::put('/{inbound}', [InBoundController::class, 'update'])->name('update');
         Route::patch('/{inbound}/cancel', [InBoundController::class, 'cancel'])->name('cancel');
+        Route::get('/{inbound}/print', [InBoundController::class, 'printInbound'])->name('print');
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {

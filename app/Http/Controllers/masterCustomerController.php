@@ -33,9 +33,9 @@ class masterCustomerController extends Controller
     $request->validate([
         'nama_customer' => 'required',
         'nama_pic' => 'required',
-        'nomor_hp' => 'required',
-        'alamat' => 'required',
-        'kota' => 'required',
+        'nomor_hp' => 'nullable',
+        'alamat' => 'nullable',
+        'kota' => 'nullable',
     ]);
 
     $lastCustomer = Master_customer::latest()->first();
@@ -100,9 +100,9 @@ class masterCustomerController extends Controller
         $request->validate([
             'nama_customer' => 'required',
             'nama_pic' => 'required',
-            'nomor_hp' => 'required',
-            'alamat' => 'required',
-            'kota' => 'required',
+            'nomor_hp' => 'nullable',
+            'alamat' => 'nullable',
+            'kota' => 'nullable',
         ]);
 
         $customer->update($request->all());

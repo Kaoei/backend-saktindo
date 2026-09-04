@@ -20,6 +20,7 @@ class SupplierPO extends Model
         'id',
         'supplier_id',
         'po_number',
+        'reference_number',
         'order_date',
         'total_amount',
         'status',

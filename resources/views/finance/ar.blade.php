@@ -61,23 +61,34 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        @if($invoice->status !== 'paid' && $invoice->outstanding_amount > 0)
-                                            <button type="button" class="btn btn-sm btn-success btn-pay text-white" 
-                                                    data-id="{{ $invoice->id }}" 
-                                                    data-number="{{ $invoice->invoice_number }}" 
-                                                    data-customer="{{ $invoice->salesOrder->customer_name ?? '-' }}"
-                                                    data-due-date="{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '-' }}"
-                                                    data-outstanding="{{ $invoice->outstanding_amount }}"
-                                                    data-action="{{ route('finance.payment.store', $invoice->id) }}"
-                                                    data-toggle="modal"
-                                                    data-target="#paymentModal"
-                                                    data-bs-toggle="modal" 
-                                                    data-bs-target="#paymentModal">
-                                                Pelunasan
-                                            </button>
-                                        @else
-                                            <button class="btn btn-sm btn-outline-secondary" disabled>Lunas</button>
-                                        @endif
+                                        <div class="d-flex justify-content-center gap-1">
+                                            @if($invoice->status !== 'paid' && $invoice->outstanding_amount > 0)
+                                                <button type="button" class="btn btn-sm btn-success btn-pay text-white" 
+                                                        data-id="{{ $invoice->id }}" 
+                                                        data-number="{{ $invoice->invoice_number }}" 
+                                                        data-customer="{{ $invoice->salesOrder->customer_name ?? '-' }}"
+                                                        data-due-date="{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '-' }}"
+                                                        data-outstanding="{{ $invoice->outstanding_amount }}"
+                                                        data-action="{{ route('finance.payment.store', $invoice->id) }}"
+                                                        data-toggle="modal"
+                                                        data-target="#paymentModal"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#paymentModal">
+                                                    Pelunasan
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary btn-send-ar-email"
+                                                        data-id="{{ $invoice->id }}"
+                                                        data-number="{{ $invoice->invoice_number }}"
+                                                        data-customer="{{ $invoice->salesOrder->customer_name ?? '-' }}"
+                                                        data-email="{{ $invoice->salesOrder?->customer?->email ?? '' }}"
+                                                        data-action="{{ route('finance.invoices.send-email', $invoice->id) }}"
+                                                        title="Kirim Tagihan by Email">
+                                                    <i class="feather icon-mail"></i> Email
+                                                </button>
+                                            @else
+                                                <button class="btn btn-sm btn-outline-secondary" disabled>Lunas</button>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -199,6 +210,45 @@
         </form>
     </div>
 </div>
+<!-- Modal Kirim Email Tagihan AR -->
+<div class="modal fade" id="sendInvoiceEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" id="formSendInvoiceEmail" action="">
+                @csrf
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-white fw-bold"><i class="feather icon-mail me-1"></i> Kirim Ulang Tagihan by Email</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">No. Invoice</label>
+                        <input type="text" class="form-control" id="emailModalInvoiceNumber" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Customer</label>
+                        <input type="text" class="form-control" id="emailModalCustomerName" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email Tujuan <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control" id="emailModalRecipient" placeholder="contoh: finance@perusahaan.com" required>
+                        <small class="text-muted">Tagihan invoice dan rekening pembayaran akan dikirim ke email ini.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Pesan Tambahan (Opsional)</label>
+                        <textarea name="message" class="form-control" rows="3" placeholder="Pesan khusus untuk client"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="feather icon-send me-1"></i> Kirim Email Tagihan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -240,6 +290,25 @@
                 $('#paymentModal').modal('show');
             } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
                 new bootstrap.Modal(document.getElementById('paymentModal')).show();
+            }
+        });
+
+        $(document).on('click', '.btn-send-ar-email', function (e) {
+            e.preventDefault();
+            const number = $(this).data('number');
+            const customer = $(this).data('customer') || '-';
+            const email = $(this).data('email') || '';
+            const action = $(this).data('action');
+
+            $('#emailModalInvoiceNumber').val(number);
+            $('#emailModalCustomerName').val(customer);
+            $('#emailModalRecipient').val(email);
+            $('#formSendInvoiceEmail').attr('action', action);
+
+            if (typeof $.fn.modal !== 'undefined') {
+                $('#sendInvoiceEmailModal').modal('show');
+            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                new bootstrap.Modal(document.getElementById('sendInvoiceEmailModal')).show();
             }
         });
     });

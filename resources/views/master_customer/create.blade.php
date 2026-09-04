@@ -56,8 +56,8 @@
                     <div class="row">
 
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Nomor HP <span class="text-danger">*</span></label>
-                            <input type="text" name="nomor_hp" class="form-control @error('nomor_hp') is-invalid @enderror" value="{{ old('nomor_hp') }}" placeholder="08xxxxxxxxxx" required>
+                            <label class="form-label">Nomor HP</label>
+                            <input type="text" name="nomor_hp" class="form-control @error('nomor_hp') is-invalid @enderror" value="{{ old('nomor_hp') }}" placeholder="08xxxxxxxxxx">
                             @error('nomor_hp') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 
@@ -70,16 +70,16 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Alamat <span class="text-danger">*</span></label>
-                        <textarea name="alamat" rows="4" class="form-control @error('alamat') is-invalid @enderror" placeholder="Masukkan alamat customer" required>{{ old('alamat') }}</textarea>
+                        <label class="form-label">Alamat</label>
+                        <textarea name="alamat" rows="4" class="form-control @error('alamat') is-invalid @enderror" placeholder="Masukkan alamat customer">{{ old('alamat') }}</textarea>
                         @error('alamat') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="row">
 
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Kota <span class="text-danger">*</span></label>
-                            <input type="text" name="kota" class="form-control @error('kota') is-invalid @enderror" value="{{ old('kota') }}" placeholder="Jakarta" required>
+                            <label class="form-label">Kota</label>
+                            <input type="text" name="kota" class="form-control @error('kota') is-invalid @enderror" value="{{ old('kota') }}" placeholder="Jakarta">
                             @error('kota') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
 

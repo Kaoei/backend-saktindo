@@ -6,6 +6,9 @@ use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\SupplierPurchaseHistory;
 use App\Models\ActivityLog;
+use App\Support\ActivityLogger;
+use App\Mail\InvoiceReminderMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -207,4 +210,46 @@ class FinanceController extends Controller
 
         return view('finance.report', compact('arMonthly', 'apMonthly'));
     }
+
+    /**
+     * Send Invoice / Billing Reminder Email to Customer
+     */
+    public function sendInvoiceEmail(Request $request, Invoice $invoice): RedirectResponse
+    {
+        $invoice->loadMissing(['salesOrder.customer', 'salesOrders.customer']);
+
+        $customerEmail = null;
+        if ($invoice->salesOrder && $invoice->salesOrder->customer) {
+            $customerEmail = $invoice->salesOrder->customer->email;
+        } elseif ($invoice->salesOrders->isNotEmpty() && $invoice->salesOrders->first()->customer) {
+            $customerEmail = $invoice->salesOrders->first()->customer->email;
+        }
+
+        $recipientEmail = $request->input('email') ?: $customerEmail;
+
+        if (!$recipientEmail) {
+            return back()->with('error', 'Alamat email customer tidak ditemukan. Mohon isi alamat email tujuan.');
+        }
+
+        if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+            return back()->with('error', "Format email '{$recipientEmail}' tidak valid.");
+        }
+
+        $customMessage = $request->input('message');
+
+        try {
+            Mail::to($recipientEmail)->send(new InvoiceReminderMail($invoice, $customMessage));
+
+            ActivityLogger::log('send_email', 'invoice', $invoice, [
+                'recipient_email' => $recipientEmail,
+                'invoice_number' => $invoice->invoice_number,
+                'outstanding_amount' => $invoice->outstanding_amount,
+            ]);
+
+            return back()->with('status', "Tagihan invoice {$invoice->invoice_number} berhasil dikirim ke {$recipientEmail}.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mengirim email: ' . $e->getMessage());
+        }
+    }
 }
+

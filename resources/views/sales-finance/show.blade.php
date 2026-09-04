@@ -227,10 +227,43 @@
                 <div class="card-header d-flex align-items-center justify-content-between">
                     <div>
                         <h5 class="mb-0">Invoice Management</h5>
-                        <small class="text-muted">{{ $invoice->invoice_number }} - {{ ucfirst($invoice->invoice_type) }} - Faktur {{ $invoice->faktur_number }}</small>
+                        <small class="text-muted">{{ $invoice->invoice_number }} - {{ ucfirst($invoice->invoice_type) }} - Faktur {{ $invoice->faktur_number }}
+                            @if($invoice->faktur_checked)
+                                <span class="badge bg-success ms-1">✓ Dicek</span>
+                            @endif
+                        </small>
                     </div>
-                    <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}" class="btn btn-outline-primary btn-sm" target="_blank">PDF Invoice</a>
+                    <div class="d-flex align-items-center gap-2">
+                        @if($invoice->status !== 'paid' && $invoice->outstanding_amount > 0)
+                            <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#sendInvoiceEmailModal" data-toggle="modal" data-target="#sendInvoiceEmailModal">
+                                <i class="feather icon-mail me-1"></i> Kirim Tagihan Email
+                            </button>
+                        @endif
+                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}" class="btn btn-outline-primary btn-sm" target="_blank">PDF Invoice</a>
+                    </div>
                 </div>
+
+                {{-- Faktur Checklist Bar --}}
+                @if($invoice->faktur_number)
+                <div class="px-3 py-2 border-bottom {{ $invoice->faktur_checked ? 'bg-success-subtle' : 'bg-warning-subtle' }}">
+                    @if($invoice->faktur_checked)
+                        <div class="d-flex align-items-center gap-2 text-success">
+                            <i class="feather icon-check-circle"></i>
+                            <small class="fw-semibold">Faktur sudah dicek pada {{ optional($invoice->faktur_checked_at)->format('d M Y H:i') }}</small>
+                        </div>
+                    @else
+                        <div class="d-flex align-items-center justify-content-between">
+                            <small class="text-warning-emphasis fw-semibold"><i class="feather icon-alert-circle me-1"></i>Faktur belum dicek</small>
+                            <form method="POST" action="{{ route('invoices.check-faktur', $invoice) }}" class="d-inline">
+                                @csrf @method('PATCH')
+                                <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Tandai faktur ini sudah dicek? Tindakan ini tidak dapat dibatalkan.')">
+                                    <i class="feather icon-check me-1"></i>Tandai Sudah Dicek
+                                </button>
+                            </form>
+                        </div>
+                    @endif
+                </div>
+                @endif
                 <div class="card-body">
                     <div class="row mb-3">
                         <div class="col-md-3"><div class="text-muted small">Status</div><span class="badge bg-light-info">{{ ucfirst($invoice->status) }}</span></div>
@@ -529,6 +562,48 @@
         @endif
     </div>
 </div>
+
+@if($invoice)
+<!-- Modal Kirim Email Tagihan -->
+<div class="modal fade" id="sendInvoiceEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('finance.invoices.send-email', $invoice->id) }}">
+                @csrf
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-white fw-bold"><i class="feather icon-mail me-1"></i> Kirim Tagihan by Email</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">No. Invoice</label>
+                        <input type="text" class="form-control" value="{{ $invoice->invoice_number }}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Customer</label>
+                        <input type="text" class="form-control" value="{{ $order->customer_name ?? '-' }}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email Tujuan <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control" value="{{ $order->customer?->email ?? '' }}" placeholder="contoh: finance@perusahaan.com" required>
+                        <small class="text-muted">Rincian invoice dan rekening pembayaran akan dikirim ke email ini.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Pesan Tambahan (Opsional)</label>
+                        <textarea name="message" class="form-control" rows="3" placeholder="Pesan khusus untuk client"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="feather icon-send me-1"></i> Kirim Tagihan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('scripts')

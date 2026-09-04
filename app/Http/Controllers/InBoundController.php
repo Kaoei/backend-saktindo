@@ -167,6 +167,12 @@ class InBoundController extends Controller
             ->with('success', 'Barang masuk berhasil dibatalkan.');
     }
 
+    public function printInbound(InBound $inbound)
+    {
+        $inbound->load(['supplier', 'supplierProduct', 'supplierPo']);
+        return view('inbound.print', compact('inbound'));
+    }
+
     public function destroy(InBound $inbound)
     {
         $inbound->delete();

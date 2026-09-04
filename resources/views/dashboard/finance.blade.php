@@ -334,6 +334,8 @@ $(document).ready(function() {
     </div>
 </div>
 
+@include('dashboard.partials.unpaid-clients-card')
+
 <div class="row">
     <!-- Recent Invoices Table -->
     <div class="col-12 mb-4">

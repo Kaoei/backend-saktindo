@@ -136,6 +136,12 @@
                                             </form>
 
                                         @endif
+                                        <a href="{{ route('inbound.print', $inbound->id) }}"
+                                           class="text-info me-2"
+                                           title="Print Barang Masuk"
+                                           target="_blank">
+                                            <i class="feather icon-printer f-18"></i>
+                                        </a>
                                         <button type="button"
                                                 class="btn p-0 border-0 bg-transparent text-danger btn-delete-inbound"
                                                 data-inbound-name="{{ $inbound->id }}"

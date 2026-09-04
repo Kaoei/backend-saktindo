@@ -30,6 +30,7 @@ class SupplierPOController extends Controller
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'order_date' => 'required|date',
+            'reference_number' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:supplier_products,id',
@@ -46,7 +47,16 @@ class SupplierPOController extends Controller
             DB::beginTransaction();
 
             $poId = SupplierPO::generateId();
-            $poNumber = 'SPO-' . now()->format('Ymd') . '-' . random_int(100, 999);
+
+            // Format: P-YY/MM/XXXX, e.g. P-26/08/0001
+            $year = now()->format('y');
+            $month = now()->format('m');
+            $count = SupplierPO::whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month)
+                ->where('po_number', 'like', "P-{$year}/{$month}/%")
+                ->count();
+            $sequence = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+            $poNumber = "P-{$year}/{$month}/{$sequence}";
             
             $totalAmount = 0;
             $itemsToInsert = [];
@@ -82,6 +92,7 @@ class SupplierPOController extends Controller
                 'id' => $poId,
                 'supplier_id' => $request->supplier_id,
                 'po_number' => $poNumber,
+                'reference_number' => $request->reference_number,
                 'order_date' => $request->order_date,
                 'total_amount' => $totalAmount,
                 'status' => 'pending',

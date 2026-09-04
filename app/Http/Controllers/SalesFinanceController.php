@@ -47,6 +47,39 @@ class SalesFinanceController extends Controller
     {
         $data = $this->validatedOrder($request);
 
+        $customerId = $data['customer_id'] ?? null;
+        $customerName = $data['customer_name'] ?? null;
+
+        $unpaidInvoicesCount = 0;
+        if ($customerId) {
+            $customer = Master_customer::find($customerId);
+            if ($customer) {
+                $unpaidInvoicesCount = $customer->unpaid_invoices_count;
+                $customerName = $customer->nama_customer;
+            }
+        } elseif ($customerName) {
+            $unpaidInvoicesCount = Invoice::query()
+                ->where('status', '!=', 'paid')
+                ->where(function ($q) {
+                    $q->where('outstanding_amount', '>', 0)
+                      ->orWhereNull('outstanding_amount');
+                })
+                ->where(function ($q) use ($customerName) {
+                    $q->whereHas('salesOrder', function ($soQ) use ($customerName) {
+                        $soQ->where('customer_name', $customerName);
+                    })->orWhereHas('salesOrders', function ($soQ) use ($customerName) {
+                        $soQ->where('customer_name', $customerName);
+                    });
+                })
+                ->count();
+        }
+
+        if ($unpaidInvoicesCount >= 3) {
+            return back()->withInput()->withErrors([
+                'customer_id' => "Client '{$customerName}' masih memiliki {$unpaidInvoicesCount} tagihan/invoice yang belum lunas. Pembuatan Sales Order baru diblokir sampai dilakukan pelunasan (maksimal 2 tagihan belum lunas)."
+            ]);
+        }
+
         $order = DB::transaction(function () use ($data) {
             $items = $data['items'];
             unset($data['items']);
@@ -334,6 +367,22 @@ class SalesFinanceController extends Controller
         return back()->with('status', 'Pembayaran DP sebesar Rp ' . number_format($amount, 0, ',', '.') . ' berhasil dicatat.');
     }
 
+    public function checkFaktur(Request $request, Invoice $invoice): RedirectResponse
+    {
+        if ($invoice->faktur_checked) {
+            return back()->with('status', 'Faktur sudah pernah dicek dan tidak dapat diubah kembali.');
+        }
+
+        $invoice->update([
+            'faktur_checked' => true,
+            'faktur_checked_at' => now(),
+        ]);
+
+        ActivityLogger::log('check_faktur', 'invoice', $invoice);
+
+        return back()->with('status', 'Faktur ' . $invoice->faktur_number . ' berhasil ditandai sudah dicek.');
+    }
+
     public function mergeInvoices(Request $request): RedirectResponse
     {
         $request->validate([
@@ -498,8 +547,8 @@ class SalesFinanceController extends Controller
     {
         $data = $request->validate([
             'customer_id' => ['nullable', 'exists:master_customers,id'],
-            'customer_name' => ['required', 'string', 'max:255'],
-            'customer_po_number' => ['required', 'string', 'max:100', Rule::unique('sales_orders', 'customer_po_number')->ignore($order?->id)],
+            'customer_name' => ['nullable', 'string', 'max:255'],
+            'customer_po_number' => ['nullable', 'string', 'max:100', Rule::unique('sales_orders', 'customer_po_number')->ignore($order?->id)],
             'po_date' => ['nullable', 'date'],
             'order_date' => ['required', 'date'],
             'sales_type' => ['nullable', 'in:js,sjb'],
@@ -589,7 +638,14 @@ class SalesFinanceController extends Controller
 
     private function customerOptions()
     {
-        return Master_customer::query()->orderBy('nama_customer')->get(['id', 'nama_customer', 'termin']);
+        return Master_customer::query()
+            ->orderBy('nama_customer')
+            ->get(['id', 'nama_customer', 'termin'])
+            ->map(function ($c) {
+                $c->unpaid_count = $c->unpaid_invoices_count;
+                $c->is_blocked = $c->is_blocked_for_so;
+                return $c;
+            });
     }
 
     private function productOptions()
@@ -629,10 +685,24 @@ class SalesFinanceController extends Controller
                 $product->available_stock = $availableStock;
                 $product->warehouse_location = implode(' | ', $locations);
 
-                $gProduct = $gProducts->firstWhere('qty', '>', 0) ?? $gProducts->first();
+                $gProduct = $gProducts->where('price', '>', 0)->sortByDesc('qty')->first()
+                    ?: ($gProducts->firstWhere('qty', '>', 0) ?: $gProducts->first());
 
-                $product->custom_price = $gProduct && floatval($gProduct->price) > 0 ? floatval($gProduct->price) : floatval($product->last_purchase_price);
+                $price = $gProduct && floatval($gProduct->price) > 0 ? floatval($gProduct->price) : floatval($product->last_purchase_price);
+
+                if ($price <= 0) {
+                    $masterProd = \App\Models\Product::where(function($q) use ($product) {
+                        if ($product->sku) $q->where('seller_sku', $product->sku);
+                        if ($product->item_name) $q->orWhere('product_name', $product->item_name);
+                    })->first();
+                    if ($masterProd && floatval($masterProd->price) > 0) {
+                        $price = floatval($masterProd->price);
+                    }
+                }
+
+                $product->custom_price = $price;
                 $product->discount_percent = $gProduct ? floatval($gProduct->discount) : 0;
+                $product->unit = $product->unit ?: 'pcs';
                 
                 return $product;
             });
@@ -645,12 +715,22 @@ class SalesFinanceController extends Controller
 
     private function nextFakturNumber(string $taxType): string
     {
+        $year = now()->format('y');  // 2-digit year e.g. '26'
+        $month = now()->format('m');
+
+        // Count existing invoices this month for sequence
         $prefix = match ($taxType) {
-            'sjb_non_pajak' => 'SJB-NP',
-            'sjb_pajak' => 'SJB-P',
+            'sjb_non_pajak', 'sjb_pajak' => 'SJB',
             default => 'JS',
         };
 
-        return $this->nextDocumentNumber($prefix);
+        $count = \App\Models\Invoice::whereYear('invoice_date', now()->year)
+            ->whereMonth('invoice_date', now()->month)
+            ->where('faktur_number', 'like', "{$prefix}/{$year}/{$month}/%")
+            ->count();
+
+        $sequence = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+
+        return "{$prefix}/{$year}/{$month}/{$sequence}";
     }
 }

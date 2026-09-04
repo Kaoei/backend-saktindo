@@ -211,6 +211,8 @@
     </div>
 </div>
 
+@include('dashboard.partials.unpaid-clients-card')
+
 <div class="row">
     <!-- Recent Orders Table -->
     <div class="col-12 mb-4">
