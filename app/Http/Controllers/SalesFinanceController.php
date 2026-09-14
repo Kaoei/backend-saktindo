@@ -25,7 +25,7 @@ class SalesFinanceController extends Controller
             ->latest()
             ->get();
 
-        $customers = \App\Models\Master_customer::orderBy('nama_customer')->get();
+        $customers = Master_customer::orderBy('nama_customer')->get();
 
         return view('sales-finance.index', compact('orders', 'customers'));
     }

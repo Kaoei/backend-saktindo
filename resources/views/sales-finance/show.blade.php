@@ -6,7 +6,7 @@
 
 @section('content')
 @php
-    $invoice = $order->invoices->first();
+    $invoice = $order->invoice_record;
     $deliveryNotes = $invoice?->deliveryNotes ?? collect();
     $invoiceItems = $invoice ? $invoice->salesOrders->flatMap->items : $order->items;
     $warehouseTask = $invoice?->warehouseTask;

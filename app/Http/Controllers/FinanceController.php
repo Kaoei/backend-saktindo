@@ -88,6 +88,11 @@ class FinanceController extends Controller
      */
     public function storePayment(Request $request): RedirectResponse
     {
+        // Support both payment_method and method fields from frontend forms
+        if (!$request->has('payment_method') && $request->has('method')) {
+            $request->merge(['payment_method' => $request->input('method')]);
+        }
+
         $request->validate([
             'type' => 'required|in:ar,ap',
             'id' => 'required',

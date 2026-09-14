@@ -103,16 +103,26 @@
     <div class="col-12">
 
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <div>
+            <div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+                <div class="mb-2 mb-md-0">
                     <h5 class="mb-1">Daftar Produk Gudang</h5>
                     <small class="text-muted">Data barang yang sudah ditempatkan ke rak</small>
                 </div>
 
-                <a href="{{ route('gudang-product.create') }}" class="btn btn-primary btn-sm">
-                    <i class="material-icons-two-tone text-white">add_circle</i>
-                    Simpan Barang ke Rak
-                </a>
+                <div class="d-inline-flex align-items-center flex-wrap gap-2">
+                    <button type="button" class="btn btn-primary btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#manualInputModal" data-bs-toggle="modal" data-bs-target="#manualInputModal" style="width: auto !important; flex: none !important;">
+                        <i class="feather icon-plus-circle me-1"></i>
+                        Input Stock
+                    </button>
+                    <button type="button" class="btn btn-outline-success btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal" style="width: auto !important; flex: none !important;">
+                        <i class="feather icon-upload me-1"></i>
+                        Import Stok Excel
+                    </button>
+                    <a href="{{ route('gudang-product.create') }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" style="width: auto !important; flex: none !important;">
+                        <i class="feather icon-download me-1"></i>
+                        Dari Inbound
+                    </a>
+                </div>
             </div>
 
             <div class="card-body">
@@ -211,6 +221,147 @@
     </div>
 </div>
 
+<!-- Modal Import Excel -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light py-3">
+                <h5 class="modal-title fw-bold" id="importModalLabel">Import Stok Barang (Excel / CSV)</h5>
+                <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ route('gudang-product.import') }}" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body py-4">
+                    <div class="alert alert-info border-0 mb-3 small">
+                        <i class="feather icon-info me-1"></i> Format file Excel 100% kompatibel dengan file spreadsheet yang digunakan pada <strong>web-led</strong>. Kolom <em>Nama Barang, Brand, Qty, Harga, Serial Number, Rak Kode, Kategori 1, Kategori 2</em> akan otomatis dikenali.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload File Spreadsheet</label>
+                        <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls,.csv" required>
+                        <div class="form-text mt-1 text-muted">Format yang didukung: <strong>.xlsx, .xls, .csv</strong></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                        <a href="{{ route('gudang-product.download-template') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="feather icon-download me-1"></i> Download Template
+                        </a>
+                        <a href="{{ route('gudang-product.importPage') }}" class="small text-decoration-none fw-semibold">
+                            Halaman Panduan Impor &rarr;
+                        </a>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="feather icon-upload me-1"></i> Upload & Import
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Input Manual -->
+<div class="modal fade" id="manualInputModal" tabindex="-1" aria-labelledby="manualInputModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light py-3">
+                <h5 class="modal-title fw-bold" id="manualInputModalLabel">Input Stock Barang</h5>
+                <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ route('gudang-product.storeManual') }}">
+                @csrf
+                <div class="modal-body py-4">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Nama Barang <span class="text-danger">*</span></label>
+                            <input type="text" name="item_name" class="form-control" placeholder="Contoh: Lampu LED Bulb 10W Philips" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">SKU / Serial Number</label>
+                            <input type="text" name="sku" class="form-control" placeholder="Otomatis jika kosong">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Brand / Merek</label>
+                            <input type="text" name="brand" class="form-control" list="brandOptions" placeholder="Pilih atau ketik baru">
+                            <datalist id="brandOptions">
+                                @foreach($brands ?? [] as $b)
+                                    <option value="{{ $b->name }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Kategori Utama</label>
+                            <input type="text" name="category" class="form-control" list="categoryOptions" placeholder="Pilih atau ketik baru">
+                            <datalist id="categoryOptions">
+                                @foreach($categories ?? [] as $c)
+                                    <option value="{{ $c->name }}">
+                                @endforeach
+                            </datalist>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Sub Kategori</label>
+                            <input type="text" name="sub_category" class="form-control" placeholder="Contoh: Bulb / Panel / Downlight">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Jumlah Stok (Qty) <span class="text-danger">*</span></label>
+                            <input type="number" name="qty" class="form-control" min="1" value="1" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Harga Per Unit (Rp)</label>
+                            <input type="number" name="price" class="form-control" min="0" step="100" placeholder="0">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Status Penyimpanan</label>
+                            <select name="status" class="form-select">
+                                <option value="stored" selected>Stored (Tersimpan)</option>
+                                <option value="pending">Pending</option>
+                                <option value="damaged">Damaged (Rusak)</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Gudang Penyimpanan <span class="text-danger">*</span></label>
+                            <select name="gudang_type" class="form-select" required>
+                                <option value="">-- Pilih Gudang --</option>
+                                <option value="JS" selected>Gudang JS</option>
+                                <option value="SJB">Gudang SJB</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Rak Penyimpanan <span class="text-danger">*</span></label>
+                            <select name="rack_id" class="form-select" required>
+                                <option value="">-- Pilih Rak --</option>
+                                @foreach($racks ?? [] as $rack)
+                                    <option value="{{ $rack->rak_kode }}">
+                                        {{ $rack->rak_kode }} - {{ $rack->location }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="feather icon-save me-1"></i> Simpan Stok Barang
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -240,8 +391,50 @@ $(function () {
         document.getElementById('deleteForm').action =
             this.dataset.productAction;
 
-        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-        modal.show();
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        } else {
+            $('#deleteModal').modal('show');
+        }
+    });
+
+    $(document).on('click', '[data-target="#manualInputModal"], [data-bs-target="#manualInputModal"]', function (e) {
+        e.preventDefault();
+        const el = document.getElementById('manualInputModal');
+        if (el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+                modal.show();
+            } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $('#manualInputModal').modal('show');
+            }
+        }
+    });
+
+    $(document).on('click', '[data-target="#importModal"], [data-bs-target="#importModal"]', function (e) {
+        e.preventDefault();
+        const el = document.getElementById('importModal');
+        if (el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+                modal.show();
+            } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $('#importModal').modal('show');
+            }
+    $(document).on('click', '[data-dismiss="modal"], [data-bs-dismiss="modal"]', function (e) {
+        e.preventDefault();
+        const modalEl = $(this).closest('.modal');
+        if (modalEl.length) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const inst = bootstrap.Modal.getInstance(modalEl[0]);
+                if (inst) {
+                    inst.hide();
+                    return;
+                }
+            }
+            modalEl.modal('hide');
+        }
     });
 });
 </script>

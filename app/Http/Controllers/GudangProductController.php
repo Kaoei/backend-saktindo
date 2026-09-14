@@ -59,6 +59,11 @@ class GudangProductController extends Controller
             ->take(3)
             ->get();
 
+        $racks = Rak::orderBy('rak_kode')->get();
+        $brands = Brand::orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+        $subCategories = SubCategory::orderBy('name')->get();
+
         return view('gudang_product.index', compact(
             'products',
             'totalProduk',
@@ -66,11 +71,137 @@ class GudangProductController extends Controller
             'totalJS',
             'topRakJS',
             'totalSJB',
-            'topRakSJB'
+            'topRakSJB',
+            'racks',
+            'brands',
+            'categories',
+            'subCategories'
         ));
     }
 
-    public function create()
+    /**
+     * Store stock item manually (without requiring an inbound record)
+     */
+    public function storeManual(Request $request)
+    {
+        $request->validate([
+            'item_name' => 'required|string|max:255',
+            'sku' => 'nullable|string|max:100',
+            'qty' => 'required|integer|min:1',
+            'price' => 'nullable|numeric|min:0',
+            'gudang_type' => 'required|in:JS,SJB',
+            'rack_id' => 'required|exists:raks,rak_kode',
+            'brand' => 'nullable|string|max:255',
+            'category' => 'nullable|string|max:255',
+            'sub_category' => 'nullable|string|max:255',
+            'status' => 'nullable|string|in:stored,pending,damaged',
+        ]);
+
+        DB::transaction(function () use ($request) {
+            // 1. Process Brand
+            $brandName = trim($request->brand ?? '');
+            if ($brandName !== '') {
+                $existingBrand = Brand::whereRaw('LOWER(name) = ?', [strtolower($brandName)])->first();
+                if (!$existingBrand) {
+                    $existingBrand = Brand::create(['name' => $brandName, 'image' => '', 'alt' => '']);
+                }
+                $brandName = $existingBrand->name;
+            } else {
+                $brandName = null;
+            }
+
+            // 2. Process Category & SubCategory
+            $categoryName = trim($request->category ?? '');
+            $subCategoryName = trim($request->sub_category ?? '');
+            if ($categoryName !== '') {
+                $existingCategory = Category::whereRaw('LOWER(name) = ?', [strtolower($categoryName)])->first();
+                if (!$existingCategory) {
+                    $existingCategory = Category::create(['name' => $categoryName]);
+                }
+                $categoryName = $existingCategory->name;
+
+                if ($subCategoryName !== '') {
+                    $existingSub = SubCategory::where('category_id', $existingCategory->id)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($subCategoryName)])
+                        ->first();
+                    if (!$existingSub) {
+                        $existingSub = SubCategory::create([
+                            'category_id' => $existingCategory->id,
+                            'name' => $subCategoryName
+                        ]);
+                    }
+                    $subCategoryName = $existingSub->name;
+                }
+            }
+
+            // 3. Process SKU & SupplierProduct
+            $sku = trim($request->sku ?? '');
+            if ($sku === '') {
+                $sku = 'SKU-' . strtoupper(substr(md5($request->item_name), 0, 8));
+            }
+
+            $supplierProduct = SupplierProduct::where('sku', $sku)->first();
+            if (!$supplierProduct) {
+                $supplier = Supplier::first();
+                if (!$supplier) {
+                    $supplier = Supplier::create([
+                        'name' => 'Supplier General',
+                        'status' => 'active'
+                    ]);
+                }
+
+                $supplierProduct = SupplierProduct::create([
+                    'supplier_id' => $supplier->id,
+                    'sku' => $sku,
+                    'item_name' => $request->item_name,
+                    'brand' => $brandName,
+                    'category' => $categoryName ?: null,
+                    'sub_category' => $subCategoryName ?: null,
+                    'last_purchase_price' => $request->price ?? 0,
+                    'unit' => 'pcs',
+                    'status' => 'active'
+                ]);
+            } else {
+                $updateData = [];
+                if (!empty($brandName)) $updateData['brand'] = $brandName;
+                if (!empty($categoryName)) $updateData['category'] = $categoryName;
+                if (!empty($subCategoryName)) $updateData['sub_category'] = $subCategoryName;
+                if (!empty($request->price)) $updateData['last_purchase_price'] = $request->price;
+                if (!empty($updateData)) $supplierProduct->update($updateData);
+            }
+
+            // 4. Create or Update GudangProduct
+            $existingProduct = GudangProduct::where('supplier_product_id', $supplierProduct->id)
+                ->where('rack_id', $request->rack_id)
+                ->first();
+
+            if ($existingProduct) {
+                $existingProduct->update([
+                    'qty' => $existingProduct->qty + (int)$request->qty,
+                    'price' => $request->price ? floatval($request->price) : $existingProduct->price,
+                    'gudang_type' => $request->gudang_type,
+                    'status' => $request->status ?: 'stored',
+                ]);
+            } else {
+                GudangProduct::create([
+                    'id' => GudangProduct::generateId($sku),
+                    'supplier_product_id' => $supplierProduct->id,
+                    'rack_id' => $request->rack_id,
+                    'gudang_type' => $request->gudang_type,
+                    'qty' => (int)$request->qty,
+                    'price' => $request->price ? floatval($request->price) : 0,
+                    'discount' => 0,
+                    'status' => $request->status ?: 'stored',
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('gudang-product.index')
+            ->with('status', 'Stok barang berhasil ditambahkan secara manual.');
+    }
+
+    public function create(Request $request)
     {
         $inbounds = InBound::with(['supplier', 'supplierProduct'])
             ->where('status', 'pending')
@@ -78,14 +209,16 @@ class GudangProductController extends Controller
             ->get();
 
         $racks = Rak::orderBy('rak_kode')->get();
+        $selectedInbound = $request->query('inbound_id');
 
-        return view('gudang_product.create', compact('inbounds', 'racks'));
+        return view('gudang_product.create', compact('inbounds', 'racks', 'selectedInbound'));
     }
 
     public function store(Request $request){
         $request->validate([
             'in_bound_id' => 'required|exists:in_bounds,id',
             'rack_id' => 'required|exists:raks,rak_kode',
+            'gudang_type' => 'nullable|in:JS,SJB',
         ]);
 
         DB::transaction(function () use ($request) {
@@ -97,9 +230,16 @@ class GudangProductController extends Controller
                 ->where('rack_id', $request->rack_id)
                 ->first();
 
+            $gudangType = $request->gudang_type;
+            if (!$gudangType) {
+                $rack = Rak::where('rak_kode', $request->rack_id)->first();
+                $gudangType = strtoupper($rack->gudang ?? 'JS');
+            }
+
             if ($existingProduct) {
                 $existingProduct->update([
                     'qty' => $existingProduct->qty + $inBound->qty_received,
+                    'gudang_type' => $gudangType,
                     'status' => 'stored',
                 ]);
             } else {    
@@ -108,6 +248,7 @@ class GudangProductController extends Controller
                     'id' => GudangProduct::generateId($inBound->supplierProduct->sku ?? null),
                     'supplier_product_id' => $inBound->supplier_product_id,
                     'rack_id' => $request->rack_id,
+                    'gudang_type' => $gudangType,
                     'qty' => $inBound->qty_received,
                     'status' => 'stored',
                 ]);
@@ -414,14 +555,34 @@ class GudangProductController extends Controller
 
                 if ($qtyVal === '' || $qtyVal === null) {
                     $qtyVal = 0;
-                } elseif (!is_numeric($qtyVal) || intval($qtyVal) < 0) {
-                    $rowErrors[] = "Quantity '{$qtyVal}' harus berupa angka bulat positif.";
+                } else {
+                    $rawStr = trim((string)$qtyVal);
+                    $isNegative = str_contains($rawStr, '-');
+                    $cleanQty = preg_replace('/[^0-9]/', '', $rawStr);
+                    if ($cleanQty === '') {
+                        $rowErrors[] = "Quantity '{$qtyVal}' harus berupa angka bulat positif.";
+                    } else {
+                        $qtyVal = intval($cleanQty) * ($isNegative ? -1 : 1);
+                        if ($qtyVal < 0) {
+                            $rowErrors[] = "Quantity '{$qtyVal}' harus berupa angka bulat positif.";
+                        }
+                    }
                 }
 
                 if ($hargaVal === '' || $hargaVal === null) {
                     $hargaVal = 0;
-                } elseif (!is_numeric($hargaVal) || floatval($hargaVal) < 0) {
-                    $rowErrors[] = "Harga '{$hargaVal}' harus berupa angka positif.";
+                } else {
+                    $rawPriceStr = trim((string)$hargaVal);
+                    $isPriceNegative = str_contains($rawPriceStr, '-');
+                    $cleanPrice = preg_replace('/[^0-9]/', '', $rawPriceStr);
+                    if ($cleanPrice === '') {
+                        $rowErrors[] = "Harga '{$hargaVal}' harus berupa angka positif.";
+                    } else {
+                        $hargaVal = floatval($cleanPrice) * ($isPriceNegative ? -1 : 1);
+                        if ($hargaVal < 0) {
+                            $rowErrors[] = "Harga '{$hargaVal}' harus berupa angka positif.";
+                        }
+                    }
                 }
 
                 if (empty($rakKode) || $rakKode === '-') {

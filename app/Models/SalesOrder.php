@@ -27,6 +27,8 @@ class SalesOrder extends Model
         'po_date',
         'order_date',
         'sales_type',
+        'toko',
+        'jenis_invoice',
         'order_status',
         'stock_status',
         'warehouse_task_reference',
@@ -67,5 +69,36 @@ class SalesOrder extends Model
     public function warehouseTask(): HasOne
     {
         return $this->hasOne(WarehouseTask::class);
+    }
+
+    public function getInvoiceRecordAttribute()
+    {
+        if ($this->invoice) {
+            return $this->invoice;
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('invoice_sales_orders')) {
+                return $this->invoices->first();
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return null;
+    }
+
+    public function getInvoicesCollectionAttribute()
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('invoice_sales_orders')) {
+                $invs = $this->invoices;
+                if ($invs && $invs->count() > 0) {
+                    return $invs;
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return $this->invoice ? collect([$this->invoice]) : collect();
     }
 }

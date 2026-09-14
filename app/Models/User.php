@@ -30,6 +30,7 @@ class User extends Authenticatable
         'role',
         'password',
         'group',
+        'email_verified_at',
     ];
 
     public const ROLE_SUPER_ADMIN = 'super_admin';
