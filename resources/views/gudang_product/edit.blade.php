@@ -22,6 +22,24 @@
                     @csrf
                     @method('PUT')
 
+                    @php
+                        $otherLocations = $gudangProduct->supplierProduct?->gudangProducts?->where('id', '!=', $gudangProduct->id);
+                    @endphp
+                    @if($otherLocations && $otherLocations->count() > 0)
+                        <div class="alert alert-info d-flex align-items-center mb-4">
+                            <i class="feather icon-layers fs-4 me-3 text-primary"></i>
+                            <div>
+                                <strong class="d-block text-dark">Distribusi Rak Produk Ini:</strong>
+                                <span class="small text-muted">Produk ini juga tersimpan di rak lain:</span>
+                                <ul class="mb-0 mt-1 ps-3 small">
+                                    @foreach($otherLocations as $ol)
+                                        <li>Rak <strong>{{ $ol->rack->rak_kode ?? $ol->rack_id ?? '-' }}</strong> (Gudang {{ $ol->gudang_type ?? 'JS' }}): <span class="badge bg-primary">{{ $ol->qty }} pcs</span></li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="mb-3">
                         <label class="form-label">Barang</label>
                         <input type="text" class="form-control" value="{{ $gudangProduct->supplierProduct->item_name ?? '-' }} (SKU: {{ $gudangProduct->supplierProduct->sku ?? '-' }})" disabled>

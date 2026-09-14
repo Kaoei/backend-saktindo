@@ -85,6 +85,7 @@
                                 <th>Barang</th>
                                 <th>SKU</th>
                                 <th>Qty Diterima</th>
+                                <th>Lokasi Rak</th>
                                 <th>Tanggal Masuk</th>
                                 <th>Status</th>
                                 <th class="text-end" style="width: 120px;">Aksi</th>
@@ -99,10 +100,31 @@
                                     <td>{{ $inbound->supplierProduct->item_name ?? '-' }}</td>
                                     <td>{{ $inbound->supplierProduct->sku ?? '-' }}</td>
                                     <td>{{ $inbound->qty_received }}</td>
+                                    <td>
+                                        @php
+                                            $placedRacks = [];
+                                            if ($inbound->supplierProduct && $inbound->supplierProduct->gudangProducts) {
+                                                foreach ($inbound->supplierProduct->gudangProducts as $gp) {
+                                                    if ($gp->qty > 0) {
+                                                        $placedRacks[] = ($gp->rack->rak_kode ?? $gp->rack_id ?? '-') . ' (' . $gp->qty . ')';
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        @if(count($placedRacks) > 0)
+                                            @foreach($placedRacks as $pr)
+                                                <span class="badge bg-light text-dark border me-1">{{ $pr }}</span>
+                                            @endforeach
+                                        @else
+                                            <span class="text-muted small">Belum di rak</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $inbound->received_date }}</td>
                                     <td>
                                         @if ($inbound->status == 'pending')
                                             <span class="badge bg-warning">Pending</span>
+                                        @elseif ($inbound->status == 'partial')
+                                            <span class="badge bg-info text-white">Partial</span>
                                         @elseif ($inbound->status == 'stored')
                                             <span class="badge bg-success">Stored</span>
                                         @else
@@ -110,10 +132,10 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
-                                        @if($inbound->status == 'pending')
+                                        @if($inbound->status == 'pending' || $inbound->status == 'partial')
                                            <a href="{{ route('gudang-product.create', ['inbound_id' => $inbound->id]) }}"
                                                 class="text-primary me-2"
-                                                title="Process">
+                                                title="Process ke Rak">
                                                     <i class="feather icon-play-circle f-18"></i>
                                             </a>
                                             <a href="{{ route('inbound.edit', $inbound->id) }}"
@@ -215,14 +237,14 @@ $(function () {
         columnDefs: [
             {
                 orderable: false,
-                targets: [7]
+                targets: [8]
             }
         ]
     });
 
     // Filter Status
     $('#filterStatus').on('change', function () {
-        table.column(6).search(this.value).draw();
+        table.column(7).search(this.value).draw();
     });
 
     // Filter Supplier
@@ -234,7 +256,7 @@ $(function () {
     $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
 
         const filterDate = $('#filterDate').val();
-        const tableDate = data[5];
+        const tableDate = data[6];
 
         if (!filterDate) {
             return true;

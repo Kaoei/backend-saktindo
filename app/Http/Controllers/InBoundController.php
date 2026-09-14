@@ -12,7 +12,7 @@ class InBoundController extends Controller
 {
     public function index()
     {
-        $inbounds = InBound::with(['supplier', 'supplierProduct', 'supplierPo'])
+        $inbounds = InBound::with(['supplier', 'supplierProduct.gudangProducts.rack', 'supplierPo'])
             ->latest()
             ->get();
 

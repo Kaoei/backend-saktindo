@@ -197,21 +197,63 @@
 
                         <tbody>
                             @forelse($products as $product)
+                                @php
+                                    $otherGudangProducts = $product->supplierProduct?->gudangProducts?->where('id', '!=', $product->id)->where('qty', '>', 0);
+                                    $otherCount = $otherGudangProducts ? $otherGudangProducts->count() : 0;
+                                    $otherDetails = [];
+                                    $totalProductStock = $product->qty;
+                                    if ($otherCount > 0) {
+                                        foreach ($otherGudangProducts as $ogp) {
+                                            $totalProductStock += $ogp->qty;
+                                            $otherDetails[] = ($ogp->rack->rak_kode ?? $ogp->rack_id ?? '-') . ' (' . $ogp->qty . ' pcs)';
+                                        }
+                                    }
+                                    $otherDetailsText = count($otherDetails) > 0 ? implode(', ', $otherDetails) : '';
+                                @endphp
                                 <tr>
                                     <td>{{ $product->id }}</td>
-                                    <td>{{ $product->supplierProduct->item_name ?? '-' }}</td>
-                                    <td>{{ $product->supplierProduct->sku ?? '-' }}</td>
+                                    <td>
+                                        <div class="fw-semibold text-dark">{{ $product->supplierProduct->item_name ?? '-' }}</div>
+                                        @if($otherCount > 0)
+                                            <small class="text-primary d-block" title="{{ $otherDetailsText }}">
+                                                <i class="feather icon-layers me-1"></i>Juga di: {{ $otherDetailsText }}
+                                            </small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{ $product->supplierProduct->sku ?? '-' }}
+                                        @if($otherCount > 0)
+                                            <span class="badge bg-light-primary text-primary border ms-1" title="Total semua rak: {{ $totalProductStock }} pcs">
+                                                Total: {{ $totalProductStock }} pcs
+                                            </span>
+                                        @endif
+                                    </td>
                                     <td>{{ $product->supplierProduct->brand ?? '-' }}</td>
-                                    <td>{{ $product->qty }}</td>
+                                    <td>
+                                        <span class="fw-bold">{{ $product->qty }}</span>
+                                    </td>
                                     <td>{{ $product->gudang_type }}</td>
-                                    <td>{{ $product->rack->rak_kode ?? '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">{{ $product->rack->rak_kode ?? '-' }}</span>
+                                    </td>
                                     <td>{{ $product->rack->location ?? '-' }}</td>
                                     <td>
                                         <span class="badge bg-success">
                                             {{ ucfirst($product->status) }}
                                         </span>
                                     </td>
-                                    <td class="text-end">
+                                    <td class="text-end text-nowrap">
+                                        <button type="button"
+                                                class="btn p-0 border-0 bg-transparent text-primary me-2 btn-split-rack"
+                                                data-id="{{ $product->id }}"
+                                                data-item-name="{{ $product->supplierProduct->item_name ?? '-' }}"
+                                                data-sku="{{ $product->supplierProduct->sku ?? '-' }}"
+                                                data-current-rack="{{ $product->rack->rak_kode ?? $product->rack_id ?? '-' }}"
+                                                data-current-gudang="{{ $product->gudang_type }}"
+                                                data-current-qty="{{ $product->qty }}"
+                                                title="Bagi / Pindah Stok ke Rak Lain">
+                                            <i class="feather icon-shuffle f-18"></i>
+                                        </button>
                                         <a href="{{ route('gudang-product.edit', $product->id) }}"
                                            class="text-success me-2"
                                            title="Edit Stok & Rak">
@@ -320,23 +362,46 @@
                 <h5 class="modal-title fw-bold" id="manualInputModalLabel">Input Stock Barang</h5>
                 <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ route('gudang-product.storeManual') }}">
+            <form method="POST" action="{{ route('gudang-product.storeManual') }}" id="form-manual-stock">
                 @csrf
                 <div class="modal-body py-4">
                     <div class="row g-3">
+                        <!-- Opsi Pilih Produk Yang Sudah Ada -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-primary mb-1">
+                                <i class="feather icon-search me-1"></i>Pilih Produk Yang Sudah Ada (Opsional)
+                            </label>
+                            <select id="select-existing-product" class="form-select border-primary shadow-sm">
+                                <option value="">-- Ketik Produk Baru Manual --</option>
+                                @foreach($supplierProducts ?? [] as $sp)
+                                    <option value="{{ $sp->id }}"
+                                        data-name="{{ $sp->item_name }}"
+                                        data-sku="{{ $sp->sku }}"
+                                        data-brand="{{ $sp->brand }}"
+                                        data-category="{{ $sp->category }}"
+                                        data-subcategory="{{ $sp->sub_category }}"
+                                        data-price="{{ $sp->last_purchase_price }}">
+                                        {{ $sp->item_name }} (SKU: {{ $sp->sku }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <input type="hidden" name="supplier_product_id" id="hidden_supplier_product_id">
+                            <small class="text-muted">Pilih jika ingin menambahkan stok di rak baru untuk produk yang sudah terdaftar.</small>
+                        </div>
+
                         <div class="col-md-8">
                             <label class="form-label fw-semibold">Nama Barang <span class="text-danger">*</span></label>
-                            <input type="text" name="item_name" class="form-control" placeholder="Contoh: Lampu LED Bulb 10W Philips" required>
+                            <input type="text" name="item_name" id="manual_item_name" class="form-control" placeholder="Contoh: Lampu LED Bulb 10W Philips" required>
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">SKU / Serial Number</label>
-                            <input type="text" name="sku" class="form-control" placeholder="Otomatis jika kosong">
+                            <input type="text" name="sku" id="manual_sku" class="form-control" placeholder="Otomatis jika kosong">
                         </div>
 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Brand / Merek</label>
-                            <input type="text" name="brand" class="form-control" list="brandOptions" placeholder="Pilih atau ketik baru">
+                            <input type="text" name="brand" id="manual_brand" class="form-control" list="brandOptions" placeholder="Pilih atau ketik baru">
                             <datalist id="brandOptions">
                                 @foreach($brands ?? [] as $b)
                                     <option value="{{ $b->name }}">
@@ -346,7 +411,7 @@
 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Kategori Utama</label>
-                            <input type="text" name="category" class="form-control" list="categoryOptions" placeholder="Pilih atau ketik baru">
+                            <input type="text" name="category" id="manual_category" class="form-control" list="categoryOptions" placeholder="Pilih atau ketik baru">
                             <datalist id="categoryOptions">
                                 @foreach($categories ?? [] as $c)
                                     <option value="{{ $c->name }}">
@@ -356,20 +421,15 @@
 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Sub Kategori</label>
-                            <input type="text" name="sub_category" class="form-control" placeholder="Contoh: Bulb / Panel / Downlight">
+                            <input type="text" name="sub_category" id="manual_sub_category" class="form-control" placeholder="Contoh: Bulb / Panel / Downlight">
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Jumlah Stok (Qty) <span class="text-danger">*</span></label>
-                            <input type="number" name="qty" class="form-control" min="1" value="1" required>
-                        </div>
-
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Harga Per Unit (Rp)</label>
-                            <input type="number" name="price" class="form-control" min="0" step="100" placeholder="0">
+                            <input type="number" name="price" id="manual_price" class="form-control" min="0" step="100" placeholder="0">
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label fw-semibold">Status Penyimpanan</label>
                             <select name="status" class="form-select">
                                 <option value="stored" selected>Stored (Tersimpan)</option>
@@ -378,21 +438,108 @@
                             </select>
                         </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Gudang Penyimpanan <span class="text-danger">*</span></label>
-                            <select name="gudang_type" class="form-select" required>
-                                <option value="">-- Pilih Gudang --</option>
-                                <option value="JS" selected>Gudang JS</option>
+                        <!-- Multi-rack allocation table -->
+                        <div class="col-12 mt-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2 pb-1 border-bottom">
+                                <div>
+                                    <label class="form-label fw-bold mb-0 text-dark">
+                                        <i class="feather icon-layers text-primary me-1"></i>
+                                        Penempatan Rak & Kuantitas
+                                    </label>
+                                    <small class="text-muted d-block">Bisa menempatkan stok ke satu atau beberapa rak sekaligus</small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" id="btn-add-manual-rack">
+                                    <i class="feather icon-plus me-1"></i> Tambah Rak Lain
+                                </button>
+                            </div>
+
+                            <div class="table-responsive border rounded bg-white p-2">
+                                <table class="table table-sm align-middle mb-0" id="manual-rack-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 25%;">Gudang <span class="text-danger">*</span></th>
+                                            <th style="width: 45%;">Rak Penyimpanan <span class="text-danger">*</span></th>
+                                            <th style="width: 22%;">Qty <span class="text-danger">*</span></th>
+                                            <th style="width: 8%;" class="text-center"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="manual-rack-body">
+                                        <!-- dynamic rows -->
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="table-light fw-bold">
+                                            <td colspan="2" class="text-end">Total Stok Masuk:</td>
+                                            <td colspan="2"><span id="manual-total-qty-badge" class="badge bg-primary fs-6">0 pcs</span></td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="feather icon-save me-1"></i> Simpan Stok Barang
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Split / Pindah Rak -->
+<div class="modal fade" id="splitRackModal" tabindex="-1" aria-labelledby="splitRackModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light py-3">
+                <h5 class="modal-title fw-bold" id="splitRackModalLabel">
+                    <i class="feather icon-shuffle text-primary me-2"></i>Bagi / Pindah Stok ke Rak Lain
+                </h5>
+                <button type="button" class="btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ route('gudang-product.splitRack') }}" id="form-split-rack">
+                @csrf
+                <input type="hidden" name="source_id" id="split_source_id">
+
+                <div class="modal-body py-4">
+                    <div class="card bg-light border-0 p-3 mb-3">
+                        <strong id="split_item_name" class="text-dark fs-6">-</strong>
+                        <div class="small text-muted mt-1">
+                            <span id="split_sku" class="badge bg-secondary me-2">-</span>
+                            Rak Asal: <strong id="split_current_rack" class="text-dark">-</strong>
+                            (<span id="split_current_gudang">-</span>) &bull;
+                            Stok Saat Ini: <span id="split_current_qty" class="badge bg-primary">0 pcs</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">
+                            Jumlah Qty yang Dipindahkan <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <input type="number" name="qty" id="split_qty" class="form-control" min="1" required placeholder="Contoh: 10">
+                            <span class="input-group-text">pcs</span>
+                        </div>
+                        <small class="text-muted">Kuantitas ini akan dikurangi dari rak asal dan ditambahkan ke rak tujuan.</small>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label fw-semibold">Gudang Tujuan <span class="text-danger">*</span></label>
+                            <select name="target_gudang_type" id="split_target_gudang" class="form-select" required>
+                                <option value="JS">Gudang JS</option>
                                 <option value="SJB">Gudang SJB</option>
                             </select>
                         </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Rak Penyimpanan <span class="text-danger">*</span></label>
-                            <select name="rack_id" class="form-select" required>
-                                <option value="">-- Pilih Rak --</option>
+                        <div class="col-md-7 mb-3">
+                            <label class="form-label fw-semibold">Rak Tujuan <span class="text-danger">*</span></label>
+                            <select name="target_rack_id" id="split_target_rack" class="form-select" required>
+                                <option value="">-- Pilih Rak Tujuan --</option>
                                 @foreach($racks ?? [] as $rack)
-                                    <option value="{{ $rack->rak_kode }}">
+                                    <option value="{{ $rack->rak_kode }}" data-gudang="{{ strtoupper($rack->gudang ?? '') }}">
                                         {{ $rack->rak_kode }} - {{ $rack->location }}
                                     </option>
                                 @endforeach
@@ -404,7 +551,7 @@
                 <div class="modal-footer bg-light py-2">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary px-4">
-                        <i class="feather icon-save me-1"></i> Simpan Stok Barang
+                        <i class="feather icon-check me-1"></i> Proses Pindah / Bagi Rak
                     </button>
                 </div>
             </form>
@@ -421,6 +568,8 @@
 
 <script>
 $(function () {
+    const racksData = @json($racks ?? []);
+
     $('#gudang-product-table').DataTable({
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Semua"]],
@@ -448,12 +597,15 @@ $(function () {
         ]
     });
 
-    $(document).on('click', '.btn-delete-product', function () {
-        document.getElementById('deleteProductName').textContent =
-            this.dataset.productName;
+    // Inisialisasi tooltips
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        $('[data-bs-toggle="tooltip"]').tooltip();
+    }
 
-        document.getElementById('deleteForm').action =
-            this.dataset.productAction;
+    // Modal Delete
+    $(document).on('click', '.btn-delete-product', function () {
+        document.getElementById('deleteProductName').textContent = this.dataset.productName;
+        document.getElementById('deleteForm').action = this.dataset.productAction;
 
         if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
             const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
@@ -463,6 +615,164 @@ $(function () {
         }
     });
 
+    // Modal Split / Pindah Rak
+    $(document).on('click', '.btn-split-rack', function () {
+        const id = $(this).data('id');
+        const itemName = $(this).data('item-name');
+        const sku = $(this).data('sku');
+        const currentRack = $(this).data('current-rack');
+        const currentGudang = $(this).data('current-gudang') || 'JS';
+        const currentQty = parseInt($(this).data('current-qty')) || 0;
+
+        $('#split_source_id').val(id);
+        $('#split_item_name').text(itemName);
+        $('#split_sku').text('SKU: ' + sku);
+        $('#split_current_rack').text(currentRack);
+        $('#split_current_gudang').text('Gudang ' + currentGudang);
+        $('#split_current_qty').text(currentQty + ' pcs');
+        $('#split_qty').attr('max', currentQty).val('');
+        $('#split_target_rack').val('');
+        $('#split_target_gudang').val(currentGudang);
+
+        // Filter out current rack from target selection
+        $('#split_target_rack option').each(function() {
+            if ($(this).val() === currentRack) {
+                $(this).prop('disabled', true);
+            } else {
+                $(this).prop('disabled', false);
+            }
+        });
+
+        const el = document.getElementById('splitRackModal');
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+            modal.show();
+        } else {
+            $('#splitRackModal').modal('show');
+        }
+    });
+
+    // Match gudang on target rack change
+    $('#split_target_rack').on('change', function() {
+        const selectedGudang = $(this).find('option:selected').attr('data-gudang');
+        if (selectedGudang && (selectedGudang === 'JS' || selectedGudang === 'SJB')) {
+            $('#split_target_gudang').val(selectedGudang);
+        }
+    });
+
+    // Auto-fill when selecting existing product in manual input
+    $('#select-existing-product').on('change', function() {
+        const $opt = $(this).find('option:selected');
+        const id = $(this).val();
+
+        if (id) {
+            $('#hidden_supplier_product_id').val(id);
+            $('#manual_item_name').val($opt.data('name') || '');
+            $('#manual_sku').val($opt.data('sku') || '');
+            $('#manual_brand').val($opt.data('brand') || '');
+            $('#manual_category').val($opt.data('category') || '');
+            $('#manual_sub_category').val($opt.data('subcategory') || '');
+            $('#manual_price').val($opt.data('price') || 0);
+        } else {
+            $('#hidden_supplier_product_id').val('');
+            $('#manual_item_name').val('');
+            $('#manual_sku').val('');
+            $('#manual_brand').val('');
+            $('#manual_category').val('');
+            $('#manual_sub_category').val('');
+            $('#manual_price').val('');
+        }
+    });
+
+    // Multi-rack rows in manual input modal
+    let manualRowIndex = 0;
+    const $manualRackBody = $('#manual-rack-body');
+    const $manualTotalBadge = $('#manual-total-qty-badge');
+
+    function buildManualRackOptions(selectedGudang = '', selectedRack = '') {
+        let html = '<option value="">-- Pilih Rak --</option>';
+        racksData.forEach(r => {
+            const gudangLabel = r.gudang ? r.gudang.toUpperCase() : '';
+            const isSelected = (selectedRack && String(r.rak_kode) === String(selectedRack)) ? 'selected' : '';
+            const locationText = r.location ? ` - ${r.location}` : '';
+            const gudangBadge = gudangLabel ? ` [${gudangLabel}]` : '';
+            html += `<option value="${r.rak_kode}" data-gudang="${gudangLabel}" ${isSelected}>${r.rak_kode}${gudangBadge}${locationText}</option>`;
+        });
+        return html;
+    }
+
+    function addManualRackRow(gudangType = 'JS', rackId = '', qty = 1) {
+        const index = manualRowIndex++;
+        const optionsHtml = buildManualRackOptions(gudangType, rackId);
+
+        const trHtml = `
+            <tr class="manual-rack-row" data-index="${index}">
+                <td>
+                    <select name="allocations[${index}][gudang_type]" class="form-select form-select-sm manual-gudang-select" required>
+                        <option value="JS" ${gudangType === 'JS' ? 'selected' : ''}>Gudang JS</option>
+                        <option value="SJB" ${gudangType === 'SJB' ? 'selected' : ''}>Gudang SJB</option>
+                    </select>
+                </td>
+                <td>
+                    <select name="allocations[${index}][rack_id]" class="form-select form-select-sm manual-rack-select" required>
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td>
+                    <input type="number" name="allocations[${index}][qty]" class="form-control form-control-sm manual-qty-input text-end" min="1" value="${qty}" required>
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-sm btn-outline-danger p-1 remove-manual-rack-btn" title="Hapus">
+                        <i class="feather icon-trash-2"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+
+        const $tr = $(trHtml);
+        $manualRackBody.append($tr);
+
+        $tr.find('.manual-rack-select').on('change', function() {
+            const rackGudang = $(this).find('option:selected').attr('data-gudang');
+            if (rackGudang && (rackGudang === 'JS' || rackGudang === 'SJB')) {
+                $tr.find('.manual-gudang-select').val(rackGudang);
+            }
+        });
+
+        $tr.find('.manual-qty-input').on('input change', function() {
+            recalculateManualTotal();
+        });
+
+        $tr.find('.remove-manual-rack-btn').on('click', function() {
+            if ($manualRackBody.find('.manual-rack-row').length > 1) {
+                $tr.remove();
+                recalculateManualTotal();
+            } else {
+                alert('Minimal harus ada 1 alokasi rak.');
+            }
+        });
+
+        recalculateManualTotal();
+    }
+
+    function recalculateManualTotal() {
+        let total = 0;
+        $manualRackBody.find('.manual-qty-input').each(function() {
+            total += parseInt($(this).val()) || 0;
+        });
+        $manualTotalBadge.text(total + ' pcs');
+    }
+
+    $('#btn-add-manual-rack').on('click', function() {
+        addManualRackRow('JS', '', 1);
+    });
+
+    // Initialize 1 row in manual input modal on ready
+    if ($manualRackBody.children().length === 0) {
+        addManualRackRow('JS', '', 1);
+    }
+
+    // Modal open handlers
     $(document).on('click', '[data-target="#manualInputModal"], [data-bs-target="#manualInputModal"]', function (e) {
         e.preventDefault();
         const el = document.getElementById('manualInputModal');

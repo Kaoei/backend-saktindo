@@ -20,7 +20,7 @@ class GudangProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = GudangProduct::with(['supplierProduct', 'rack']);
+        $query = GudangProduct::with(['supplierProduct.gudangProducts.rack', 'rack']);
 
         if ($request->filled('gudang')) {
             $query->whereHas('rack', function ($q) use ($request) {
@@ -63,6 +63,7 @@ class GudangProductController extends Controller
         $brands = Brand::orderBy('name')->get();
         $categories = Category::orderBy('name')->get();
         $subCategories = SubCategory::orderBy('name')->get();
+        $supplierProducts = SupplierProduct::orderBy('item_name')->get(['id', 'sku', 'item_name', 'brand', 'category', 'sub_category', 'last_purchase_price']);
 
         return view('gudang_product.index', compact(
             'products',
@@ -75,29 +76,43 @@ class GudangProductController extends Controller
             'racks',
             'brands',
             'categories',
-            'subCategories'
+            'subCategories',
+            'supplierProducts'
         ));
     }
 
     /**
-     * Store stock item manually (without requiring an inbound record)
+     * Store stock item manually (supports single or multi-rack allocations)
      */
     public function storeManual(Request $request)
     {
-        $request->validate([
+        $hasAllocations = $request->has('allocations') && is_array($request->allocations) && count($request->allocations) > 0;
+
+        $rules = [
             'item_name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:100',
-            'qty' => 'required|integer|min:1',
             'price' => 'nullable|numeric|min:0',
-            'gudang_type' => 'required|in:JS,SJB',
-            'rack_id' => 'required|exists:raks,rak_kode',
             'brand' => 'nullable|string|max:255',
             'category' => 'nullable|string|max:255',
             'sub_category' => 'nullable|string|max:255',
             'status' => 'nullable|string|in:stored,pending,damaged',
-        ]);
+            'supplier_product_id' => 'nullable|exists:supplier_products,id',
+        ];
 
-        DB::transaction(function () use ($request) {
+        if ($hasAllocations) {
+            $rules['allocations'] = 'required|array|min:1';
+            $rules['allocations.*.rack_id'] = 'required|exists:raks,rak_kode';
+            $rules['allocations.*.gudang_type'] = 'nullable|in:JS,SJB';
+            $rules['allocations.*.qty'] = 'required|integer|min:1';
+        } else {
+            $rules['qty'] = 'required|integer|min:1';
+            $rules['gudang_type'] = 'required|in:JS,SJB';
+            $rules['rack_id'] = 'required|exists:raks,rak_kode';
+        }
+
+        $request->validate($rules);
+
+        DB::transaction(function () use ($request, $hasAllocations) {
             // 1. Process Brand
             $brandName = trim($request->brand ?? '');
             if ($brandName !== '') {
@@ -140,7 +155,12 @@ class GudangProductController extends Controller
                 $sku = 'SKU-' . strtoupper(substr(md5($request->item_name), 0, 8));
             }
 
-            $supplierProduct = SupplierProduct::where('sku', $sku)->first();
+            if ($request->filled('supplier_product_id')) {
+                $supplierProduct = SupplierProduct::find($request->supplier_product_id);
+            } else {
+                $supplierProduct = SupplierProduct::where('sku', $sku)->first();
+            }
+
             if (!$supplierProduct) {
                 $supplier = Supplier::first();
                 if (!$supplier) {
@@ -170,41 +190,66 @@ class GudangProductController extends Controller
                 if (!empty($updateData)) $supplierProduct->update($updateData);
             }
 
-            // 4. Create or Update GudangProduct
-            $existingProduct = GudangProduct::where('supplier_product_id', $supplierProduct->id)
-                ->where('rack_id', $request->rack_id)
-                ->first();
-
-            if ($existingProduct) {
-                $existingProduct->update([
-                    'qty' => $existingProduct->qty + (int)$request->qty,
-                    'price' => $request->price ? floatval($request->price) : $existingProduct->price,
-                    'gudang_type' => $request->gudang_type,
-                    'status' => $request->status ?: 'stored',
-                ]);
+            // 4. Create or Update GudangProduct for each rack allocation
+            $allocations = [];
+            if ($hasAllocations) {
+                $allocations = $request->allocations;
             } else {
-                GudangProduct::create([
-                    'id' => GudangProduct::generateId($sku),
-                    'supplier_product_id' => $supplierProduct->id,
-                    'rack_id' => $request->rack_id,
-                    'gudang_type' => $request->gudang_type,
-                    'qty' => (int)$request->qty,
-                    'price' => $request->price ? floatval($request->price) : 0,
-                    'discount' => 0,
-                    'status' => $request->status ?: 'stored',
-                ]);
+                $allocations = [
+                    [
+                        'rack_id' => $request->rack_id,
+                        'gudang_type' => $request->gudang_type,
+                        'qty' => (int) $request->qty,
+                    ]
+                ];
+            }
+
+            foreach ($allocations as $alloc) {
+                $rackId = $alloc['rack_id'];
+                $allocQty = (int) ($alloc['qty'] ?? 0);
+                if ($allocQty <= 0) continue;
+
+                $gudangType = $alloc['gudang_type'] ?? null;
+                if (!$gudangType) {
+                    $rack = Rak::where('rak_kode', $rackId)->first();
+                    $gudangType = strtoupper($rack->gudang ?? 'JS');
+                }
+
+                $existingProduct = GudangProduct::where('supplier_product_id', $supplierProduct->id)
+                    ->where('rack_id', $rackId)
+                    ->first();
+
+                if ($existingProduct) {
+                    $existingProduct->update([
+                        'qty' => $existingProduct->qty + $allocQty,
+                        'price' => $request->price ? floatval($request->price) : $existingProduct->price,
+                        'gudang_type' => $gudangType,
+                        'status' => $request->status ?: 'stored',
+                    ]);
+                } else {
+                    GudangProduct::create([
+                        'id' => GudangProduct::generateId($sku),
+                        'supplier_product_id' => $supplierProduct->id,
+                        'rack_id' => $rackId,
+                        'gudang_type' => $gudangType,
+                        'qty' => $allocQty,
+                        'price' => $request->price ? floatval($request->price) : 0,
+                        'discount' => 0,
+                        'status' => $request->status ?: 'stored',
+                    ]);
+                }
             }
         });
 
         return redirect()
             ->route('gudang-product.index')
-            ->with('status', 'Stok barang berhasil ditambahkan secara manual.');
+            ->with('status', 'Stok barang berhasil ditambahkan ke rak.');
     }
 
     public function create(Request $request)
     {
-        $inbounds = InBound::with(['supplier', 'supplierProduct'])
-            ->where('status', 'pending')
+        $inbounds = InBound::with(['supplier', 'supplierProduct.gudangProducts.rack'])
+            ->whereIn('status', ['pending', 'partial'])
             ->latest()
             ->get();
 
@@ -214,17 +259,84 @@ class GudangProductController extends Controller
         return view('gudang_product.create', compact('inbounds', 'racks', 'selectedInbound'));
     }
 
-    public function store(Request $request){
+    public function store(Request $request)
+    {
+        // Support multi-rack allocation array
+        if ($request->has('allocations') && is_array($request->allocations) && count($request->allocations) > 0) {
+            $request->validate([
+                'in_bound_id' => 'required|exists:in_bounds,id',
+                'allocations' => 'required|array|min:1',
+                'allocations.*.rack_id' => 'required|exists:raks,rak_kode',
+                'allocations.*.gudang_type' => 'nullable|in:JS,SJB',
+                'allocations.*.qty' => 'required|integer|min:1',
+            ]);
+
+            DB::transaction(function () use ($request) {
+                $inBound = InBound::with('supplierProduct')
+                    ->where('id', $request->in_bound_id)
+                    ->whereIn('status', ['pending', 'partial'])
+                    ->firstOrFail();
+
+                $totalAllocated = 0;
+                foreach ($request->allocations as $alloc) {
+                    $qty = (int) $alloc['qty'];
+                    if ($qty <= 0) continue;
+
+                    $rackId = $alloc['rack_id'];
+                    $gudangType = $alloc['gudang_type'] ?? null;
+                    if (!$gudangType) {
+                        $rack = Rak::where('rak_kode', $rackId)->first();
+                        $gudangType = strtoupper($rack->gudang ?? 'JS');
+                    }
+
+                    $existingProduct = GudangProduct::where('supplier_product_id', $inBound->supplier_product_id)
+                        ->where('rack_id', $rackId)
+                        ->first();
+
+                    if ($existingProduct) {
+                        $existingProduct->update([
+                            'qty' => $existingProduct->qty + $qty,
+                            'gudang_type' => $gudangType,
+                            'status' => 'stored',
+                        ]);
+                    } else {
+                        GudangProduct::create([
+                            'id' => GudangProduct::generateId($inBound->supplierProduct->sku ?? null),
+                            'supplier_product_id' => $inBound->supplier_product_id,
+                            'rack_id' => $rackId,
+                            'gudang_type' => $gudangType,
+                            'qty' => $qty,
+                            'status' => 'stored',
+                        ]);
+                    }
+
+                    $totalAllocated += $qty;
+                }
+
+                $inBound->update([
+                    'status' => 'stored',
+                ]);
+            });
+
+            return redirect()
+                ->route('gudang-product.index')
+                ->with('success', 'Barang berhasil disimpan ke rak-rak penyimpanan.');
+        }
+
+        // Backward compatibility for single rack submission
         $request->validate([
             'in_bound_id' => 'required|exists:in_bounds,id',
             'rack_id' => 'required|exists:raks,rak_kode',
             'gudang_type' => 'nullable|in:JS,SJB',
+            'qty' => 'nullable|integer|min:1',
         ]);
 
         DB::transaction(function () use ($request) {
             $inBound = InBound::with('supplierProduct')->where('id', $request->in_bound_id)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'partial'])
                 ->firstOrFail();
+
+            $qtyToStore = $request->filled('qty') ? (int)$request->qty : $inBound->qty_received;
 
             $existingProduct = GudangProduct::where('supplier_product_id', $inBound->supplier_product_id)
                 ->where('rack_id', $request->rack_id)
@@ -238,18 +350,17 @@ class GudangProductController extends Controller
 
             if ($existingProduct) {
                 $existingProduct->update([
-                    'qty' => $existingProduct->qty + $inBound->qty_received,
+                    'qty' => $existingProduct->qty + $qtyToStore,
                     'gudang_type' => $gudangType,
                     'status' => 'stored',
                 ]);
             } else {    
-
                 GudangProduct::create([
                     'id' => GudangProduct::generateId($inBound->supplierProduct->sku ?? null),
                     'supplier_product_id' => $inBound->supplier_product_id,
                     'rack_id' => $request->rack_id,
                     'gudang_type' => $gudangType,
-                    'qty' => $inBound->qty_received,
+                    'qty' => $qtyToStore,
                     'status' => 'stored',
                 ]);
             }
@@ -264,9 +375,76 @@ class GudangProductController extends Controller
             ->with('success', 'Barang berhasil disimpan ke rak.');
     }
 
+    /**
+     * Split or transfer stock from one rack to another for the same product
+     */
+    public function splitRack(Request $request)
+    {
+        $request->validate([
+            'source_id' => 'required|exists:gudang_products,id',
+            'target_rack_id' => 'required|exists:raks,rak_kode',
+            'target_gudang_type' => 'nullable|in:JS,SJB',
+            'qty' => 'required|integer|min:1',
+        ]);
+
+        DB::transaction(function () use ($request) {
+            $sourceProduct = GudangProduct::with('supplierProduct')->findOrFail($request->source_id);
+
+            if ($request->qty > $sourceProduct->qty) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'qty' => 'Jumlah kuantitas yang dipindahkan (' . $request->qty . ') melebihi stok yang ada di rak asal (' . $sourceProduct->qty . ').'
+                ]);
+            }
+
+            if ($sourceProduct->rack_id === $request->target_rack_id) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'target_rack_id' => 'Rak tujuan tidak boleh sama dengan rak asal.'
+                ]);
+            }
+
+            $targetGudangType = $request->target_gudang_type;
+            if (!$targetGudangType) {
+                $targetRack = Rak::where('rak_kode', $request->target_rack_id)->first();
+                $targetGudangType = strtoupper($targetRack->gudang ?? $sourceProduct->gudang_type ?? 'JS');
+            }
+
+            // 1. Check if product already exists on target rack
+            $targetProduct = GudangProduct::where('supplier_product_id', $sourceProduct->supplier_product_id)
+                ->where('rack_id', $request->target_rack_id)
+                ->first();
+
+            if ($targetProduct) {
+                $targetProduct->update([
+                    'qty' => $targetProduct->qty + (int)$request->qty,
+                    'gudang_type' => $targetGudangType,
+                ]);
+            } else {
+                $sku = $sourceProduct->supplierProduct->sku ?? null;
+                GudangProduct::create([
+                    'id' => GudangProduct::generateId($sku),
+                    'supplier_product_id' => $sourceProduct->supplier_product_id,
+                    'rack_id' => $request->target_rack_id,
+                    'gudang_type' => $targetGudangType,
+                    'qty' => (int)$request->qty,
+                    'price' => $sourceProduct->price,
+                    'discount' => $sourceProduct->discount,
+                    'status' => $sourceProduct->status,
+                ]);
+            }
+
+            // 2. Reduce source product qty
+            $remainingSourceQty = $sourceProduct->qty - (int)$request->qty;
+            $sourceProduct->update([
+                'qty' => $remainingSourceQty,
+            ]);
+        });
+
+        return redirect()->back()->with('status', 'Stok berhasil dibagi/dipindahkan ke rak tujuan.');
+    }
+
     public function edit(GudangProduct $gudangProduct)
     {
-        $gudangProduct->load(['supplierProduct', 'rack']);
+        $gudangProduct->load(['supplierProduct.gudangProducts.rack', 'rack']);
         $racks = Rak::orderBy('rak_kode')->get();
         $brands = Brand::orderBy('name')->get();
         $categories = Category::orderBy('name')->get();

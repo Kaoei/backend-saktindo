@@ -228,6 +228,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/store-manual', [GudangProductController::class, 'storeManual'])->name('storeManual');
         Route::get('/{gudangProduct}/edit', [GudangProductController::class, 'edit'])->name('edit');
         Route::put('/{gudangProduct}', [GudangProductController::class, 'update'])->name('update');
+        Route::post('/split-rack', [GudangProductController::class, 'splitRack'])->name('splitRack');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG . ',' . User::ROLE_SALES)->group(function () {
