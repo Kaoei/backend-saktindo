@@ -57,5 +57,10 @@ class SupplierProduct extends Model
             'id'
         );
     }
+
+    public function getProductNameAttribute(): ?string
+    {
+        return $this->item_name;
+    }
 }
 

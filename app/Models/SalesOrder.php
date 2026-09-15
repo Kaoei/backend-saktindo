@@ -27,7 +27,15 @@ class SalesOrder extends Model
         'po_date',
         'order_date',
         'sales_type',
+        'toko',
+        'jenis_invoice',
         'order_status',
+        'is_pre_order',
+        'pre_order_eta',
+        'dp_amount',
+        'dp_paid',
+        'dp_status',
+        'pre_order_notes',
         'stock_status',
         'warehouse_task_reference',
         'notes',
@@ -39,10 +47,19 @@ class SalesOrder extends Model
     protected $casts = [
         'po_date' => 'date',
         'order_date' => 'date',
+        'pre_order_eta' => 'date',
+        'is_pre_order' => 'boolean',
+        'dp_amount' => 'decimal:2',
+        'dp_paid' => 'decimal:2',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',
     ];
+
+    public function proformaInvoice(): HasOne
+    {
+        return $this->hasOne(ProformaInvoice::class);
+    }
 
     public function customer(): BelongsTo
     {
@@ -67,5 +84,36 @@ class SalesOrder extends Model
     public function warehouseTask(): HasOne
     {
         return $this->hasOne(WarehouseTask::class);
+    }
+
+    public function getInvoiceRecordAttribute()
+    {
+        if ($this->invoice) {
+            return $this->invoice;
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('invoice_sales_orders')) {
+                return $this->invoices->first();
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return null;
+    }
+
+    public function getInvoicesCollectionAttribute()
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('invoice_sales_orders')) {
+                $invs = $this->invoices;
+                if ($invs && $invs->count() > 0) {
+                    return $invs;
+                }
+            }
+        } catch (\Throwable $e) {
+        }
+
+        return $this->invoice ? collect([$this->invoice]) : collect();
     }
 }

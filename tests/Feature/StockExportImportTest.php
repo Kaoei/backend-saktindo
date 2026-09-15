@@ -390,3 +390,44 @@ test('import dynamically creates brand, category and subcategory case-insensitiv
     @unlink($tempFilePath);
 });
 
+test('user can store stock item manually without inbound record', function () {
+    $superAdmin = User::factory()->create([
+        'role' => User::ROLE_SUPER_ADMIN,
+    ]);
+
+    $rack = Rak::create([
+        'rak_kode' => 'RAK-MANUAL-1',
+        'location' => 'Zone Manual',
+    ]);
+
+    $response = $this->actingAs($superAdmin)
+        ->post(route('gudang-product.storeManual'), [
+            'item_name' => 'Lampu LED Manual Input 20W',
+            'sku' => 'SKU-MANUAL-001',
+            'brand' => 'Philips',
+            'category' => 'Lighting',
+            'sub_category' => 'LED',
+            'qty' => 15,
+            'price' => 75000,
+            'gudang_type' => 'JS',
+            'rack_id' => $rack->rak_kode,
+            'status' => 'stored',
+        ]);
+
+    $response->assertRedirect(route('gudang-product.index'));
+    $response->assertSessionHas('status');
+
+    $this->assertDatabaseHas('supplier_products', [
+        'sku' => 'SKU-MANUAL-001',
+        'item_name' => 'Lampu LED Manual Input 20W',
+        'brand' => 'Philips',
+    ]);
+
+    $this->assertDatabaseHas('gudang_products', [
+        'rack_id' => 'RAK-MANUAL-1',
+        'qty' => 15,
+        'gudang_type' => 'JS',
+    ]);
+});
+
+

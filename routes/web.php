@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::prefix('sales-finance')->name('sales-finance.')->group(function () {
+        Route::get('/pre-orders', [SalesFinanceController::class, 'preOrders'])->middleware('permission:sales_finance.view')->name('pre-orders.index');
         Route::get('/', [SalesFinanceController::class, 'index'])->middleware('permission:sales_finance.view')->name('index');
         Route::get('/create', [SalesFinanceController::class, 'create'])->middleware('permission:sales_finance.create')->name('create');
         Route::post('/', [SalesFinanceController::class, 'store'])->middleware('permission:sales_finance.create')->name('store');
@@ -126,6 +127,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/{salesOrder}/proforma-invoice', [SalesFinanceController::class, 'generateProformaInvoice'])->middleware('permission:sales_finance.create')->name('proforma.generate');
         Route::get('/{salesOrder}/proforma-invoice/print', [SalesFinanceController::class, 'printProformaInvoice'])->middleware('permission:sales_finance.view')->name('proforma.print');
         Route::post('/invoice/consolidate', [SalesFinanceController::class, 'consolidateInvoices'])->middleware('permission:sales_finance.create')->name('invoice.consolidate');
+        Route::post('/{salesOrder}/dp-payment', [SalesFinanceController::class, 'recordDpPayment'])->middleware('permission:sales_finance.create')->name('dp-payment.store');
     });
 
     Route::post('/sales-finance/merge', [SalesFinanceController::class, 'mergeInvoices'])->name('sales-finance.merge');
@@ -138,6 +140,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/receivables/{invoice}/payment', [FinanceController::class, 'paymentForm'])->name('payment.form');
         Route::get('/ap', [FinanceController::class, 'ap'])->name('ap');
         Route::post('/payment/{invoice?}', [FinanceController::class, 'storePayment'])->name('payment.store');
+        Route::post('/invoices/{invoice}/send-email', [FinanceController::class, 'sendInvoiceEmail'])->name('invoices.send-email');
         Route::get('/report', [FinanceController::class, 'report'])->name('report');
     });
 
@@ -151,6 +154,13 @@ Route::middleware('auth')->group(function () {
     Route::post('/invoices/{invoice}/payments', [SalesFinanceController::class, 'storePayment'])
         ->middleware('permission:sales_finance.create')
         ->name('invoices.payments.store');
+
+    Route::patch('/invoices/{invoice}/check-faktur', [SalesFinanceController::class, 'checkFaktur'])
+        ->middleware('permission:sales_finance.edit')
+        ->name('invoices.check-faktur');
+
+    Route::post('/invoices/{invoice}/send-email', [FinanceController::class, 'sendInvoiceEmail'])
+        ->name('invoices.send-email.global');
 
     Route::get('/activity-logs', [ActivityLogController::class, 'index'])
         ->middleware('permission:activity_logs.view')
@@ -205,6 +215,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/{inbound}/edit', [InBoundController::class, 'edit'])->name('edit');
         Route::put('/{inbound}', [InBoundController::class, 'update'])->name('update');
         Route::patch('/{inbound}/cancel', [InBoundController::class, 'cancel'])->name('cancel');
+        Route::get('/{inbound}/print', [InBoundController::class, 'printInbound'])->name('print');
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
@@ -216,8 +227,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [GudangProductController::class, 'index'])->name('index');
         Route::get('/create', [GudangProductController::class, 'create'])->name('create');
         Route::post('/', [GudangProductController::class, 'store'])->name('store');
+        Route::post('/store-manual', [GudangProductController::class, 'storeManual'])->name('storeManual');
         Route::get('/{gudangProduct}/edit', [GudangProductController::class, 'edit'])->name('edit');
         Route::put('/{gudangProduct}', [GudangProductController::class, 'update'])->name('update');
+        Route::post('/split-rack', [GudangProductController::class, 'splitRack'])->name('splitRack');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');
     });
     Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG . ',' . User::ROLE_SALES)->group(function () {

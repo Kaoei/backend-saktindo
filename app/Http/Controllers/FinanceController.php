@@ -6,6 +6,9 @@ use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\SupplierPurchaseHistory;
 use App\Models\ActivityLog;
+use App\Support\ActivityLogger;
+use App\Mail\InvoiceReminderMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +91,22 @@ class FinanceController extends Controller
      */
     public function storePayment(Request $request): RedirectResponse
     {
+        // Support both payment_method and method fields from frontend forms
+        if (!$request->has('payment_method') && $request->has('method')) {
+            $request->merge(['payment_method' => $request->input('method')]);
+        }
+
+        if (!$request->has('id') && $invoiceId = $request->route('invoice')) {
+            $request->merge([
+                'id' => is_object($invoiceId) ? $invoiceId->id : $invoiceId,
+                'type' => 'ar'
+            ]);
+        }
+
+        if (!$request->has('type') && $request->has('id')) {
+            $request->merge(['type' => 'ar']);
+        }
+
         $request->validate([
             'type' => 'required|in:ar,ap',
             'id' => 'required',
@@ -95,6 +114,11 @@ class FinanceController extends Controller
             'payment_date' => 'required|date',
             'payment_method' => 'required|string',
             'receiving_account' => 'required_if:type,ar|nullable|in:js,sjb',
+            'bank_name' => 'nullable|string|max:255',
+            'giro_number' => 'nullable|string|max:255',
+            'giro_due_date' => 'nullable|date',
+            'giro_status' => 'nullable|in:pending,cleared,rejected',
+            'reference_number' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
 
@@ -137,7 +161,12 @@ class FinanceController extends Controller
                     'payment_date' => $request->payment_date,
                     'method' => $method,
                     'receiving_account' => $request->receiving_account,
+                    'bank_name' => $method === 'giro' ? $request->bank_name : null,
+                    'giro_number' => $method === 'giro' ? ($request->giro_number ?: $request->reference_number) : null,
+                    'giro_due_date' => $method === 'giro' ? $request->giro_due_date : null,
+                    'giro_status' => $method === 'giro' ? ($request->giro_status ?: 'pending') : null,
                     'amount' => $amount,
+                    'reference_number' => $request->reference_number ?: ($method === 'giro' ? $request->giro_number : null),
                     'notes' => $request->notes,
                 ]);
 
@@ -181,4 +210,46 @@ class FinanceController extends Controller
 
         return view('finance.report', compact('arMonthly', 'apMonthly'));
     }
+
+    /**
+     * Send Invoice / Billing Reminder Email to Customer
+     */
+    public function sendInvoiceEmail(Request $request, Invoice $invoice): RedirectResponse
+    {
+        $invoice->loadMissing(['salesOrder.customer', 'salesOrders.customer']);
+
+        $customerEmail = null;
+        if ($invoice->salesOrder && $invoice->salesOrder->customer) {
+            $customerEmail = $invoice->salesOrder->customer->email;
+        } elseif ($invoice->salesOrders->isNotEmpty() && $invoice->salesOrders->first()->customer) {
+            $customerEmail = $invoice->salesOrders->first()->customer->email;
+        }
+
+        $recipientEmail = $request->input('email') ?: $customerEmail;
+
+        if (!$recipientEmail) {
+            return back()->with('error', 'Alamat email customer tidak ditemukan. Mohon isi alamat email tujuan.');
+        }
+
+        if (!filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+            return back()->with('error', "Format email '{$recipientEmail}' tidak valid.");
+        }
+
+        $customMessage = $request->input('message');
+
+        try {
+            Mail::to($recipientEmail)->send(new InvoiceReminderMail($invoice, $customMessage));
+
+            ActivityLogger::log('send_email', 'invoice', $invoice, [
+                'recipient_email' => $recipientEmail,
+                'invoice_number' => $invoice->invoice_number,
+                'outstanding_amount' => $invoice->outstanding_amount,
+            ]);
+
+            return back()->with('status', "Tagihan invoice {$invoice->invoice_number} berhasil dikirim ke {$recipientEmail}.");
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal mengirim email: ' . $e->getMessage());
+        }
+    }
 }
+

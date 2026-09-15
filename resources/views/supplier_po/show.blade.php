@@ -18,6 +18,12 @@
                         <td class="text-muted" style="width: 40%;">No. PO</td>
                         <td class="fw-bold">{{ $supplierPo->po_number }}</td>
                     </tr>
+                    @if($supplierPo->reference_number)
+                    <tr>
+                        <td class="text-muted">No. Referensi</td>
+                        <td><span class="badge bg-light text-dark border">{{ $supplierPo->reference_number }}</span></td>
+                    </tr>
+                    @endif
                     <tr>
                         <td class="text-muted">Supplier</td>
                         <td>{{ $supplierPo->supplier->name ?? 'N/A' }}</td>

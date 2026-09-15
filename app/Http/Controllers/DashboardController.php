@@ -22,6 +22,8 @@ class DashboardController extends Controller
         // Alerts (All roles get low stock alerts by default, but customized below)
         $lowStockProducts = GudangProduct::with(['supplierProduct', 'rack'])->where('qty', '<', 50)->get();
 
+        $unpaidClients = $this->getUnpaidClientsData();
+
         switch ($role) {
             case 'finance':
                 $pendingOrders30Days = SalesOrder::where('order_date', '<=', now()->subDays(30))
@@ -62,7 +64,8 @@ class DashboardController extends Controller
                     'totalRevenue',
                     'totalOutstandingAR',
                     'totalSupplierPOs',
-                    'recentInvoices'
+                    'recentInvoices',
+                    'unpaidClients'
                 ));
 
             case 'sales':
@@ -99,7 +102,8 @@ class DashboardController extends Controller
                     'totalCustomers',
                     'totalOrders',
                     'totalPhysicalProducts',
-                    'recentOrders'
+                    'recentOrders',
+                    'unpaidClients'
                 ));
 
             case 'teknisi': // Warehouse / Gudang
@@ -190,9 +194,74 @@ class DashboardController extends Controller
                     'totalSupplierPOs',
                     'totalOutstandingAR',
                     'recentOrders',
-                    'recentInvoices'
+                    'recentInvoices',
+                    'unpaidClients'
                 ));
         }
+    }
+
+    private function getUnpaidClientsData()
+    {
+        $unpaidInvoices = Invoice::with(['salesOrder.customer', 'salesOrders.customer'])
+            ->where('status', '!=', 'paid')
+            ->where(function ($q) {
+                $q->where('outstanding_amount', '>', 0)
+                  ->orWhereNull('outstanding_amount');
+            })
+            ->latest('invoice_date')
+            ->get();
+
+        $clientsMap = [];
+
+        foreach ($unpaidInvoices as $invoice) {
+            $customerName = 'Tanpa Customer';
+            $customerId = null;
+            $customerEmail = null;
+            $customerPhone = null;
+
+            if ($invoice->salesOrder && $invoice->salesOrder->customer) {
+                $customer = $invoice->salesOrder->customer;
+                $customerId = $customer->id;
+                $customerName = $customer->nama_customer;
+                $customerEmail = $customer->email;
+                $customerPhone = $customer->nomor_hp;
+            } elseif ($invoice->salesOrders->isNotEmpty() && $invoice->salesOrders->first()->customer) {
+                $customer = $invoice->salesOrders->first()->customer;
+                $customerId = $customer->id;
+                $customerName = $customer->nama_customer;
+                $customerEmail = $customer->email;
+                $customerPhone = $customer->nomor_hp;
+            } elseif ($invoice->salesOrder && $invoice->salesOrder->customer_name) {
+                $customerName = $invoice->salesOrder->customer_name;
+                $customerId = $invoice->salesOrder->customer_id ?: 'MANUAL-' . md5($customerName);
+            } else {
+                $customerId = 'UNKNOWN';
+            }
+
+            $key = $customerId ?: $customerName;
+
+            if (!isset($clientsMap[$key])) {
+                $clientsMap[$key] = [
+                    'customer_id' => $customerId,
+                    'customer_name' => $customerName,
+                    'email' => $customerEmail,
+                    'phone' => $customerPhone,
+                    'unpaid_count' => 0,
+                    'total_outstanding' => 0,
+                    'is_blocked' => false,
+                    'invoices' => collect([]),
+                ];
+            }
+
+            $clientsMap[$key]['unpaid_count'] += 1;
+            $clientsMap[$key]['total_outstanding'] += (float) ($invoice->outstanding_amount ?: $invoice->grand_total);
+            $clientsMap[$key]['invoices']->push($invoice);
+        }
+
+        return collect($clientsMap)->map(function ($c) {
+            $c['is_blocked'] = $c['unpaid_count'] >= 3;
+            return (object) $c;
+        })->sortByDesc('unpaid_count')->values();
     }
 
     public function searchCustomers(Request $request)
@@ -207,11 +276,19 @@ class DashboardController extends Controller
             ->get(['id', 'nama_customer', 'termin']);
 
         return response()->json([
-            'results' => $customers->map(fn($c) => [
-                'id' => $c->id,
-                'text' => $c->nama_customer . ' (' . $c->id . ')',
-                'termin' => $c->termin
-            ])
+            'results' => $customers->map(function ($c) {
+                $unpaidCount = $c->unpaid_invoices_count;
+                $isBlocked = $c->is_blocked_for_so;
+                $badge = $unpaidCount > 0 ? " [{$unpaidCount} Tagihan Belum Lunas" . ($isBlocked ? ' - DIBLOKIR' : '') . "]" : '';
+
+                return [
+                    'id' => $c->id,
+                    'text' => $c->nama_customer . ' (' . $c->id . ')' . $badge,
+                    'termin' => $c->termin,
+                    'unpaid_count' => $unpaidCount,
+                    'is_blocked' => $isBlocked,
+                ];
+            })
         ]);
     }
 

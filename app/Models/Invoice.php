@@ -26,6 +26,8 @@ class Invoice extends Model
         'invoice_type',
         'tax_type',
         'faktur_number',
+        'faktur_checked',
+        'faktur_checked_at',
         'invoice_date',
         'due_date',
         'status',
@@ -39,6 +41,8 @@ class Invoice extends Model
     protected $casts = [
         'invoice_date' => 'date',
         'due_date' => 'date',
+        'faktur_checked' => 'boolean',
+        'faktur_checked_at' => 'datetime',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',

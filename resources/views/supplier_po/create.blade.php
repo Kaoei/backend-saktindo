@@ -165,6 +165,12 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label fw-medium text-dark">No. Referensi</label>
+                        <input type="text" name="reference_number" class="form-control" placeholder="Contoh: REF-2026-001" value="{{ old('reference_number') }}">
+                        <small class="text-muted">Nomor PO Customer atau nomor referensi internal.</small>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label fw-medium text-dark">Catatan</label>
                         <textarea name="notes" class="form-control" rows="3" placeholder="Masukkan catatan tambahan...">{{ isset($prefillItems) && $prefillItems->count() > 0 ? 'PO dibuat dari data kekurangan stok dashboard.' : '' }}</textarea>
                     </div>

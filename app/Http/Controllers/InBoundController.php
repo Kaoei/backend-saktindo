@@ -12,7 +12,7 @@ class InBoundController extends Controller
 {
     public function index()
     {
-        $inbounds = InBound::with(['supplier', 'supplierProduct', 'supplierPo'])
+        $inbounds = InBound::with(['supplier', 'supplierProduct.gudangProducts.rack', 'supplierPo'])
             ->latest()
             ->get();
 
@@ -165,6 +165,12 @@ class InBoundController extends Controller
         return redirect()
             ->route('inbound.index')
             ->with('success', 'Barang masuk berhasil dibatalkan.');
+    }
+
+    public function printInbound(InBound $inbound)
+    {
+        $inbound->load(['supplier', 'supplierProduct', 'supplierPo']);
+        return view('inbound.print', compact('inbound'));
     }
 
     public function destroy(InBound $inbound)
