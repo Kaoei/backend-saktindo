@@ -126,8 +126,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
         Route::post('/{salesOrder}/proforma-invoice', [SalesFinanceController::class, 'generateProformaInvoice'])->middleware('permission:sales_finance.create')->name('proforma.generate');
         Route::get('/{salesOrder}/proforma-invoice/print', [SalesFinanceController::class, 'printProformaInvoice'])->middleware('permission:sales_finance.view')->name('proforma.print');
+          Route::get('/invoices/{invoice}/pdf', [SalesFinanceController::class, 'invoicePdf'])
+        ->middleware('permission:sales_finance.view')
+        ->name('invoices.pdf');
         Route::post('/invoice/consolidate', [SalesFinanceController::class, 'consolidateInvoices'])->middleware('permission:sales_finance.create')->name('invoice.consolidate');
         Route::post('/{salesOrder}/dp-payment', [SalesFinanceController::class, 'recordDpPayment'])->middleware('permission:sales_finance.create')->name('dp-payment.store');
+        Route::get('/delivery-notes/{deliveryNote}/print', [SalesFinanceController::class, 'printDeliveryNote'])
+            ->middleware('permission:sales_finance.view')
+            ->name('delivery-notes.print');
     });
 
     Route::post('/sales-finance/merge', [SalesFinanceController::class, 'mergeInvoices'])->name('sales-finance.merge');
@@ -146,6 +152,8 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/supplier-po/create-from-shortage', [SupplierPOController::class, 'createFromShortage'])->name('supplier-po.create-from-shortage');
     Route::resource('/supplier-po', SupplierPOController::class);
+    Route::get('/supplier-po/{supplierPo}/invoice', [SupplierPOController::class, 'invoice'])
+    ->name('supplier-po.invoice');
 
     Route::post('/invoices/{invoice}/delivery-note', [SalesFinanceController::class, 'storeDeliveryNote'])
         ->middleware('permission:sales_finance.edit')
@@ -217,6 +225,8 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{inbound}/cancel', [InBoundController::class, 'cancel'])->name('cancel');
         Route::get('/{inbound}/print', [InBoundController::class, 'printInbound'])->name('print');
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
+        Route::get('/{inbound}/download-pdf', [InBoundController::class, 'downloadPdf'])
+        ->name('pdf');
     });
     Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
         Route::get('/export', [GudangProductController::class, 'export'])->name('export');

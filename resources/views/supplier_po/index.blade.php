@@ -52,7 +52,32 @@
                                 @endif
                             </td>
                             <td class="text-center">
-                                <a href="{{ route('supplier-po.show', $po->id) }}" class="btn btn-sm btn-outline-info">Detail</a>
+                               <div class="d-flex justify-content-center gap-1">
+
+                                    {{-- Detail --}}
+                                    <a href="{{ route('supplier-po.show', $po->id) }}"
+                                    class="btn btn-sm btn-outline-info">
+                                        Detail
+                                    </a>
+
+                                    {{-- Process --}}
+                                    @if($po->status === 'pending')
+                                      <a href="{{ route('inbound.create', ['supplier_po_id' => $po->id]) }}"
+                                        class="btn btn-sm btn-primary">
+                                            <i class="feather icon-play me-1"></i>
+                                            Process
+                                        </a>
+                                    @endif
+                                    @if($po->status === 'received')
+                                        <a href="{{ route('supplier-po.invoice', $po->id) }}"
+                                        class="btn btn-sm btn-success"
+                                        target="_blank">
+                                            <i class="feather icon-file-text me-1"></i>
+                                            Faktur
+                                        </a>
+                                    @endif
+
+                                </div>
                             </td>
                         </tr>
                     @empty

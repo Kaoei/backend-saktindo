@@ -59,9 +59,14 @@
                                     </label>
                                     <select name="supplier_po_id" id="po-select" class="form-select border-primary shadow-sm">
                                         <option value="">-- Tanpa Template PO --</option>
+
                                         @foreach($supplierPos as $po)
-                                            <option value="{{ $po->id }}">
-                                                {{ $po->po_number }} - {{ $po->supplier->name ?? 'Supplier' }} ({{ count($po->items) }} Item - Total Rp {{ number_format($po->total_amount, 0, ',', '.') }})
+                                            <option value="{{ $po->id }}"
+                                                {{ request('supplier_po_id') == $po->id ? 'selected' : '' }}>
+                                                
+                                                {{ $po->po_number }} - {{ $po->supplier->name ?? 'Supplier' }}
+                                                ({{ count($po->items) }} Item - Total Rp {{ number_format($po->total_amount, 0, ',', '.') }})
+
                                             </option>
                                         @endforeach
                                     </select>

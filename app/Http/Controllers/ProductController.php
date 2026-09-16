@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\GudangProduct;
+use App\Models\Product;
 use App\Models\Rak;
 use App\Models\SubCategory;
 use App\Models\Supplier;
 use App\Models\SupplierProduct;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProductController extends Controller
 {
@@ -238,7 +241,6 @@ class ProductController extends Controller
     }
 
     /**
-    /**
      * Download Excel template for product import
      */
     public function downloadTemplate()
@@ -247,10 +249,86 @@ class ProductController extends Controller
     }
 
     /**
-     * Export products to Excel.
+     * Export products into TikTok batch edit Excel template with clean layout styling
      */
     public function export()
     {
-        return app(GudangProductController::class)->export();
+        $templatePath = base_path('Tiktoksellercenter_batchedit_20260520_all_information_template_7.xlsx');
+
+        if (!file_exists($templatePath)) {
+            return app(GudangProductController::class)->export();
+        }
+
+        try {
+            $spreadsheet = IOFactory::load($templatePath);
+            $sheet = $spreadsheet->getSheetByName('Template') ?: $spreadsheet->getActiveSheet();
+            
+            $highestColumn = $sheet->getHighestColumn();
+            $colsCount = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($highestColumn);
+
+            $headerKeys = [];
+            for ($col = 1; $col <= $colsCount; $col++) {
+                $cellVal = trim((string)$sheet->getCell([$col, 1])->getValue());
+                if ($cellVal !== '') {
+                    $headerKeys[$cellVal] = $col;
+                }
+            }
+
+            $products = Product::all();
+            if ($products->isEmpty()) {
+                return app(GudangProductController::class)->export();
+            }
+
+            $modelMap = Product::getHeaderMap();
+            $dbToTikTokMap = array_flip($modelMap);
+
+            $currentRow = 6;
+            foreach ($products as $product) {
+                foreach ($dbToTikTokMap as $dbField => $tikTokKey) {
+                    if (isset($headerKeys[$tikTokKey])) {
+                        $colIndex = $headerKeys[$tikTokKey];
+                        $val = $product->$dbField;
+
+                        if ($dbField === 'price') {
+                            $val = floatval($val);
+                        } elseif (in_array($dbField, ['quantity', 'parcel_weight', 'parcel_length', 'parcel_width', 'parcel_height', 'minimum_order_quantity', 'pre_order_time'])) {
+                            $val = $val !== null ? intval($val) : null;
+                        }
+
+                        $sheet->setCellValue([$colIndex, $currentRow], $val);
+                    }
+                }
+                $currentRow++;
+            }
+
+            // Apply professional styling
+            $lastRow = max($currentRow - 1, 6);
+            if ($lastRow >= 6) {
+                $sheet->getStyle("A1:{$highestColumn}1")->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                    'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'color' => ['rgb' => '1E293B']],
+                    'alignment' => ['vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]
+                ]);
+
+                // Auto-fit column widths up to first 30 columns for performance
+                for ($c = 1; $c <= min($colsCount, 30); $c++) {
+                    $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c);
+                    $sheet->getColumnDimension($colLetter)->setAutoSize(true);
+                }
+            }
+
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $filename = 'Export_Produk_Saktindo_' . date('Ymd_His') . '.xlsx';
+            
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header('Content-Disposition: attachment; filename="' . urlencode($filename) . '"');
+            header('Cache-Control: max-age=0');
+
+            $writer->save('php://output');
+            exit;
+        } catch (\Exception $e) {
+            Log::error('TikTok Product Export Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Error generating Excel export: ' . $e->getMessage());
+        }
     }
 }

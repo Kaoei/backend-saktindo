@@ -6,6 +6,7 @@ use App\Models\Supplier;
 use App\Models\SupplierPO;
 use App\Models\SupplierPOItem;
 use App\Models\SupplierProduct;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -176,5 +177,29 @@ class SupplierPOController extends Controller
         $products = SupplierProduct::all();
 
         return view('supplier_po.create', compact('suppliers', 'products', 'prefillItems'));
+    }
+    public function invoice(SupplierPO $supplierPo)
+    {
+        // Pastikan PO sudah diterima
+        if ($supplierPo->status !== 'received') {
+            return redirect()
+                ->route('supplier-po.index')
+                ->with('error', 'Faktur hanya dapat dibuat untuk PO yang sudah diterima.');
+        }
+
+        $supplierPo->load([
+            'supplier',
+            'items.supplierProduct',
+        ]);
+
+        $pdf = Pdf::loadView('supplier_po.invoice', [
+            'supplierPo' => $supplierPo,
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->download(
+            'Faktur-' . $supplierPo->po_number . '.pdf'
+        );
     }
 }

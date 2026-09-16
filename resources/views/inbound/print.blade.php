@@ -2,83 +2,305 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Barang Masuk - {{ $inbound->id }}</title>
+    <title>Tanda Terima Barang Masuk - {{ $inbound->id }}</title>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #111; padding: 20px; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 12px; }
-        .header h2 { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-        .header p { font-size: 12px; color: #555; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 30px; margin-bottom: 20px; }
-        .info-row { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px dotted #ddd; }
-        .info-row .label { min-width: 130px; color: #555; font-size: 12px; }
-        .info-row .value { font-weight: 600; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        table th { background: #333; color: #fff; padding: 7px 10px; font-size: 12px; text-align: left; }
-        table td { padding: 7px 10px; border-bottom: 1px solid #ddd; font-size: 12px; }
-        table tr:nth-child(even) td { background: #f9f9f9; }
-        .footer { display: flex; justify-content: space-between; margin-top: 40px; }
-        .sign-box { text-align: center; min-width: 150px; }
-        .sign-box .name { border-top: 1px solid #000; padding-top: 5px; margin-top: 60px; font-size: 12px; }
-        @media print { body { padding: 0; } .no-print { display: none; } }
+        @page {
+            size: A4;
+            margin: 12mm 14mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            color: #000;
+        }
+
+        .container {
+            width: 100%;
+        }
+
+        /* HEADER */
+        .header {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+        }
+
+        .header .number {
+            margin-top: 5px;
+            font-size: 12px;
+        }
+
+        .header-line {
+            border-top: 2px solid #000;
+            margin-top: 10px;
+        }
+
+        /* INFORMATION */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 14px;
+            margin-bottom: 18px;
+        }
+
+        .info-table td {
+            padding: 3px 0;
+            vertical-align: top;
+        }
+
+        .info-label {
+            width: 105px;
+        }
+
+        .info-separator {
+            width: 10px;
+            text-align: center;
+        }
+
+        .info-value {
+            font-weight: 700;
+        }
+
+        .info-right-label {
+            width: 110px;
+        }
+
+        .info-right-value {
+            font-weight: 700;
+        }
+
+        /* ITEMS */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .items-table th,
+        .items-table td {
+            border: 1px solid #000;
+            padding: 7px 6px;
+        }
+
+        .items-table th {
+            text-align: center;
+            font-weight: 700;
+            font-size: 11px;
+            background-color: #f2f2f2;
+        }
+
+        .items-table td {
+            font-size: 11px;
+        }
+
+        .text-left {
+            text-align: left;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .items-table .name {
+            font-weight: 600;
+        }
+
+        .col-name {
+            width: 24%;
+        }
+
+        .col-sku {
+            width: 17%;
+        }
+
+        .col-qty {
+            width: 10%;
+        }
+
+        .col-rusak {
+            width: 10%;
+        }
+
+        .col-kurang {
+            width: 10%;
+        }
+
+        .col-hpp {
+            width: 17%;
+        }
+
+        /* SIGNATURE */
+        .signature {
+            width: 100%;
+            margin-top: 65px;
+            border-collapse: collapse;
+        }
+
+        .signature td {
+            width: 33.33%;
+            text-align: center;
+            vertical-align: bottom;
+        }
+
+        .signature-line {
+            width: 80%;
+            margin: 0 auto 5px auto;
+            border-top: 1px solid #000;
+            height: 1px;
+        }
+
+        .signature-title {
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* PRINT BUTTONS (Hidden in PDF and print output) */
+        .no-print {
+            display: none;
+        }
+
+        @media screen {
+            .no-print {
+                display: block;
+            }
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
     </style>
 </head>
+
 <body>
+
+<div class="container">
+
+    {{-- HEADER --}}
     <div class="header">
-        <h2>TANDA TERIMA BARANG MASUK</h2>
-        <p>Nomor: {{ $inbound->id }} &bull; Tanggal Cetak: {{ now()->format('d/m/Y H:i') }}</p>
-    </div>
-    <div class="info-grid">
-        <div>
-            <div class="info-row"><span class="label">ID Inbound</span><span class="value">{{ $inbound->id }}</span></div>
-            <div class="info-row"><span class="label">Tanggal Diterima</span><span class="value">{{ \Carbon\Carbon::parse($inbound->received_date)->format('d/m/Y') }}</span></div>
-            <div class="info-row"><span class="label">Status</span><span class="value">{{ strtoupper($inbound->status) }}</span></div>
-            @if($inbound->invoice_number)
-            <div class="info-row"><span class="label">No. Invoice Supplier</span><span class="value">{{ $inbound->invoice_number }}</span></div>
-            @endif
+        <h1>TANDA TERIMA BARANG MASUK</h1>
+        <div class="number">
+            Nomor: <strong>{{ $inbound->id }}</strong>
+            &nbsp;•&nbsp;
+            Tanggal Cetak: <strong>{{ now()->format('d/m/Y H:i') }}</strong>
         </div>
-        <div>
-            <div class="info-row"><span class="label">Supplier</span><span class="value">{{ $inbound->supplier->name ?? '-' }}</span></div>
-            @if($inbound->supplierPo)
-            <div class="info-row"><span class="label">No. PO Supplier</span><span class="value">{{ $inbound->supplierPo->po_number }}</span></div>
-            @endif
-        </div>
+        <div class="header-line"></div>
     </div>
-    <table>
+
+    {{-- INFORMATION --}}
+    <table class="info-table">
+        <tr>
+            <td class="info-label">ID Inbound</td>
+            <td class="info-separator">:</td>
+            <td class="info-value">{{ $inbound->id }}</td>
+            <td class="info-right-label">Supplier</td>
+            <td class="info-separator">:</td>
+            <td class="info-right-value">{{ $inbound->supplier->name ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">Tanggal Diterima</td>
+            <td class="info-separator">:</td>
+            <td class="info-value">{{ \Carbon\Carbon::parse($inbound->received_date)->format('d/m/Y') }}</td>
+            <td class="info-right-label">No. PO Supplier</td>
+            <td class="info-separator">:</td>
+            <td class="info-right-value">{{ $inbound->supplierPo->po_number ?? $inbound->supplierPo->id ?? $inbound->supplier_po_id ?? '-' }}</td>
+        </tr>
+        <tr>
+            <td class="info-label">Status</td>
+            <td class="info-separator">:</td>
+            <td class="info-value">{{ strtoupper($inbound->status ?? 'PENDING') }}</td>
+            <td class="info-right-label">No. Invoice</td>
+            <td class="info-separator">:</td>
+            <td class="info-right-value">{{ $inbound->invoice_number ?? '-' }}</td>
+        </tr>
+    </table>
+
+    {{-- ITEMS --}}
+    <table class="items-table">
         <thead>
             <tr>
-                <th>Nama Barang</th>
-                <th>SKU</th>
-                <th style="text-align:right;">Qty Diterima</th>
-                <th style="text-align:right;">Qty Rusak</th>
-                <th style="text-align:right;">Qty Kurang</th>
-                <th style="text-align:right;">HPP (Rp)</th>
+                <th class="col-name">Nama Barang</th>
+                <th class="col-sku">SKU</th>
+                <th class="col-qty">Qty<br>Diterima</th>
+                <th class="col-rusak">Qty<br>Rusak</th>
+                <th class="col-kurang">Qty<br>Kurang</th>
+                <th class="col-hpp">HPP<br>(Rp)</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td>{{ $inbound->supplierProduct->item_name ?? '-' }}</td>
-                <td>{{ $inbound->supplierProduct->sku ?? '-' }}</td>
-                <td style="text-align:right;">{{ number_format($inbound->qty_received, 0) }}</td>
-                <td style="text-align:right;">{{ number_format($inbound->qty_damaged ?? 0, 0) }}</td>
-                <td style="text-align:right;">{{ number_format($inbound->qty_missing ?? 0, 0) }}</td>
-                <td style="text-align:right;">Rp {{ number_format($inbound->hpp ?? 0, 0, ',', '.') }}</td>
+                <td class="text-left">
+                    <span class="name">{{ $inbound->supplierProduct->item_name ?? '-' }}</span>
+                </td>
+                <td class="text-left">
+                    {{ $inbound->supplierProduct->sku ?? '-' }}
+                </td>
+                <td class="text-center">
+                    {{ number_format($inbound->qty_received ?? 0, 0, ',', '.') }}
+                </td>
+                <td class="text-center">
+                    {{ number_format($inbound->qty_damaged ?? 0, 0, ',', '.') }}
+                </td>
+                <td class="text-center">
+                    {{ number_format($inbound->qty_missing ?? 0, 0, ',', '.') }}
+                </td>
+                <td class="text-right">
+                    Rp {{ number_format($inbound->hpp ?? 0, 0, ',', '.') }}
+                </td>
             </tr>
         </tbody>
     </table>
+
     @if($inbound->notes)
-    <p style="margin-bottom: 20px;"><strong>Catatan:</strong> {{ $inbound->notes }}</p>
+    <div style="margin-top: 15px; font-size: 11px;">
+        <strong>Catatan:</strong> {{ $inbound->notes }}
+    </div>
     @endif
-    <div class="footer">
-        <div class="sign-box"><div class="name">Dibuat Oleh</div></div>
-        <div class="sign-box"><div class="name">Petugas Gudang</div></div>
-        <div class="sign-box"><div class="name">Mengetahui</div></div>
+
+    {{-- SIGNATURE --}}
+    <table class="signature">
+        <tr>
+            <td>
+                <div class="signature-line"></div>
+                <div class="signature-title">Dibuat Oleh</div>
+            </td>
+            <td>
+                <div class="signature-line"></div>
+                <div class="signature-title">Petugas Gudang</div>
+            </td>
+            <td>
+                <div class="signature-line"></div>
+                <div class="signature-title">Mengetahui</div>
+            </td>
+        </tr>
+    </table>
+
+    {{-- BROWSER PRINT CONTROLS --}}
+    <div class="no-print" style="margin-top: 30px; text-align: center;">
+        <button onclick="window.print()" style="padding: 8px 24px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">Cetak</button>
+        <button onclick="window.close()" style="padding: 8px 24px; background: #6c757d; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; font-size: 13px;">Tutup</button>
     </div>
-    <div class="no-print" style="margin-top: 20px; text-align: center;">
-        <button onclick="window.print()" style="padding: 8px 24px; background: #007bff; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Cetak</button>
-        <button onclick="window.close()" style="padding: 8px 24px; background: #6c757d; color: #fff; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px;">Tutup</button>
-    </div>
-    <script>window.addEventListener('load', function() { setTimeout(function() { window.print(); }, 300); });</script>
+
+</div>
+
 </body>
 </html>

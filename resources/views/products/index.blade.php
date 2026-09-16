@@ -18,16 +18,19 @@
                     <small class="text-muted">Master data barang terintegrasi langsung dengan Stok Gudang, Sales Order, dan Inbound</small>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal">
-                        <i class="feather icon-upload me-1"></i> Import Excel
+                    <button type="button" class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1 shadow-sm px-3" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="feather icon-upload me-1"></i> Import Produk
                     </button>
-                    <a href="{{ route('gudang-product.download-template') }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
+                    <button type="button" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1 shadow-sm px-3" data-toggle="modal" data-target="#exportModal" data-bs-toggle="modal" data-bs-target="#exportModal">
+                        <i class="feather icon-download me-1"></i> Export Produk
+                    </button>
+                    <a href="{{ route('products.download-template') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 shadow-sm px-3">
                         <i class="feather icon-download me-1"></i> Template
                     </a>
-                    <a href="{{ route('products.create') }}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1">
+                    <a href="{{ route('products.create') }}" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1 shadow-sm px-3">
                         <i class="feather icon-plus me-1"></i> Add Product
                     </a>
-                    <a href="{{ route('gudang-product.index') }}" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1">
+                    <a href="{{ route('gudang-product.index') }}" class="btn btn-secondary btn-sm d-inline-flex align-items-center gap-1 shadow-sm px-3">
                         <i class="feather icon-boxes me-1"></i> Halaman Stok Gudang
                     </a>
                 </div>
@@ -205,30 +208,66 @@
     </div>
 </div>
 
-<!-- Modal Import Excel -->
+<!-- Modal Import Produk -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header bg-primary text-white py-3 px-4">
+                <h5 class="modal-title text-white d-flex align-items-center font-weight-bold" id="importModalLabel">
+                    <i class="feather icon-upload me-2 fs-5"></i> Import Data Produk via Excel
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: rgba(255,255,255,0.2); border: none; width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; outline: none; cursor: pointer;">
+                    <i class="feather icon-x" style="font-size: 16px;"></i>
+                </button>
+            </div>
             <form action="{{ route('products.import') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                <div class="modal-header bg-light py-3">
-                    <h5 class="modal-title fw-bold" id="importModalLabel">Import Master Produk (Excel / CSV)</h5>
-                    <button type="button" class="btn-close close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
                 <div class="modal-body p-4">
-                    <div class="alert alert-info border-0 mb-3 small">
-                        <i class="feather icon-info me-1"></i> Format file Excel 100% sama dengan file spreadsheet <strong>web-led</strong>. Data akan otomatis mensinkronkan master produk dan stok rak.
+                    <!-- Step 1: Download Template -->
+                    <div class="card bg-light border-0 shadow-sm mb-4">
+                        <div class="card-body p-3 d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div>
+                                <div class="fw-bold text-dark font-size-sm mb-1 d-flex align-items-center">
+                                    <span class="badge bg-primary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">1</span>
+                                    Unduh Template Excel Format Terbaru
+                                </div>
+                                <small class="text-muted">Gunakan template resmi agar header kolom sesuai secara otomatis.</small>
+                            </div>
+                            <a href="{{ route('products.download-template') }}" class="btn btn-sm btn-outline-primary fw-semibold rounded-pill px-3">
+                                <i class="feather icon-download me-1"></i> Unduh Template (.xlsx)
+                            </a>
+                        </div>
                     </div>
+
+                    <!-- Step 2: Upload File -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">Upload File Spreadsheet</label>
-                        <input type="file" name="excel_file" class="form-control" accept=".xlsx,.xls,.csv" required>
-                        <div class="form-text mt-1 text-muted">Format yang didukung: <strong>.xlsx, .xls, .csv</strong></div>
+                        <div class="fw-bold text-dark font-size-sm mb-2 d-flex align-items-center">
+                            <span class="badge bg-primary rounded-circle me-2" style="width: 22px; height: 22px; line-height: 16px;">2</span>
+                            Upload File Spreadsheet (.xlsx / .xls)
+                        </div>
+
+                        <label for="excel_file_input" class="p-4 border border-2 border-dashed rounded text-center bg-white d-block hover-bg-light transition-all cursor-pointer mb-0">
+                            <i class="feather icon-file-text f-36 text-primary mb-2 d-block"></i>
+                            <div class="text-dark fw-semibold" id="import-upload-label">
+                                Drag and drop file Excel Anda di sini, atau <span class="text-primary text-decoration-underline">Pilih File</span>
+                            </div>
+                            <small class="text-muted d-block mt-1">Format didukung: .xlsx, .xls (Mulai membaca baris data dari baris 6)</small>
+                            <input type="file" name="excel_file" id="excel_file_input" class="d-none" accept=".xlsx, .xls" required>
+                        </label>
+
+                        <div id="file-selected-info" class="alert alert-success d-none mt-3 mb-0 align-items-center justify-content-between py-2 px-3">
+                            <div class="d-flex align-items-center">
+                                <i class="feather icon-check-circle me-2 fs-5"></i>
+                                <span id="selected-file-name" class="fw-semibold text-truncate" style="max-width: 350px;"></span>
+                            </div>
+                            <button type="button" class="btn-close" id="btn-clear-file" style="font-size: 0.8rem;"></button>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success px-4">
-                        <i class="feather icon-upload me-1"></i> Upload & Import
+                <div class="modal-footer bg-light py-3 px-4">
+                    <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-dismiss="modal" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4 rounded-pill shadow-sm fw-semibold">
+                        <i class="feather icon-check-circle me-1"></i> Proses Import Data
                     </button>
                 </div>
             </form>
@@ -288,7 +327,20 @@ $(function() {
         }
     });
 
-    $(document).on('click', '[data-dismiss="modal"], [data-bs-target="#importModal"]', function (e) {
+    $(document).on('click', '[data-target="#exportModal"], [data-bs-target="#exportModal"]', function (e) {
+        e.preventDefault();
+        const el = document.getElementById('exportModal');
+        if (el) {
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+                modal.show();
+            } else if (typeof $ !== 'undefined' && $.fn && $.fn.modal) {
+                $('#exportModal').modal('show');
+            }
+        }
+    });
+
+    $(document).on('click', '[data-dismiss="modal"], [data-bs-dismiss="modal"]', function (e) {
         e.preventDefault();
         const modalEl = $(this).closest('.modal');
         if (modalEl.length) {
@@ -302,6 +354,35 @@ $(function() {
             modalEl.modal('hide');
         }
     });
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('excel_file_input');
+    const fileInfo = document.getElementById('file-selected-info');
+    const fileNameDisplay = document.getElementById('selected-file-name');
+    const clearBtn = document.getElementById('btn-clear-file');
+    const uploadLabel = document.getElementById('import-upload-label');
+
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                fileNameDisplay.textContent = this.files[0].name;
+                fileInfo.classList.remove('d-none');
+                fileInfo.classList.add('d-flex');
+                uploadLabel.innerHTML = 'File terpilih: <span class="text-success fw-bold">' + this.files[0].name + '</span>';
+            }
+        });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                fileInput.value = '';
+                fileInfo.classList.add('d-none');
+                fileInfo.classList.remove('d-flex');
+                uploadLabel.innerHTML = 'Drag and drop file Excel Anda di sini, atau <span class="text-primary text-decoration-underline">Pilih File</span>';
+            });
+        }
+    }
 });
 </script>
 @endpush

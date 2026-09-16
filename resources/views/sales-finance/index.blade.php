@@ -54,6 +54,7 @@
                     <label class="form-label fw-bold text-secondary small">Periode Akhir</label>
                     <input type="date" name="period_end" class="form-control bg-white" value="{{ now()->endOfMonth()->toDateString() }}" required>
                 </div>
+                
                 <div class="col-lg-2 col-md-6">
                     <label class="form-label fw-bold text-secondary small">Jenis Faktur</label>
                     <select name="tax_type" class="form-select bg-white" required>

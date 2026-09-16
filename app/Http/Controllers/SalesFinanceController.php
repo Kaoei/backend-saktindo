@@ -12,6 +12,7 @@ use App\Models\SalesOrder;
 use App\Models\SupplierProduct;
 use App\Models\WarehouseTask;
 use App\Support\ActivityLogger;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,22 +20,37 @@ use Illuminate\Validation\Rule;
 
 class SalesFinanceController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | SALES ORDER
+    |--------------------------------------------------------------------------
+    */
+
     public function index()
     {
         $orders = SalesOrder::query()
-            ->with(['invoice.deliveryNote', 'invoice.payments', 'invoice.warehouseTask'])
+            ->with([
+                'invoice.deliveryNote',
+                'invoice.payments',
+                'invoice.warehouseTask',
+            ])
             ->latest()
             ->get();
 
         $customers = Master_customer::orderBy('nama_customer')->get();
 
-        return view('sales-finance.index', compact('orders', 'customers'));
+        return view('sales-finance.index', compact(
+            'orders',
+            'customers'
+        ));
     }
 
     public function create()
     {
         return view('sales-finance.form', [
-            'order' => new SalesOrder(['order_date' => now()]),
+            'order' => new SalesOrder([
+                'order_date' => now(),
+            ]),
             'customers' => $this->customerOptions(),
             'productOptions' => $this->productOptions(),
             'action' => route('sales-finance.store'),
@@ -82,24 +98,45 @@ class SalesFinanceController extends Controller
 
         $order = DB::transaction(function () use ($data) {
             $items = $data['items'];
+
             unset($data['items']);
 
-            $order = SalesOrder::query()->create($this->calculateOrderTotals($data, $items));
+            $order = SalesOrder::query()->create(
+                $this->calculateOrderTotals($data, $items)
+            );
+
             $this->syncItems($order, $items);
 
             return $order;
         });
 
-        ActivityLogger::log('create', 'sales_order', $order);
+        ActivityLogger::log(
+            'create',
+            'sales_order',
+            $order
+        );
 
-        return redirect()->route('sales-finance.show', $order)->with('status', 'Sales Order berhasil dibuat.');
+        return redirect()
+            ->route('sales-finance.show', $order)
+            ->with(
+                'status',
+                'Sales Order berhasil dibuat.'
+            );
     }
 
     public function show(SalesOrder $salesOrder)
     {
-        $salesOrder->load(['customer', 'items', 'invoice.deliveryNote', 'invoice.payments', 'invoice.warehouseTask']);
+        $salesOrder->load([
+            'customer',
+            'items',
+            'invoice.deliveryNote',
+            'invoice.payments',
+            'invoice.warehouseTask',
+        ]);
 
-        return view('sales-finance.show', ['order' => $salesOrder]);
+        return view('sales-finance.show', [
+            'order' => $salesOrder,
+        ]);
     }
 
     public function edit(SalesOrder $salesOrder)
@@ -110,55 +147,140 @@ class SalesFinanceController extends Controller
             'order' => $salesOrder,
             'customers' => $this->customerOptions(),
             'productOptions' => $this->productOptions(),
-            'action' => route('sales-finance.update', $salesOrder),
+            'action' => route(
+                'sales-finance.update',
+                $salesOrder
+            ),
             'method' => 'PUT',
             'submitLabel' => 'Update Sales Order',
         ]);
     }
 
-    public function update(Request $request, SalesOrder $salesOrder): RedirectResponse
-    {
-        $data = $this->validatedOrder($request, $salesOrder);
+    public function update(
+        Request $request,
+        SalesOrder $salesOrder
+    ): RedirectResponse {
+        $data = $this->validatedOrder(
+            $request,
+            $salesOrder
+        );
 
-        DB::transaction(function () use ($data, $salesOrder) {
+        DB::transaction(function () use (
+            $data,
+            $salesOrder
+        ) {
             $items = $data['items'];
+
             unset($data['items']);
 
-            $salesOrder->update($this->calculateOrderTotals($data, $items));
+            $salesOrder->update(
+                $this->calculateOrderTotals(
+                    $data,
+                    $items
+                )
+            );
+
             $salesOrder->items()->delete();
-            $this->syncItems($salesOrder, $items);
+
+            $this->syncItems(
+                $salesOrder,
+                $items
+            );
         });
 
-        ActivityLogger::log('update', 'sales_order', $salesOrder);
+        ActivityLogger::log(
+            'update',
+            'sales_order',
+            $salesOrder
+        );
 
-        return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Sales Order berhasil diupdate.');
+        return redirect()
+            ->route(
+                'sales-finance.show',
+                $salesOrder
+            )
+            ->with(
+                'status',
+                'Sales Order berhasil diupdate.'
+            );
     }
 
-    public function destroy(SalesOrder $salesOrder): RedirectResponse
-    {
-        ActivityLogger::log('delete', 'sales_order', $salesOrder, ['customer_po_number' => $salesOrder->customer_po_number]);
+    public function destroy(
+        SalesOrder $salesOrder
+    ): RedirectResponse {
+        ActivityLogger::log(
+            'delete',
+            'sales_order',
+            $salesOrder,
+            [
+                'customer_po_number' =>
+                    $salesOrder->customer_po_number,
+            ]
+        );
+
         $salesOrder->delete();
 
-        return redirect()->route('sales-finance.index')->with('status', 'Sales Order berhasil dihapus.');
+        return redirect()
+            ->route('sales-finance.index')
+            ->with(
+                'status',
+                'Sales Order berhasil dihapus.'
+            );
     }
 
-    public function checkStock(Request $request, SalesOrder $salesOrder): RedirectResponse
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | STOCK CHECK
+    |--------------------------------------------------------------------------
+    */
+
+    public function checkStock(
+        Request $request,
+        SalesOrder $salesOrder
+    ): RedirectResponse {
         DB::transaction(function () use ($salesOrder) {
+
             $salesOrder->load('items');
+
             $stockByProduct = GudangProduct::query()
-                ->select('supplier_product_id', DB::raw('SUM(qty) as total_qty'))
-                ->whereIn('supplier_product_id', $salesOrder->items->pluck('product_code')->filter()->values())
+                ->select(
+                    'supplier_product_id',
+                    DB::raw('SUM(qty) as total_qty')
+                )
+                ->whereIn(
+                    'supplier_product_id',
+                    $salesOrder
+                        ->items
+                        ->pluck('product_code')
+                        ->filter()
+                        ->values()
+                )
                 ->where('qty', '>', 0)
                 ->groupBy('supplier_product_id')
-                ->pluck('total_qty', 'supplier_product_id');
+                ->pluck(
+                    'total_qty',
+                    'supplier_product_id'
+                );
 
             $hasPendingStock = false;
 
             foreach ($salesOrder->items as $item) {
-                $availableStock = (float) ($stockByProduct[$item->product_code] ?? 0);
-                $stockStatus = $availableStock >= (float) $item->quantity ? 'available' : 'pending';
-                $hasPendingStock = $hasPendingStock || $stockStatus === 'pending';
+
+                $availableStock = (float) (
+                    $stockByProduct[
+                        $item->product_code
+                    ] ?? 0
+                );
+
+                $stockStatus =
+                    $availableStock >=
+                    (float) $item->quantity
+                        ? 'available'
+                        : 'pending';
+
+                if ($stockStatus === 'pending') {
+                    $hasPendingStock = true;
+                }
 
                 $item->update([
                     'available_stock' => $availableStock,
@@ -167,101 +289,438 @@ class SalesFinanceController extends Controller
             }
 
             $salesOrder->update([
-                'stock_status' => $hasPendingStock ? 'pending' : 'available',
-                'order_status' => $hasPendingStock ? 'pending_stock' : 'ready_to_invoice',
+                'stock_status' =>
+                    $hasPendingStock
+                        ? 'pending'
+                        : 'available',
+
+                'order_status' =>
+                    $hasPendingStock
+                        ? 'pending_stock'
+                        : 'ready_to_invoice',
             ]);
         });
 
-        ActivityLogger::log('stock_check', 'sales_order', $salesOrder);
+        ActivityLogger::log(
+            'stock_check',
+            'sales_order',
+            $salesOrder
+        );
 
-        return back()->with('status', 'Pengecekan stok berhasil disimpan.');
+        return back()->with(
+            'status',
+            'Pengecekan stok berhasil disimpan.'
+        );
     }
 
-    public function generateInvoice(Request $request, SalesOrder $salesOrder): RedirectResponse
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | GENERATE INVOICE
+    |--------------------------------------------------------------------------
+    */
+
+    public function generateInvoice(
+        Request $request,
+        SalesOrder $salesOrder
+    ): RedirectResponse {
+
+        /*
+        |--------------------------------------------------------------------------
+        | VALIDASI FORM
+        |--------------------------------------------------------------------------
+        */
+
         $data = $request->validate([
-            'tax_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
-            'invoice_date' => ['required', 'date'],
-            'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+            'tax_type' => [
+                'required',
+                'in:js,sjb_non_pajak,sjb_pajak',
+            ],
+
+            'invoice_date' => [
+                'required',
+                'date',
+            ],
+
+            'due_date' => [
+                'nullable',
+                'date',
+                'after_or_equal:invoice_date',
+            ],
         ]);
 
-        if ($salesOrder->invoice) {
-            return back()->with('status', 'Invoice untuk Sales Order ini sudah ada.');
+        /*
+        |--------------------------------------------------------------------------
+        | CEK APAKAH SALES ORDER SUDAH PUNYA INVOICE
+        |--------------------------------------------------------------------------
+        */
+
+        /*
+         * Prioritas pertama:
+         * sales_orders.invoice_id
+         */
+        $existingInvoice = null;
+
+        if (!empty($salesOrder->invoice_id)) {
+            $existingInvoice = Invoice::query()
+                ->find($salesOrder->invoice_id);
         }
 
+        /*
+         * Kalau invoice_id kosong, cari berdasarkan
+         * invoices.sales_order_id.
+         *
+         * Ini penting untuk data lama kamu yang sudah terlanjur
+         * membuat invoice tetapi sales_orders.invoice_id masih NULL.
+         */
+        if (!$existingInvoice) {
+            $existingInvoice = Invoice::query()
+                ->where(
+                    'sales_order_id',
+                    $salesOrder->id
+                )
+                ->latest('id')
+                ->first();
+        }
 
+        /*
+        |--------------------------------------------------------------------------
+        | JIKA SUDAH ADA INVOICE
+        |--------------------------------------------------------------------------
+        */
 
-        $invoice = DB::transaction(function () use ($data, $salesOrder) {
-            $taxAmount = $data['tax_type'] === 'sjb_pajak' ? ((float) $salesOrder->subtotal * 0.11) : 0;
-            $grandTotal = (float) $salesOrder->subtotal + $taxAmount;
+        if ($existingInvoice) {
 
-            $invoice = Invoice::query()->create([
-                'sales_order_id' => $salesOrder->id,
-                'invoice_number' => $this->nextDocumentNumber('INV'),
-                'tax_type' => $data['tax_type'],
-                'faktur_number' => $this->nextFakturNumber($data['tax_type']),
-                'invoice_date' => $data['invoice_date'],
-                'due_date' => $data['due_date'] ?? null,
-                'status' => 'outstanding',
-                'subtotal' => $salesOrder->subtotal,
-                'tax_amount' => $taxAmount,
-                'grand_total' => $grandTotal,
-                'paid_amount' => 0,
-                'outstanding_amount' => $grandTotal,
-            ]);
+            /*
+             * Hubungkan Sales Order ke invoice yang sudah ada.
+             */
+            if (
+                empty($salesOrder->invoice_id) ||
+                (string) $salesOrder->invoice_id !==
+                (string) $existingInvoice->id
+            ) {
+                $salesOrder->update([
+                    'invoice_id' => $existingInvoice->id,
+                    'order_status' => 'invoiced',
+                ]);
+            }
 
-            $salesOrder->update([
-                'order_status' => 'invoiced',
-                'tax_amount' => $taxAmount,
-                'grand_total' => $grandTotal,
-            ]);
+            return redirect()
+                ->route(
+                    'sales-finance.show',
+                    $salesOrder
+                )
+                ->with(
+                    'status',
+                    'Invoice sudah ada. Sales Order telah dihubungkan ke Invoice tersebut.'
+                );
+        }
 
-            $warehouseTask = WarehouseTask::query()->firstOrCreate(
-                ['invoice_id' => $invoice->id],
-                [
-                    'id' => WarehouseTask::generateId(),
-                    'sales_order_id' => $salesOrder->id,
-                    'assigned_to' => null,
-                    'status' => 'waiting',
-                    'note' => 'Auto task dari Sales Order '.$salesOrder->id,
-                ]
+        /*
+        |--------------------------------------------------------------------------
+        | CEK STOCK
+        |--------------------------------------------------------------------------
+        */
+
+        if ($salesOrder->stock_status !== 'available') {
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Invoice tidak dapat dibuat karena stok Sales Order belum available.'
+                );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | BUAT INVOICE
+        |--------------------------------------------------------------------------
+        */
+
+        try {
+
+            $invoice = DB::transaction(
+                function () use (
+                    $data,
+                    $salesOrder
+                ) {
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | HITUNG PAJAK
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $taxAmount =
+                        $data['tax_type'] === 'sjb_pajak'
+                            ? (
+                                (float) $salesOrder->subtotal
+                                * 0.11
+                            )
+                            : 0;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | HITUNG GRAND TOTAL
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $grandTotal =
+                        (float) $salesOrder->subtotal
+                        + $taxAmount;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | CREATE INVOICE
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $invoice = Invoice::query()->create([
+                        'sales_order_id' => $salesOrder->id,
+
+                        'invoice_number' =>
+                            $this->nextDocumentNumber('INV'),
+
+                        /*
+                         * Blade kamu membaca invoice_type.
+                         */
+                        'invoice_type' => 'normal',
+
+                        'tax_type' =>
+                            $data['tax_type'],
+
+                        'faktur_number' =>
+                            $this->nextFakturNumber(
+                                $data['tax_type']
+                            ),
+
+                        'invoice_date' =>
+                            $data['invoice_date'],
+
+                        'due_date' =>
+                            $data['due_date'] ?? null,
+
+                        'status' =>
+                            'outstanding',
+
+                        'subtotal' =>
+                            $salesOrder->subtotal,
+
+                        'tax_amount' =>
+                            $taxAmount,
+
+                        'grand_total' =>
+                            $grandTotal,
+
+                        'paid_amount' =>
+                            0,
+
+                        'outstanding_amount' =>
+                            $grandTotal,
+                    ]);
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | UPDATE SALES ORDER
+                    |--------------------------------------------------------------------------
+                    |
+                    | INI PERBAIKAN UTAMA:
+                    | invoice_id sekarang disimpan ke sales_orders.
+                    |
+                    */
+
+                    $salesOrder->update([
+                        'invoice_id' =>
+                            $invoice->id,
+
+                        'order_status' =>
+                            'invoiced',
+
+                        'tax_amount' =>
+                            $taxAmount,
+
+                        'grand_total' =>
+                            $grandTotal,
+                    ]);
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | CREATE WAREHOUSE TASK
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $warehouseTask =
+                        WarehouseTask::query()
+                            ->firstOrCreate(
+                                [
+                                    'invoice_id' =>
+                                        $invoice->id,
+                                ],
+                                [
+                                    'id' =>
+                                        WarehouseTask::generateId(),
+
+                                    'sales_order_id' =>
+                                        $salesOrder->id,
+
+                                    'assigned_to' =>
+                                        null,
+
+                                    'status' =>
+                                        'waiting',
+
+                                    'note' =>
+                                        'Auto task dari Sales Order '
+                                        . $salesOrder->id,
+                                ]
+                            );
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | SIMPAN REFERENCE TASK
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $salesOrder->update([
+                        'warehouse_task_reference' =>
+                            $warehouseTask->id,
+                    ]);
+
+                    return $invoice;
+                }
             );
 
-            $salesOrder->update([
-                'warehouse_task_reference' => $warehouseTask->id,
-            ]);
+            /*
+            |--------------------------------------------------------------------------
+            | ACTIVITY LOG
+            |--------------------------------------------------------------------------
+            */
 
-            return $invoice;
-        });
+            ActivityLogger::log(
+                'create',
+                'invoice',
+                $invoice
+            );
 
-        ActivityLogger::log('create', 'invoice', $invoice);
+            /*
+            |--------------------------------------------------------------------------
+            | REDIRECT
+            |--------------------------------------------------------------------------
+            */
 
-        return redirect()->route('sales-finance.show', $salesOrder)->with('status', 'Invoice berhasil digenerate.');
+            return redirect()
+                ->route(
+                    'sales-finance.show',
+                    $salesOrder
+                )
+                ->with(
+                    'status',
+                    'Invoice berhasil digenerate.'
+                );
+
+        } catch (\Throwable $e) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | ERROR HANDLING
+            |--------------------------------------------------------------------------
+            */
+
+            report($e);
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Gagal generate invoice: '
+                    . $e->getMessage()
+                );
+        }
     }
 
-    public function consolidateInvoices(Request $request): RedirectResponse
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | CONSOLIDATE INVOICE
+    |--------------------------------------------------------------------------
+    */
+
+    public function consolidateInvoices(
+        Request $request
+    ): RedirectResponse {
+
         $request->validate([
-            'customer_id' => ['required', 'exists:master_customers,id'],
-            'period_start' => ['required', 'date'],
-            'period_end' => ['required', 'date', 'after_or_equal:period_start'],
-            'tax_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
-            'invoice_date' => ['required', 'date'],
-            'due_date' => ['nullable', 'date'],
+            'customer_id' => [
+                'required',
+                'exists:master_customers,id',
+            ],
+
+            'period_start' => [
+                'required',
+                'date',
+            ],
+
+            'period_end' => [
+                'required',
+                'date',
+                'after_or_equal:period_start',
+            ],
+
+            'tax_type' => [
+                'required',
+                'in:js,sjb_non_pajak,sjb_pajak',
+            ],
+
+            'invoice_date' => [
+                'required',
+                'date',
+            ],
+
+            'due_date' => [
+                'nullable',
+                'date',
+            ],
         ]);
 
-        $salesOrders = SalesOrder::where('customer_id', $request->customer_id)
+        $salesOrders = SalesOrder::query()
+            ->where(
+                'customer_id',
+                $request->customer_id
+            )
             ->where(function ($query) use ($request) {
-                $query->whereBetween('order_date', [$request->period_start, $request->period_end])
-                    ->orWhereBetween('created_at', [$request->period_start . ' 00:00:00', $request->period_end . ' 23:59:59']);
+
+                $query
+                    ->whereBetween(
+                        'order_date',
+                        [
+                            $request->period_start,
+                            $request->period_end,
+                        ]
+                    )
+                    ->orWhereBetween(
+                        'created_at',
+                        [
+                            $request->period_start
+                                . ' 00:00:00',
+
+                            $request->period_end
+                                . ' 23:59:59',
+                        ]
+                    );
             })
             ->get();
 
         if ($salesOrders->isEmpty()) {
-            return back()->with('error', 'Tidak ada Sales Order yang ditemukan untuk customer tersebut pada periode ini.');
+            return back()->with(
+                'error',
+                'Tidak ada Sales Order yang ditemukan untuk customer tersebut pada periode ini.'
+            );
         }
 
-        $request->merge(['sales_order_ids' => $salesOrders->pluck('id')->toArray()]);
+        $request->merge([
+            'sales_order_ids' =>
+                $salesOrders
+                    ->pluck('id')
+                    ->toArray(),
+        ]);
 
         return $this->mergeInvoices($request);
     }
@@ -413,114 +872,350 @@ class SalesFinanceController extends Controller
     public function mergeInvoices(Request $request): RedirectResponse
     {
         $request->validate([
-            'sales_order_ids' => ['required', 'array', 'min:1'],
-            'sales_order_ids.*' => ['required', 'exists:sales_orders,id'],
-            'tax_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
-            'invoice_date' => ['required', 'date'],
-            'due_date' => ['nullable', 'date', 'after_or_equal:invoice_date'],
+            'sales_order_ids' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'sales_order_ids.*' => [
+                'required',
+                'exists:sales_orders,id',
+            ],
+
+            'tax_type' => [
+                'required',
+                'in:js,sjb_non_pajak,sjb_pajak',
+            ],
+
+            'invoice_date' => [
+                'required',
+                'date',
+            ],
+
+            'due_date' => [
+                'nullable',
+                'date',
+                'after_or_equal:invoice_date',
+            ],
         ]);
 
-        $salesOrders = SalesOrder::whereIn('id', $request->sales_order_ids)->get();
+        $salesOrders = SalesOrder::query()
+            ->whereIn(
+                'id',
+                $request->sales_order_ids
+            )
+            ->get();
 
-        // Validate all belong to same customer
-        $customerIds = $salesOrders->pluck('customer_id')->unique();
+        /*
+        |--------------------------------------------------------------------------
+        | CEK CUSTOMER
+        |--------------------------------------------------------------------------
+        */
+
+        $customerIds =
+            $salesOrders
+                ->pluck('customer_id')
+                ->unique();
+
         if ($customerIds->count() > 1) {
-            return back()->with('error', 'Semua Sales Order harus milik customer yang sama.');
+            return back()->with(
+                'error',
+                'Semua Sales Order harus milik customer yang sama.'
+            );
         }
 
         try {
-            $invoice = DB::transaction(function () use ($request, $salesOrders) {
-                $subtotal = 0;
-                foreach ($salesOrders as $so) {
-                    $subtotal += (float) $so->subtotal;
-                }
 
-                $taxAmount = $request->tax_type === 'sjb_pajak' ? ($subtotal * 0.11) : 0;
-                $grandTotal = $subtotal + $taxAmount;
+            $invoice = DB::transaction(
+                function () use (
+                    $request,
+                    $salesOrders
+                ) {
 
-                // Create combined Invoice
-                $invoice = Invoice::query()->create([
-                    'sales_order_id' => $salesOrders->first()->id, // fallback reference
-                    'invoice_number' => $this->nextDocumentNumber('INV-COMB'),
-                    'tax_type' => $request->tax_type,
-                    'faktur_number' => $this->nextFakturNumber($request->tax_type),
-                    'invoice_date' => $request->invoice_date,
-                    'due_date' => $request->due_date ?? null,
-                    'status' => 'outstanding',
-                    'subtotal' => $subtotal,
-                    'tax_amount' => $taxAmount,
-                    'grand_total' => $grandTotal,
-                    'paid_amount' => 0,
-                    'outstanding_amount' => $grandTotal,
-                ]);
+                    /*
+                    |--------------------------------------------------------------------------
+                    | HITUNG SUBTOTAL
+                    |--------------------------------------------------------------------------
+                    */
 
-                foreach ($salesOrders as $so) {
-                    $so->update([
-                        'invoice_id' => $invoice->id,
-                        'order_status' => 'invoiced',
-                        'tax_amount' => $so->subtotal * ($request->tax_type === 'sjb_pajak' ? 0.11 : 0),
-                        'grand_total' => $so->subtotal * (1 + ($request->tax_type === 'sjb_pajak' ? 0.11 : 0)),
+                    $subtotal = 0;
+
+                    foreach ($salesOrders as $so) {
+                        $subtotal +=
+                            (float) $so->subtotal;
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | HITUNG PAJAK
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $taxAmount =
+                        $request->tax_type === 'sjb_pajak'
+                            ? ($subtotal * 0.11)
+                            : 0;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | GRAND TOTAL
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $grandTotal =
+                        $subtotal + $taxAmount;
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | CREATE COMBINED INVOICE
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $invoice = Invoice::query()->create([
+                        'sales_order_id' =>
+                            $salesOrders->first()->id,
+
+                        'invoice_number' =>
+                            $this->nextDocumentNumber(
+                                'INV-COMB'
+                            ),
+
+                        'invoice_type' =>
+                            'normal',
+
+                        'tax_type' =>
+                            $request->tax_type,
+
+                        'faktur_number' =>
+                            $this->nextFakturNumber(
+                                $request->tax_type
+                            ),
+
+                        'invoice_date' =>
+                            $request->invoice_date,
+
+                        'due_date' =>
+                            $request->due_date ?? null,
+
+                        'status' =>
+                            'outstanding',
+
+                        'subtotal' =>
+                            $subtotal,
+
+                        'tax_amount' =>
+                            $taxAmount,
+
+                        'grand_total' =>
+                            $grandTotal,
+
+                        'paid_amount' =>
+                            0,
+
+                        'outstanding_amount' =>
+                            $grandTotal,
                     ]);
 
-                    // Generate warehouse task for each sales order in this invoice
-                    WarehouseTask::query()->firstOrCreate(
-                        ['invoice_id' => $invoice->id, 'sales_order_id' => $so->id],
-                        [
-                            'id' => WarehouseTask::generateId(),
-                            'sales_order_id' => $so->id,
-                            'assigned_to' => null,
-                            'status' => 'waiting',
-                            'note' => 'Combined invoice task dari Sales Order ' . $so->id,
-                        ]
-                    );
+                    /*
+                    |--------------------------------------------------------------------------
+                    | UPDATE SETIAP SALES ORDER
+                    |--------------------------------------------------------------------------
+                    */
+
+                    foreach ($salesOrders as $so) {
+
+                        $so->update([
+                            'invoice_id' =>
+                                $invoice->id,
+
+                            'order_status' =>
+                                'invoiced',
+
+                            'tax_amount' =>
+                                $so->subtotal
+                                * (
+                                    $request->tax_type === 'sjb_pajak'
+                                        ? 0.11
+                                        : 0
+                                ),
+
+                            'grand_total' =>
+                                $so->subtotal
+                                * (
+                                    1 + (
+                                        $request->tax_type === 'sjb_pajak'
+                                            ? 0.11
+                                            : 0
+                                    )
+                                ),
+                        ]);
+
+                        /*
+                        |--------------------------------------------------------------------------
+                        | WAREHOUSE TASK
+                        |--------------------------------------------------------------------------
+                        */
+
+                        WarehouseTask::query()
+                            ->firstOrCreate(
+                                [
+                                    'invoice_id' =>
+                                        $invoice->id,
+
+                                    'sales_order_id' =>
+                                        $so->id,
+                                ],
+                                [
+                                    'id' =>
+                                        WarehouseTask::generateId(),
+
+                                    'sales_order_id' =>
+                                        $so->id,
+
+                                    'assigned_to' =>
+                                        null,
+
+                                    'status' =>
+                                        'waiting',
+
+                                    'note' =>
+                                        'Combined invoice task dari Sales Order '
+                                        . $so->id,
+                                ]
+                            );
+                    }
+
+                    return $invoice;
                 }
+            );
 
-                return $invoice;
-            });
+            ActivityLogger::log(
+                'create',
+                'invoice',
+                $invoice
+            );
 
-            ActivityLogger::log('create', 'invoice', $invoice);
+            return back()->with(
+                'status',
+                'Berhasil menggabungkan '
+                . $salesOrders->count()
+                . ' Sales Order ke dalam Invoice: '
+                . $invoice->invoice_number
+            );
 
-            return back()->with('status', 'Berhasil menggabungkan ' . $salesOrders->count() . ' Sales Order ke dalam Invoice: ' . $invoice->invoice_number);
+        } catch (\Throwable $e) {
 
-        } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menggabungkan Sales Order: ' . $e->getMessage());
+            report($e);
+
+            return back()->with(
+                'error',
+                'Gagal menggabungkan Sales Order: '
+                . $e->getMessage()
+            );
         }
     }
 
-    public function storeDeliveryNote(Request $request, Invoice $invoice): RedirectResponse
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | DELIVERY NOTE
+    |--------------------------------------------------------------------------
+    */
+
+    public function storeDeliveryNote(
+        Request $request,
+        Invoice $invoice
+    ): RedirectResponse {
+
         $data = $request->validate([
-            'delivery_date' => ['required', 'date'],
-            'status' => ['required', 'in:draft,process,delivered,cancelled'],
-            'pic_sales' => ['nullable', 'string', 'max:255'],
-            'pic_gudang' => ['nullable', 'string', 'max:255'],
-            'notes' => ['nullable', 'string'],
+            'delivery_date' => [
+                'required',
+                'date',
+            ],
+
+            'status' => [
+                'required',
+                'in:draft,process,delivered,cancelled',
+            ],
+
+            'pic_sales' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'pic_gudang' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'notes' => [
+                'nullable',
+                'string',
+            ],
         ]);
 
-        $deliveryNote = DeliveryNote::query()->updateOrCreate(
-            ['invoice_id' => $invoice->id],
-            array_merge($data, [
-                'delivery_note_number' => $invoice->deliveryNote?->delivery_note_number ?? $this->nextDocumentNumber('SJ'),
-            ])
-        );
+        $deliveryNote =
+            DeliveryNote::query()->updateOrCreate(
+                [
+                    'invoice_id' =>
+                        $invoice->id,
+                ],
+                array_merge(
+                    $data,
+                    [
+                        'delivery_note_number' =>
+                            $invoice
+                                ->deliveryNote
+                                ?->delivery_note_number
+                            ?? $this->nextDocumentNumber('SJ'),
+                    ]
+                )
+            );
 
         if ($data['status'] === 'delivered') {
-            $invoice->salesOrder()->update(['order_status' => 'delivered']);
+
+            $invoice
+                ->salesOrder()
+                ->update([
+                    'order_status' =>
+                        'delivered',
+                ]);
         }
 
-        ActivityLogger::log('save', 'delivery_note', $deliveryNote);
+        ActivityLogger::log(
+            'save',
+            'delivery_note',
+            $deliveryNote
+        );
 
-        return back()->with('status', 'Surat Jalan berhasil disimpan.');
+        return back()->with(
+            'status',
+            'Surat Jalan berhasil disimpan.'
+        );
     }
 
-    public function storePayment(Request $request, Invoice $invoice): RedirectResponse
-    {
+    /*
+    |--------------------------------------------------------------------------
+    | PAYMENT
+    |--------------------------------------------------------------------------
+    */
+
+    public function storePayment(
+        Request $request,
+        Invoice $invoice
+    ): RedirectResponse {
+
         $invoice->load('warehouseTask');
 
-
-
-        if ((float) $invoice->outstanding_amount <= 0) {
-            return back()->with('status', 'Invoice sudah lunas.');
+        if (
+            (float) $invoice->outstanding_amount <= 0
+        ) {
+            return back()->with(
+                'status',
+                'Invoice sudah lunas.'
+            );
         }
 
         $data = $request->validate([
@@ -543,31 +1238,76 @@ class SalesFinanceController extends Controller
             $data['reference_number'] = $data['giro_number'];
         }
 
-        $payment = DB::transaction(function () use ($data, $invoice) {
-            $payment = InvoicePayment::query()->create(array_merge($data, [
-                'invoice_id' => $invoice->id,
-                'payment_number' => $this->nextDocumentNumber('PAY'),
-            ]));
+        $payment = DB::transaction(
+            function () use (
+                $data,
+                $invoice
+            ) {
 
-            $paidAmount = (float) $invoice->paid_amount + (float) $data['amount'];
-            $outstandingAmount = max(0, (float) $invoice->grand_total - $paidAmount);
+                $payment =
+                    InvoicePayment::query()->create(
+                        array_merge(
+                            $data,
+                            [
+                                'invoice_id' =>
+                                    $invoice->id,
 
-            $invoice->update([
-                'paid_amount' => $paidAmount,
-                'outstanding_amount' => $outstandingAmount,
-                'status' => $outstandingAmount <= 0 ? 'paid' : 'outstanding',
-            ]);
+                                'payment_number' =>
+                                    $this->nextDocumentNumber(
+                                        'PAY'
+                                    ),
+                            ]
+                        )
+                    );
 
-            if ($outstandingAmount <= 0) {
-                $invoice->salesOrder()->update(['order_status' => 'completed']);
+                $paidAmount =
+                    (float) $invoice->paid_amount
+                    + (float) $data['amount'];
+
+                $outstandingAmount =
+                    max(
+                        0,
+                        (float) $invoice->grand_total
+                        - $paidAmount
+                    );
+
+                $invoice->update([
+                    'paid_amount' =>
+                        $paidAmount,
+
+                    'outstanding_amount' =>
+                        $outstandingAmount,
+
+                    'status' =>
+                        $outstandingAmount <= 0
+                            ? 'paid'
+                            : 'outstanding',
+                ]);
+
+                if ($outstandingAmount <= 0) {
+
+                    $invoice
+                        ->salesOrder()
+                        ->update([
+                            'order_status' =>
+                                'completed',
+                        ]);
+                }
+
+                return $payment;
             }
+        );
 
-            return $payment;
-        });
+        ActivityLogger::log(
+            'create',
+            'invoice_payment',
+            $payment
+        );
 
-        ActivityLogger::log('create', 'invoice_payment', $payment);
-
-        return back()->with('status', 'Pembayaran invoice berhasil disimpan.');
+        return back()->with(
+            'status',
+            'Pembayaran invoice berhasil disimpan.'
+        );
     }
 
     private function validatedOrder(Request $request, ?SalesOrder $order = null): array
@@ -605,63 +1345,198 @@ class SalesFinanceController extends Controller
         return $data;
     }
 
-    private function calculateOrderTotals(array $data, array $items): array
-    {
-        $subtotal = collect($items)->sum(function ($item) {
-            $qty = (float) ($item['quantity'] ?? 0);
-            $price = (float) ($item['unit_price'] ?? 0);
-            $net = $price
-                * (1 - (float) ($item['discount_1'] ?? 0) / 100)
-                * (1 - (float) ($item['discount_2'] ?? 0) / 100)
-                * (1 - (float) ($item['discount_3'] ?? 0) / 100)
-                * (1 - (float) ($item['discount_4'] ?? 0) / 100);
-            return $qty * $net;
-        });
+    /*
+    |--------------------------------------------------------------------------
+    | CALCULATE ORDER TOTALS
+    |--------------------------------------------------------------------------
+    */
 
-        return array_merge($data, [
-            'subtotal' => $subtotal,
-            'tax_amount' => $data['tax_amount'] ?? 0,
-            'grand_total' => $subtotal + (float) ($data['tax_amount'] ?? 0),
-        ]);
+    private function calculateOrderTotals(
+        array $data,
+        array $items
+    ): array {
+
+        $subtotal =
+            collect($items)->sum(
+                function ($item) {
+
+                    $qty =
+                        (float) (
+                            $item['quantity'] ?? 0
+                        );
+
+                    $price =
+                        (float) (
+                            $item['unit_price'] ?? 0
+                        );
+
+                    $net =
+                        $price
+                        * (
+                            1
+                            - (
+                                (float) (
+                                    $item['discount_1'] ?? 0
+                                ) / 100
+                            )
+                        )
+                        * (
+                            1
+                            - (
+                                (float) (
+                                    $item['discount_2'] ?? 0
+                                ) / 100
+                            )
+                        )
+                        * (
+                            1
+                            - (
+                                (float) (
+                                    $item['discount_3'] ?? 0
+                                ) / 100
+                            )
+                        )
+                        * (
+                            1
+                            - (
+                                (float) (
+                                    $item['discount_4'] ?? 0
+                                ) / 100
+                            )
+                        );
+
+                    return $qty * $net;
+                }
+            );
+
+        return array_merge(
+            $data,
+            [
+                'subtotal' =>
+                    $subtotal,
+
+                'tax_amount' =>
+                    $data['tax_amount'] ?? 0,
+
+                'grand_total' =>
+                    $subtotal
+                    + (float) (
+                        $data['tax_amount'] ?? 0
+                    ),
+            ]
+        );
     }
 
-    private function syncItems(SalesOrder $order, array $items): void
-    {
-        $products = SupplierProduct::query()
-            ->whereIn('id', collect($items)->pluck('product_code')->filter()->values())
-            ->get()
-            ->keyBy('id');
+    /*
+    |--------------------------------------------------------------------------
+    | SYNC ITEMS
+    |--------------------------------------------------------------------------
+    */
+
+    private function syncItems(
+        SalesOrder $order,
+        array $items
+    ): void {
+
+        $products =
+            SupplierProduct::query()
+                ->whereIn(
+                    'id',
+                    collect($items)
+                        ->pluck('product_code')
+                        ->filter()
+                        ->values()
+                )
+                ->get()
+                ->keyBy('id');
 
         foreach ($items as $item) {
-            $product = $products->get($item['product_code']);
-            $quantity = (float) $item['quantity'];
-            $unitPrice = (float) $item['unit_price'];
-            $d1 = (float) ($item['discount_1'] ?? 0);
-            $d2 = (float) ($item['discount_2'] ?? 0);
-            $d3 = (float) ($item['discount_3'] ?? 0);
-            $d4 = (float) ($item['discount_4'] ?? 0);
 
-            $netUnitPrice = $unitPrice
+            $product =
+                $products->get(
+                    $item['product_code']
+                );
+
+            $quantity =
+                (float) $item['quantity'];
+
+            $unitPrice =
+                (float) $item['unit_price'];
+
+            $d1 =
+                (float) (
+                    $item['discount_1'] ?? 0
+                );
+
+            $d2 =
+                (float) (
+                    $item['discount_2'] ?? 0
+                );
+
+            $d3 =
+                (float) (
+                    $item['discount_3'] ?? 0
+                );
+
+            $d4 =
+                (float) (
+                    $item['discount_4'] ?? 0
+                );
+
+            $netUnitPrice =
+                $unitPrice
                 * (1 - $d1 / 100)
                 * (1 - $d2 / 100)
                 * (1 - $d3 / 100)
                 * (1 - $d4 / 100);
 
             $order->items()->create([
-                'product_code' => $product->id,
-                'product_name' => $product->item_name,
-                'unit' => $product->unit ?: $item['unit'],
-                'quantity' => $quantity,
-                'unit_price' => $unitPrice,
-                'discount_1' => $d1,
-                'discount_2' => $d2,
-                'discount_3' => $d3,
-                'discount_4' => $d4,
-                'line_total' => round($quantity * $netUnitPrice, 2),
-                'stock_status' => 'unchecked',
+                'product_code' =>
+                    $product->id,
+
+                'product_name' =>
+                    $product->item_name,
+
+                'unit' =>
+                    $product->unit
+                    ?: $item['unit'],
+
+                'quantity' =>
+                    $quantity,
+
+                'unit_price' =>
+                    $unitPrice,
+
+                'discount_1' =>
+                    $d1,
+
+                'discount_2' =>
+                    $d2,
+
+                'discount_3' =>
+                    $d3,
+
+                'discount_4' =>
+                    $d4,
+
+                'line_total' =>
+                    round(
+                        $quantity
+                        * $netUnitPrice,
+                        2
+                    ),
+
+                'stock_status' =>
+                    'unchecked',
             ]);
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOMER OPTIONS
+    |--------------------------------------------------------------------------
+    */
 
     private function customerOptions()
     {
@@ -675,13 +1550,26 @@ class SalesFinanceController extends Controller
             });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | PRODUCT OPTIONS
+    |--------------------------------------------------------------------------
+    */
+
     private function productOptions()
     {
         return SupplierProduct::query()
             ->where('status', 'active')
             ->with(['gudangProducts.rack'])
             ->orderBy('item_name')
-            ->get(['id', 'sku', 'part_number', 'item_name', 'unit', 'last_purchase_price'])
+            ->get([
+                'id',
+                'sku',
+                'part_number',
+                'item_name',
+                'unit',
+                'last_purchase_price',
+            ])
             ->map(function ($product) {
                 $gProducts = $product->gudangProducts;
                 
@@ -730,14 +1618,25 @@ class SalesFinanceController extends Controller
                 $product->custom_price = $price;
                 $product->discount_percent = $gProduct ? floatval($gProduct->discount) : 0;
                 $product->unit = $product->unit ?: 'pcs';
-                
                 return $product;
             });
     }
 
-    private function nextDocumentNumber(string $prefix): string
-    {
-        return $prefix . '-' . now()->format('YmdHis') . '-' . random_int(100, 999);
+    /*
+    |--------------------------------------------------------------------------
+    | DOCUMENT NUMBER
+    |--------------------------------------------------------------------------
+    */
+
+    private function nextDocumentNumber(
+        string $prefix
+    ): string {
+
+        return $prefix
+            . '-'
+            . now()->format('YmdHis')
+            . '-'
+            . random_int(100, 999);
     }
 
     private function nextFakturNumber(string $taxType): string
@@ -759,5 +1658,107 @@ class SalesFinanceController extends Controller
         $sequence = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
 
         return "{$prefix}/{$year}/{$month}/{$sequence}";
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | INVOICE PDF
+    |--------------------------------------------------------------------------
+    */
+
+    public function invoicePdf(
+        Invoice $invoice
+    ) {
+
+        $invoice->load([
+            'salesOrder.customer',
+            'salesOrder.items',
+            'payments',
+            'deliveryNote',
+            'warehouseTask',
+        ]);
+
+        $pdf = Pdf::loadView(
+            'sales-finance.pdf.invoice',
+            [
+                'invoice' => $invoice,
+            ]
+        );
+
+        $pdf->setPaper(
+            'a4',
+            'landscape'
+        );
+
+        /*
+         * Nomor halaman otomatis
+         */
+
+        $canvas =
+            $pdf
+                ->getDomPDF()
+                ->getCanvas();
+
+        $canvas->page_text(
+            750,
+            570,
+            'Page {PAGE_NUM} of {PAGE_COUNT}',
+            null,
+            7,
+            [0, 0, 0]
+        );
+
+        return $pdf->download(
+            'Invoice-'
+            . (
+                $invoice->invoice_number
+                ?? $invoice->id
+            )
+            . '.pdf'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PRINT DELIVERY NOTE
+    |--------------------------------------------------------------------------
+    */
+
+    public function printDeliveryNote(
+        DeliveryNote $deliveryNote
+    ) {
+
+        $deliveryNote->load([
+            'invoice.salesOrder.customer',
+            'invoice.salesOrder.items',
+            'invoice',
+        ]);
+
+        $pdf = Pdf::loadView(
+            'sales-finance.pdf.delivery-note',
+            [
+                'deliveryNote' =>
+                    $deliveryNote,
+
+                'invoice' =>
+                    $deliveryNote->invoice,
+
+                'order' =>
+                    $deliveryNote
+                        ->invoice
+                        ?->salesOrder,
+            ]
+        );
+
+        $pdf->setPaper(
+            'a4',
+            'portrait'
+        );
+
+        return $pdf->stream(
+            'Surat-Jalan-'
+            . $deliveryNote->delivery_note_number
+            . '.pdf'
+        );
     }
 }
