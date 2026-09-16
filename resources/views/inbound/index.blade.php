@@ -110,6 +110,11 @@
                                         @endif
                                     </td>
                                     <td class="text-end">
+                                        <a href="{{ route('inbound.pdf', $inbound->id) }}"
+                                            class="text-danger me-2"
+                                            title="Download PDF">
+                                                <i class="feather icon-download f-18"></i>
+                                        </a>
                                         @if($inbound->status == 'pending')
                                            <a href="{{ route('gudang-product.create', ['inbound_id' => $inbound->id]) }}"
                                                 class="text-primary me-2"

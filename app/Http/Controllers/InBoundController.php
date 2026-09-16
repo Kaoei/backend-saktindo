@@ -6,6 +6,7 @@ use App\Models\InBound;
 use App\Models\Supplier;
 use App\Models\SupplierProduct;
 use App\Models\SupplierPO;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class InBoundController extends Controller
@@ -174,5 +175,22 @@ class InBoundController extends Controller
         return redirect()
             ->route('inbound.index')
             ->with('success', 'Barang masuk berhasil dihapus.');
+    }
+
+    public function downloadPdf(InBound $inbound)
+    {
+        $inbound->load([
+            'supplier',
+            'supplierProduct',
+            'supplierPo'
+        ]);
+
+        $pdf = Pdf::loadView('inbound.print', compact('inbound'));
+
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download(
+            'Tanda-Terima-Barang-Masuk-' . $inbound->id . '.pdf'
+        );
     }
 }

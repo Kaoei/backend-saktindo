@@ -6,11 +6,20 @@
 
 @section('content')
 @php
-    $invoice = $order->invoice_record;
+    $invoice = $order->invoice;
+
     $deliveryNotes = $invoice?->deliveryNotes ?? collect();
-    $invoiceItems = $invoice ? $invoice->salesOrders->flatMap->items : $order->items;
+
+    $invoiceItems = $invoice
+        ? $invoice->salesOrder?->items ?? collect()
+        : $order->items;
+
     $warehouseTask = $invoice?->warehouseTask;
-    $warehouseTaskReference = $warehouseTask?->id ?? $order->warehouse_task_reference ?? '-';
+
+    $warehouseTaskReference =
+        $warehouseTask?->id
+        ?? $order->warehouse_task_reference
+        ?? '-';
 @endphp
 
 @if (session('status'))
@@ -168,7 +177,7 @@
                                         <td>{{ $note->print_count }}x</td>
                                         <td class="text-end">
                                             <a href="{{ route('sales-finance.delivery-notes.print', $note) }}" class="btn btn-sm btn-light" target="_blank">Print</a>
-                                            <a href="{{ route('sales-finance.delivery-notes.pdf', $note) }}" class="btn btn-sm btn-outline-primary" target="_blank">PDF A7</a>
+                                            {{-- <a href="{{ route('sales-finance.delivery-notes.pdf', $note) }}" class="btn btn-sm btn-outline-primary" target="_blank">PDF A7</a> --}}
                                         </td>
                                     </tr>
                                 @empty
@@ -298,7 +307,7 @@
                     <div class="card-header">
                         <h5 class="mb-0">Retur Barang</h5>
                         <small class="text-muted">{{ $note->delivery_note_number }}</small>
-                    </div>
+                    </div>  
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6 mb-3"><label class="form-label">Tanggal Retur</label><input type="date" name="return_date" class="form-control" value="{{ now()->toDateString() }}" required></div>
