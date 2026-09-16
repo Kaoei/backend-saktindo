@@ -4,6 +4,10 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('suppliers.index').'">Supplier</a></li><li class="breadcrumb-item">Detail</li>',
 ])
 
+@push('styles')
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
 @section('content')
 @if (session('status'))
     <div class="alert alert-success alert-dismissible fade show mt-4" role="alert">
@@ -107,25 +111,23 @@
                 @endif
             </div>
             <div class="card-body table-responsive">
-                <table class="table table-hover m-b-0">
-                    <thead><tr><th>SKU / Part</th><th>Barang</th><th>Harga Terakhir</th><th>Lead Time</th><th>Status</th><th class="text-end">Action</th></tr></thead>
+                <table id="supplier-detail-products-table" class="table table-hover m-b-0 w-100">
+                    <thead><tr><th>SKU / Part</th><th>Barang</th><th>Harga Terakhir</th><th>Lead Time</th><th>Status</th><th class="text-end" style="width: 70px;">Action</th></tr></thead>
                     <tbody>
-                        @forelse($supplier->products as $product)
+                        @foreach($supplier->products as $product)
                             <tr>
                                 <td><span class="font-monospace">{{ $product->sku ?: '-' }}</span><div class="small text-muted">{{ $product->part_number ?: '-' }}</div></td>
                                 <td>{{ $product->item_name }}<div class="small text-muted">{{ collect([$product->brand, $product->category, $product->unit])->filter()->implode(' / ') }}</div></td>
-                                <td>Rp {{ number_format((float) $product->last_purchase_price, 0, ',', '.') }}</td>
-                                <td>{{ $product->lead_time_days }} hari</td>
-                                <td><span class="badge {{ $product->status === 'active' ? 'bg-light-success' : 'bg-light-warning' }}">{{ ucfirst($product->status) }}</span></td>
+                                <td data-order="{{ (float) $product->last_purchase_price }}">Rp {{ number_format((float) $product->last_purchase_price, 0, ',', '.') }}</td>
+                                <td data-order="{{ (int) $product->lead_time_days }}">{{ $product->lead_time_days }} hari</td>
+                                <td data-order="{{ $product->status }}"><span class="badge {{ $product->status === 'active' ? 'bg-light-success' : 'bg-light-warning' }}">{{ ucfirst($product->status) }}</span></td>
                                 <td class="text-end">
                                     @if(auth()->user()?->hasPermission('suppliers.edit'))
-                                        <a href="{{ route('suppliers.products.edit', $product) }}" class="text-success"><i class="feather icon-edit f-16 text-success"></i></a>
+                                        <a href="{{ route('suppliers.products.edit', $product) }}" class="text-success" title="Edit"><i class="feather icon-edit f-16 text-success"></i></a>
                                     @endif
                                 </td>
                             </tr>
-                        @empty
-                            <tr><td colspan="6" class="text-center text-muted">Belum ada barang supplier.</td></tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -139,21 +141,19 @@
                 @endif
             </div>
             <div class="card-body table-responsive">
-                <table class="table table-hover m-b-0">
-                    <thead><tr><th>Nama</th><th>Jabatan</th><th>Email</th><th>Telepon</th><th>Utama</th><th class="text-end">Action</th></tr></thead>
+                <table id="supplier-detail-contacts-table" class="table table-hover m-b-0 w-100">
+                    <thead><tr><th>Nama</th><th>Jabatan</th><th>Email</th><th>Telepon</th><th>Utama</th><th class="text-end" style="width: 70px;">Action</th></tr></thead>
                     <tbody>
-                        @forelse($supplier->contacts as $contact)
+                        @foreach($supplier->contacts as $contact)
                             <tr>
                                 <td>{{ $contact->name }}</td><td>{{ $contact->position ?: '-' }}</td><td>{{ $contact->email ?: '-' }}</td><td>{{ $contact->phone ?: '-' }}</td><td>{{ $contact->is_primary ? 'Ya' : '-' }}</td>
                                 <td class="text-end">
                                     @if(auth()->user()?->hasPermission('suppliers.edit'))
-                                        <a href="{{ route('suppliers.contacts.edit', $contact) }}" class="text-success"><i class="feather icon-edit f-16 text-success"></i></a>
+                                        <a href="{{ route('suppliers.contacts.edit', $contact) }}" class="text-success" title="Edit"><i class="feather icon-edit f-16 text-success"></i></a>
                                     @endif
                                 </td>
                             </tr>
-                        @empty
-                            <tr><td colspan="6" class="text-center text-muted">Belum ada kontak supplier.</td></tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -167,21 +167,19 @@
                 @endif
             </div>
             <div class="card-body table-responsive">
-                <table class="table table-hover m-b-0">
-                    <thead><tr><th>Tanggal</th><th>Invoice</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th><th class="text-end">Action</th></tr></thead>
+                <table id="supplier-detail-purchases-table" class="table table-hover m-b-0 w-100">
+                    <thead><tr><th>Tanggal</th><th>Invoice</th><th>Item</th><th>Qty</th><th>Total</th><th>Status</th><th class="text-end" style="width: 70px;">Action</th></tr></thead>
                     <tbody>
-                        @forelse($supplier->purchaseHistories as $history)
+                        @foreach($supplier->purchaseHistories as $history)
                             <tr>
-                                <td>{{ $history->purchase_date?->format('Y-m-d') }}</td><td>{{ $history->invoice_number ?: '-' }}</td><td>{{ $history->item_name }}</td><td>{{ number_format((float) $history->quantity, 2) }}</td><td>Rp {{ number_format((float) $history->total_amount, 0, ',', '.') }}</td><td>{{ ucfirst($history->status) }}</td>
+                                <td data-order="{{ $history->purchase_date?->format('Y-m-d') }}">{{ $history->purchase_date?->format('Y-m-d') }}</td><td>{{ $history->invoice_number ?: '-' }}</td><td>{{ $history->item_name }}</td><td data-order="{{ (float) $history->quantity }}">{{ number_format((float) $history->quantity, 2) }}</td><td data-order="{{ (float) $history->total_amount }}">Rp {{ number_format((float) $history->total_amount, 0, ',', '.') }}</td><td>{{ ucfirst($history->status) }}</td>
                                 <td class="text-end">
                                     @if(auth()->user()?->hasPermission('suppliers.edit'))
-                                        <a href="{{ route('suppliers.purchases.edit', $history) }}" class="text-success"><i class="feather icon-edit f-16 text-success"></i></a>
+                                        <a href="{{ route('suppliers.purchases.edit', $history) }}" class="text-success" title="Edit"><i class="feather icon-edit f-16 text-success"></i></a>
                                     @endif
                                 </td>
                             </tr>
-                        @empty
-                            <tr><td colspan="7" class="text-center text-muted">Belum ada riwayat pembelian.</td></tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -195,21 +193,19 @@
                 @endif
             </div>
             <div class="card-body table-responsive">
-                <table class="table table-hover m-b-0">
-                    <thead><tr><th>Nama</th><th>Jatuh Tempo</th><th>DP</th><th>Denda</th><th>Default</th><th class="text-end">Action</th></tr></thead>
+                <table id="supplier-detail-terms-table" class="table table-hover m-b-0 w-100">
+                    <thead><tr><th>Nama</th><th>Jatuh Tempo</th><th>DP</th><th>Denda</th><th>Default</th><th class="text-end" style="width: 70px;">Action</th></tr></thead>
                     <tbody>
-                        @forelse($supplier->paymentTerms as $term)
+                        @foreach($supplier->paymentTerms as $term)
                             <tr>
-                                <td>{{ $term->name }}</td><td>{{ $term->due_days }} hari</td><td>{{ number_format((float) $term->down_payment_percent, 2) }}%</td><td>{{ number_format((float) $term->late_fee_percent, 2) }}%</td><td>{{ $term->is_default ? 'Ya' : '-' }}</td>
+                                <td>{{ $term->name }}</td><td data-order="{{ (int) $term->due_days }}">{{ $term->due_days }} hari</td><td data-order="{{ (float) $term->down_payment_percent }}">{{ number_format((float) $term->down_payment_percent, 2) }}%</td><td data-order="{{ (float) $term->late_fee_percent }}">{{ number_format((float) $term->late_fee_percent, 2) }}%</td><td>{{ $term->is_default ? 'Ya' : '-' }}</td>
                                 <td class="text-end">
                                     @if(auth()->user()?->hasPermission('suppliers.edit'))
-                                        <a href="{{ route('suppliers.payment-terms.edit', $term) }}" class="text-success"><i class="feather icon-edit f-16 text-success"></i></a>
+                                        <a href="{{ route('suppliers.payment-terms.edit', $term) }}" class="text-success" title="Edit"><i class="feather icon-edit f-16 text-success"></i></a>
                                     @endif
                                 </td>
                             </tr>
-                        @empty
-                            <tr><td colspan="6" class="text-center text-muted">Belum ada termin pembayaran.</td></tr>
-                        @endforelse
+                        @endforeach
                     </tbody>
                 </table>
             </div>
@@ -217,3 +213,50 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(function () {
+            const dtConfig = {
+                pageLength: 5,
+                lengthMenu: [5, 10, 25, 50],
+                language: {
+                    search: "Cari:",
+                    lengthMenu: "Tampilkan _MENU_ data",
+                    info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                    infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                    infoFiltered: "(disaring dari _MAX_ total data)",
+                    zeroRecords: "Tidak ada data yang cocok",
+                    emptyTable: "Belum ada data tersedia."
+                }
+            };
+
+            $('#supplier-detail-products-table').DataTable({
+                ...dtConfig,
+                language: { ...dtConfig.language, emptyTable: 'Belum ada barang supplier.' },
+                columnDefs: [{ orderable: false, searchable: false, targets: [5] }]
+            });
+
+            $('#supplier-detail-contacts-table').DataTable({
+                ...dtConfig,
+                language: { ...dtConfig.language, emptyTable: 'Belum ada kontak supplier.' },
+                columnDefs: [{ orderable: false, searchable: false, targets: [5] }]
+            });
+
+            $('#supplier-detail-purchases-table').DataTable({
+                ...dtConfig,
+                order: [[0, 'desc']],
+                language: { ...dtConfig.language, emptyTable: 'Belum ada riwayat pembelian.' },
+                columnDefs: [{ orderable: false, searchable: false, targets: [6] }]
+            });
+
+            $('#supplier-detail-terms-table').DataTable({
+                ...dtConfig,
+                language: { ...dtConfig.language, emptyTable: 'Belum ada termin pembayaran.' },
+                columnDefs: [{ orderable: false, searchable: false, targets: [5] }]
+            });
+        });
+    </script>
+@endpush

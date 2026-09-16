@@ -17,14 +17,31 @@ use Illuminate\Validation\Rule;
 
 class SupplierController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $suppliers = Supplier::query()
-            ->withCount(['contacts', 'products', 'purchaseHistories', 'paymentTerms'])
-            ->latest()
-            ->get();
+        $sortBy = $request->query('sort', 'latest');
 
-        return view('suppliers.index', compact('suppliers'));
+        $query = Supplier::query()
+            ->withCount(['contacts', 'products', 'purchaseHistories', 'paymentTerms']);
+
+        match ($sortBy) {
+            'oldest' => $query->oldest(),
+            'name_asc' => $query->orderBy('name', 'asc'),
+            'name_desc' => $query->orderBy('name', 'desc'),
+            'code_asc' => $query->orderBy('id', 'asc'),
+            'code_desc' => $query->orderBy('id', 'desc'),
+            'products_desc' => $query->orderByDesc('products_count'),
+            'products_asc' => $query->orderBy('products_count', 'asc'),
+            'purchases_desc' => $query->orderByDesc('purchase_histories_count'),
+            'termin_asc' => $query->orderBy('payment_due_days', 'asc'),
+            'termin_desc' => $query->orderByDesc('payment_due_days'),
+            'status_asc' => $query->orderBy('status', 'asc'),
+            default => $query->latest(),
+        };
+
+        $suppliers = $query->get();
+
+        return view('suppliers.index', compact('suppliers', 'sortBy'));
     }
 
     public function create()
@@ -131,14 +148,38 @@ class SupplierController extends Controller
         return $this->backToSupplier($supplierId, 'Kontak supplier berhasil dihapus.');
     }
 
-    public function products()
+    public function products(Request $request)
     {
-        $products = SupplierProduct::query()
-            ->with('supplier')
-            ->orderBy('item_name')
-            ->get();
+        $sortBy = $request->query('sort', 'item_asc');
 
-        return view('suppliers.products', compact('products'));
+        $query = SupplierProduct::query()
+            ->with('supplier');
+
+        match ($sortBy) {
+            'item_desc' => $query->orderBy('item_name', 'desc'),
+            'item_asc' => $query->orderBy('item_name', 'asc'),
+            'supplier_asc' => $query->join('suppliers', 'suppliers.id', '=', 'supplier_products.supplier_id')
+                ->orderBy('suppliers.name', 'asc')
+                ->select('supplier_products.*'),
+            'supplier_desc' => $query->join('suppliers', 'suppliers.id', '=', 'supplier_products.supplier_id')
+                ->orderBy('suppliers.name', 'desc')
+                ->select('supplier_products.*'),
+            'price_asc' => $query->orderBy('last_purchase_price', 'asc'),
+            'price_desc' => $query->orderBy('last_purchase_price', 'desc'),
+            'sku_asc' => $query->orderBy('sku', 'asc'),
+            'sku_desc' => $query->orderBy('sku', 'desc'),
+            'moq_asc' => $query->orderBy('minimum_order_qty', 'asc'),
+            'moq_desc' => $query->orderBy('minimum_order_qty', 'desc'),
+            'lead_time_asc' => $query->orderBy('lead_time_days', 'asc'),
+            'lead_time_desc' => $query->orderBy('lead_time_days', 'desc'),
+            'status_asc' => $query->orderBy('status', 'asc'),
+            'latest' => $query->latest(),
+            default => $query->orderBy('item_name', 'asc'),
+        };
+
+        $products = $query->get();
+
+        return view('suppliers.products', compact('products', 'sortBy'));
     }
 
     public function createProduct()
