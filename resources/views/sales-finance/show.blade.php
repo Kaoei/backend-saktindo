@@ -501,76 +501,291 @@
                     </div>
                 </form>
             @endforeach
+            @if($isHistoricalInvoice && $activeMergeInvoice)
 
-            @if($warehouseTask?->status !== 'completed')
-                <div class="card">
-                    <div class="card-header"><h5 class="mb-0">Pembayaran</h5></div>
+                <div class="card border-info">
+                    <div class="card-header">
+                        <h5 class="mb-0">Pembayaran</h5>
+                    </div>
+
                     <div class="card-body">
-                        <div class="alert alert-warning mb-0">
-                            Pembayaran aktif setelah Warehouse Task completed.
+
+                        <div class="alert alert-info mb-3">
+                            Invoice
+                            <strong>{{ $invoice->invoice_number }}</strong>
+                            sudah digabung/diteruskan ke invoice combination
+                            <strong>{{ $activeMergeInvoice->invoice_number }}</strong>.
+
+                            <div class="mt-1">
+                                Pembayaran hanya dapat dilakukan pada invoice combination tersebut.
+                            </div>
                         </div>
+
+                        <a
+                            href="{{ route('sales-finance.show', $activeMergeInvoice->salesOrder) }}"
+                            class="btn btn-info w-100"
+                        >
+                            <i class="feather icon-arrow-right-circle me-1"></i>
+                            Buka Invoice Combination
+                            {{ $activeMergeInvoice->invoice_number }}
+                        </a>
+
                     </div>
                 </div>
-            @elseif((float) $invoice->outstanding_amount > 0)
-                <form method="POST" action="{{ route('invoices.payments.store', $invoice) }}" class="card">
-                    @csrf
-                    <div class="card-header"><h5 class="mb-0">Pelunasan Invoice</h5></div>
+
+            @elseif(!$warehouseReady)
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Pembayaran</h5>
+                    </div>
+
                     <div class="card-body">
-                        <div class="mb-3"><label class="form-label">Tanggal Bayar</label><input type="date" name="payment_date" class="form-control" value="{{ now()->toDateString() }}" required></div>
+
+                        <div class="alert alert-warning mb-0">
+
+                            @if($invoice->invoice_type === 'gabungan')
+
+                                Pembayaran combination aktif setelah semua Warehouse Task
+                                dari Sales Order sumber berstatus completed.
+
+                            @else
+
+                                Pembayaran aktif setelah Warehouse Task completed.
+
+                            @endif
+
+                        </div>
+
+                        @if($invoice->invoice_type === 'gabungan' && $sourceSalesOrders->isNotEmpty())
+
+                            <ul class="small text-muted mt-2 mb-0 ps-3">
+
+                                @foreach($sourceSalesOrders as $sourceSalesOrder)
+
+                                    @php(
+                                        $sourceTask =
+                                        $sourceWarehouseTasks->get($sourceSalesOrder->id)
+                                    )
+
+                                    <li>
+                                        {{ $sourceSalesOrder->id }} —
+
+                                        @if($sourceTask)
+
+                                            {{ $sourceTask->id }}
+
+                                            (
+                                            <span class="{{ $sourceTask->status === 'completed' ? 'text-success' : 'text-warning' }}">
+                                                {{ ucfirst($sourceTask->status) }}
+                                            </span>
+                                            )
+
+                                        @else
+
+                                            Belum ada Warehouse Task
+
+                                        @endif
+
+                                    </li>
+
+                                @endforeach
+
+                            </ul>
+
+                        @endif
+
+                    </div>
+                </div>
+
+            @elseif((float) $invoice->outstanding_amount > 0)
+
+                <form
+                    method="POST"
+                    action="{{ route('invoices.payments.store', $invoice) }}"
+                    class="card"
+                >
+
+                    @csrf
+
+                    <div class="card-header">
+                        <h5 class="mb-0">Pelunasan Invoice</h5>
+                    </div>
+
+                    <div class="card-body">
+
                         <div class="mb-3">
+                            <label class="form-label">Tanggal Bayar</label>
+
+                            <input
+                                type="date"
+                                name="payment_date"
+                                class="form-control"
+                                value="{{ now()->toDateString() }}"
+                                required
+                            >
+                        </div>
+
+                        <div class="mb-3">
+
                             <label class="form-label">Metode</label>
-                            <select name="method" id="so-payment-method" class="form-select">
+
+                            <select
+                                name="method"
+                                id="so-payment-method"
+                                class="form-select"
+                            >
                                 <option value="cash">Cash</option>
                                 <option value="transfer_bank">Transfer Bank</option>
                                 <option value="qris">QRIS</option>
                                 <option value="giro">Giro</option>
                             </select>
+
                         </div>
 
-                        <!-- Giro Detail Section for SO Show -->
-                        <div id="so-giro-fields" class="card bg-light border p-3 mb-3" style="display: none;">
+                        <div
+                            id="so-giro-fields"
+                            class="card bg-light border p-3 mb-3"
+                            style="display:none;"
+                        >
+
                             <div class="d-flex align-items-center mb-2">
                                 <i class="feather icon-credit-card text-primary me-2"></i>
-                                <h6 class="mb-0 fw-bold text-primary">Detail Warkat Giro</h6>
+                                <h6 class="mb-0 fw-bold text-primary">
+                                    Detail Warkat Giro
+                                </h6>
                             </div>
+
                             <div class="mb-2">
-                                <label class="form-label small fw-semibold">Nama Bank <span class="text-danger">*</span></label>
-                                <input type="text" name="bank_name" id="so-giro-bank" class="form-control form-control-sm" placeholder="Contoh: BCA / Mandiri / BRI">
+                                <label class="form-label small fw-semibold">
+                                    Nama Bank <span class="text-danger">*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="bank_name"
+                                    id="so-giro-bank"
+                                    class="form-control form-control-sm"
+                                    placeholder="Contoh: BCA / Mandiri / BRI"
+                                >
                             </div>
+
                             <div class="mb-2">
-                                <label class="form-label small fw-semibold">No. Bilyet Giro <span class="text-danger">*</span></label>
-                                <input type="text" name="giro_number" id="so-giro-number" class="form-control form-control-sm" placeholder="Nomor Bilyet Giro">
+                                <label class="form-label small fw-semibold">
+                                    No. Bilyet Giro <span class="text-danger">*</span>
+                                </label>
+
+                                <input
+                                    type="text"
+                                    name="giro_number"
+                                    id="so-giro-number"
+                                    class="form-control form-control-sm"
+                                    placeholder="Nomor Bilyet Giro"
+                                >
                             </div>
+
                             <div class="mb-2">
-                                <label class="form-label small fw-semibold">Tgl Jatuh Tempo Giro <span class="text-danger">*</span></label>
-                                <input type="date" name="giro_due_date" id="so-giro-due-date" class="form-control form-control-sm" value="{{ date('Y-m-d', strtotime('+30 days')) }}">
+                                <label class="form-label small fw-semibold">
+                                    Tgl Jatuh Tempo Giro <span class="text-danger">*</span>
+                                </label>
+
+                                <input
+                                    type="date"
+                                    name="giro_due_date"
+                                    id="so-giro-due-date"
+                                    class="form-control form-control-sm"
+                                    value="{{ date('Y-m-d', strtotime('+30 days')) }}"
+                                >
                             </div>
+
                             <div class="mb-2">
-                                <label class="form-label small fw-semibold">Status Giro <span class="text-danger">*</span></label>
-                                <select name="giro_status" id="so-giro-status" class="form-select form-select-sm">
-                                    <option value="pending">Pending (Menunggu Jatuh Tempo)</option>
-                                    <option value="cleared">Cleared (Langsung Cair)</option>
-                                    <option value="rejected">Rejected (Ditolak)</option>
+                                <label class="form-label small fw-semibold">
+                                    Status Giro <span class="text-danger">*</span>
+                                </label>
+
+                                <select
+                                    name="giro_status"
+                                    id="so-giro-status"
+                                    class="form-select form-select-sm"
+                                >
+                                    <option value="pending">
+                                        Pending (Menunggu Jatuh Tempo)
+                                    </option>
+
+                                    <option value="cleared">
+                                        Cleared (Langsung Cair)
+                                    </option>
+
+                                    <option value="rejected">
+                                        Rejected (Ditolak)
+                                    </option>
                                 </select>
                             </div>
+
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label">Rekening Penerimaan</label>
-                            <select name="receiving_account" class="form-select">
+
+                            <label class="form-label">
+                                Rekening Penerimaan
+                            </label>
+
+                            <select
+                                name="receiving_account"
+                                class="form-select"
+                            >
                                 <option value="js">JS</option>
                                 <option value="sjb">SJB</option>
                             </select>
+
                         </div>
-                        <div class="mb-3"><label class="form-label">Nominal</label><input type="number" step="0.01" min="1" max="{{ $invoice->outstanding_amount }}" name="amount" class="form-control" value="{{ $invoice->outstanding_amount }}" required></div>
-                        <div class="mb-3"><label class="form-label">Referensi</label><input type="text" name="reference_number" class="form-control" placeholder="Contoh: No. transfer / bukti setor"></div>
-                        <button type="submit" class="btn btn-success w-100">Simpan Pembayaran</button>
+
+                        <div class="mb-3">
+
+                            <label class="form-label">Nominal</label>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="1"
+                                max="{{ $invoice->outstanding_amount }}"
+                                name="amount"
+                                class="form-control"
+                                value="{{ $invoice->outstanding_amount }}"
+                                required
+                            >
+
+                        </div>
+
+                        <div class="mb-3">
+
+                            <label class="form-label">Referensi</label>
+
+                            <input
+                                type="text"
+                                name="reference_number"
+                                class="form-control"
+                                placeholder="Contoh: No. transfer / bukti setor"
+                            >
+
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="btn btn-success w-100"
+                        >
+                            Simpan Pembayaran
+                        </button>
+
                     </div>
+
                 </form>
+
             @endif
-        @endif
-    </div>
-</div>
+            @endif
+                </div>
+            </div>
+
 
 @if($invoice)
 <!-- Modal Kirim Email Tagihan -->
