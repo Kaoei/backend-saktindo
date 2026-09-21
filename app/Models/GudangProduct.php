@@ -54,11 +54,15 @@ class GudangProduct extends Model
             );
         }
 
-        $base = substr(trim($sku), 0, 80);
+        $cleanSku = preg_replace('/[^A-Za-z0-9\-_]/', '', trim($sku));
+        if (empty($cleanSku)) {
+            $cleanSku = 'GP';
+        }
+        $base = substr($cleanSku, 0, 24);
         $id = $base;
         $counter = 2;
         while (self::withTrashed()->where('id', $id)->exists()) {
-            $id = substr($base, 0, 70) . '-' . $counter;
+            $id = substr($base, 0, 20) . '-' . $counter;
             $counter++;
         }
         return $id;
