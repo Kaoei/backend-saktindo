@@ -32,36 +32,37 @@ class GudangProduct extends Model
         'discount' => 'decimal:2',
     ];
 
-public static function generateId($sku = null)
-{
-    if (empty($sku)) {
-        $last = self::withTrashed()
-            ->orderBy('id', 'desc')
-            ->first();
+    public static function generateId($sku = null)
+    {
+        if (empty($sku)) {
+            $last = self::withTrashed()
+                ->where('id', 'like', 'GPROD-%')
+                ->orderBy('id', 'desc')
+                ->first();
 
-        if (!$last) {
-            return 'GPROD-000001';
+            if (!$last) {
+                return 'GPROD-000001';
+            }
+
+            $number = (int) substr($last->id, 6);
+
+            return 'GPROD-' . str_pad(
+                $number + 1,
+                6,
+                '0',
+                STR_PAD_LEFT
+            );
         }
 
-        $number = (int) substr($last->id, 6);
-
-        return 'GPROD-' . str_pad(
-            $number + 1,
-            6,
-            '0',
-            STR_PAD_LEFT
-        );
+        $base = substr(trim($sku), 0, 80);
+        $id = $base;
+        $counter = 2;
+        while (self::withTrashed()->where('id', $id)->exists()) {
+            $id = substr($base, 0, 70) . '-' . $counter;
+            $counter++;
+        }
+        return $id;
     }
-
-    $base = $sku;
-    $id = $base;
-    $counter = 2;
-    while (self::withTrashed()->where('id', $id)->exists()) {
-        $id = $base . '-' . $counter;
-        $counter++;
-    }
-    return $id;
-}
     public function supplierProduct()
     {
         return $this->belongsTo(
