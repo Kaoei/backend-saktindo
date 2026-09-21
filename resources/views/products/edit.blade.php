@@ -181,101 +181,93 @@
                                         @endif
                                     </select>
                                 </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">SKU / Kode Barang <span class="text-danger">*</span></label>
+                                    <input name="sku" type="text" class="form-control" value="{{ old('sku', $product->sku) }}" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Harga Unit (Rp) <span class="text-danger">*</span></label>
+                                    <input name="price" type="number" step="0.01" class="form-control" value="{{ old('price', $product->last_purchase_price) }}" min="0" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Satuan Unit</label>
+                                    <input name="unit" type="text" class="form-control" value="{{ old('unit', $product->unit ?: 'pcs') }}" placeholder="pcs / box / meter">
+                                </div>
                                 <div class="col-md-12 mb-3">
                                     <label class="form-label fw-bold">Product Description</label>
-                                    <textarea name="product_description" class="form-control" rows="8" placeholder="HTML and text descriptive details...">{{ old('product_description', $product->product_description) }}</textarea>
+                                    <textarea name="product_description" class="form-control" rows="4" placeholder="Deskripsi produk atau catatan detail...">{{ old('product_description', $product->notes ?? '') }}</textarea>
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">TikTok Product ID</label>
-                                    <input name="product_id" type="text" class="form-control" value="{{ old('product_id', $product->product_id) }}" placeholder="TikTok original ID">
+                                    <input name="product_id" type="text" class="form-control" value="{{ old('product_id') }}" placeholder="TikTok original ID (opsional)">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">TikTok Product URL</label>
-                                    <input name="tts_product_url" type="url" class="form-control" value="{{ old('tts_product_url', $product->tts_product_url) }}" placeholder="https://...">
+                                    <input name="tts_product_url" type="url" class="form-control" value="{{ old('tts_product_url') }}" placeholder="https://...">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Tokopedia Product URL</label>
-                                    <input name="toko_product_url" type="url" class="form-control" value="{{ old('toko_product_url', $product->toko_product_url) }}" placeholder="https://...">
+                                    <input name="toko_product_url" type="url" class="form-control" value="{{ old('toko_product_url') }}" placeholder="https://...">
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TAB 2: VARIATIONS & PRICING -->
+                        <!-- TAB 2: RACK STOCK ALLOCATIONS & VARIATIONS -->
                         <div class="tab-pane fade" id="variation" role="tabpanel" aria-labelledby="variation-tab">
-                            <p class="text-muted small">Configure multiple variants (e.g. colors, sizes, or spec options). Every product must have at least one variation.</p>
+                            <h6 class="fw-bold text-dark mb-2"><i class="feather icon-package me-1 text-primary"></i> Alokasi Stok Rak Gudang</h6>
+                            <p class="text-muted small">Kelola penempatan stok fisik produk ini di rak-rak penyimpanan gudang.</p>
                             
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Rak Penyimpanan</th>
+                                            <th>Gudang</th>
+                                            <th>Jumlah Stok (Qty)</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($product->gudangProducts as $idx => $gp)
+                                            <tr>
+                                                <td>
+                                                    <input type="hidden" name="stock_allocations[{{ $idx }}][rack_id]" value="{{ $gp->rack_id }}">
+                                                    <span class="badge bg-light text-dark border fs-6">{{ $gp->rack->rak_kode ?? $gp->rack_id }} - {{ $gp->rack->location ?? 'Gudang' }}</span>
+                                                </td>
+                                                <td><span class="badge bg-info text-white">{{ $gp->gudang_type ?: 'JS' }}</span></td>
+                                                <td>
+                                                    <input type="number" name="stock_allocations[{{ $idx }}][qty]" class="form-control" value="{{ $gp->qty }}" min="0">
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-success">{{ $gp->status ?: 'stored' }}</span>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="4" class="text-center py-3 text-muted">
+                                                    Belum ada alokasi stok rak untuk produk ini.
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+
                             @if(isset($masterVariants) && $masterVariants->count() > 0)
                                 <div class="card bg-light border-0 shadow-sm mb-4">
                                     <div class="card-body p-3">
                                         <div class="d-flex align-items-center justify-content-between mb-2">
                                             <div class="fw-bold text-dark font-size-sm d-flex align-items-center">
-                                                <i class="feather icon-layers me-2 text-primary"></i> Pilih dari Master Varian
+                                                <i class="feather icon-layers me-2 text-primary"></i> Master Varian
                                             </div>
                                             <a href="{{ route('variants.index') }}" target="_blank" class="text-primary small text-decoration-none fw-semibold">
                                                 <i class="feather icon-external-link me-1"></i> Kelola Master Varian
                                             </a>
                                         </div>
-                                        <div class="row align-items-center g-2">
-                                            <div class="col-md-9 col-sm-8">
-                                                <select id="quick-master-variant-select" class="form-select no-select2" multiple data-placeholder="Cari & pilih varian master (bisa pilih banyak)...">
-                                                    @foreach($masterVariants as $mVar)
-                                                        <option value="{{ $mVar->name }}">{{ $mVar->name }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="col-md-3 col-sm-4">
-                                                <button type="button" id="btn-batch-add-variants" class="btn btn-primary w-100 shadow-sm">
-                                                    <i class="feather icon-plus-circle me-1"></i> Tambahkan
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <small class="text-muted mt-2 d-block"><i class="feather icon-info me-1"></i> Cari & pilih satu atau beberapa varian master di atas lalu klik Tambahkan.</small>
+                                        <small class="text-muted"><i class="feather icon-info me-1"></i> Varian produk dapat disesuaikan pada kolom Sub Kategori / Varian produk.</small>
                                     </div>
                                 </div>
                             @endif
-
-                            <div class="table-responsive mb-3">
-                                <table class="table table-bordered align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Variation Name <span class="text-danger">*</span></th>
-                                            <th>Price (Rp) <span class="text-danger">*</span></th>
-                                            <th>Stock Quantity <span class="text-danger">*</span></th>
-                                            <th>TikTok SKU ID</th>
-                                            <th>Seller SKU</th>
-                                            <th class="text-end" style="width: 80px;">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="variations-container">
-                                        @foreach($variations as $index => $var)
-                                            <tr>
-                                                <td>
-                                                    <input name="variations[{{ $index }}][variation_value]" type="text" class="form-control" value="{{ $var->variation_value }}" list="master-variants-list" required placeholder="Pilih/ketik varian">
-                                                </td>
-                                                <td>
-                                                    <input name="variations[{{ $index }}][price]" type="number" class="form-control" value="{{ intval($var->price) }}" required min="0">
-                                                </td>
-                                                <td>
-                                                    <input name="variations[{{ $index }}][quantity]" type="number" class="form-control" value="{{ $var->quantity }}" required min="0">
-                                                </td>
-                                                <td>
-                                                    <input name="variations[{{ $index }}][sku_id]" type="text" class="form-control" value="{{ $var->sku_id }}" placeholder="Auto generated">
-                                                </td>
-                                                <td>
-                                                    <input name="variations[{{ $index }}][seller_sku]" type="text" class="form-control" value="{{ $var->seller_sku }}" placeholder="Internal code">
-                                                </td>
-                                                <td class="text-end">
-                                                    <button type="button" class="btn btn-icon btn-light-danger remove-var-btn"><i class="feather icon-trash-2"></i></button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <button type="button" class="btn btn-sm btn-light-primary mb-4" id="add-variation-btn">
-                                <i class="feather icon-plus"></i> Add Variation
-                            </button>
 
                             <div class="row border-top pt-4">
                                 <div class="col-md-6 mb-3">

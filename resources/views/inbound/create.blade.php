@@ -90,7 +90,7 @@
                     </div>
 
                     <div class="row mb-4">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label fw-semibold">
                                 Nomor Invoice (Input Manual)
                             </label>
@@ -102,7 +102,7 @@
                             <small class="text-muted">Nomor Invoice pengiriman dari supplier jika ada.</small>
                         </div>
 
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label fw-semibold">
                                 Tanggal Masuk / Terima <span class="text-danger">*</span>
                             </label>
@@ -111,6 +111,23 @@
                                    class="form-control"
                                    value="{{ old('received_date', date('Y-m-d')) }}"
                                    required>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold text-primary">
+                                <i class="feather icon-layers me-1"></i> Simpan Langsung ke Rak (Opsional)
+                            </label>
+                            <select name="direct_rack_id" class="form-select border-primary bg-white">
+                                <option value="">-- Simpan sebagai Pending (Alokasi Nanti) --</option>
+                                @if(isset($racks))
+                                    @foreach($racks as $rack)
+                                        <option value="{{ $rack->rak_kode }}" {{ old('direct_rack_id') == $rack->rak_kode ? 'selected' : '' }}>
+                                            {{ $rack->rak_kode }} - {{ $rack->location }} (Gudang {{ $rack->gudang ?? 'JS' }})
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                            <small class="text-muted">Jika dipilih, stok otomatis langsung masuk ke rak gudang.</small>
                         </div>
                     </div>
 

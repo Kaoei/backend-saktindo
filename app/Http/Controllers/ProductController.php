@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+use App\Services\StockSyncService;
+
 class ProductController extends Controller
 {
     /**
@@ -89,6 +91,10 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
+        // Support both item_name and product_name
+        $itemName = $request->filled('item_name') ? $request->item_name : $request->input('product_name');
+        $request->merge(['item_name' => $itemName]);
+
         $request->validate([
             'item_name' => 'required|string|max:255',
             'sku' => 'nullable|string|max:100',
@@ -102,7 +108,7 @@ class ProductController extends Controller
             'gudang_type' => 'nullable|in:JS,SJB',
         ]);
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $itemName) {
             $brandName = trim($request->brand ?? '');
             if ($brandName !== '') {
                 $existingBrand = Brand::whereRaw('LOWER(name) = ?', [strtolower($brandName)])->first();
@@ -138,7 +144,7 @@ class ProductController extends Controller
 
             $sku = trim($request->sku ?? '');
             if ($sku === '') {
-                $sku = 'SKU-' . strtoupper(substr(md5($request->item_name), 0, 8));
+                $sku = 'SKU-' . strtoupper(substr(md5($itemName), 0, 8));
             }
 
             $supplier = Supplier::first();
@@ -149,7 +155,7 @@ class ProductController extends Controller
             $product = SupplierProduct::create([
                 'supplier_id' => $supplier->id,
                 'sku' => $sku,
-                'item_name' => $request->item_name,
+                'item_name' => $itemName,
                 'brand' => $brandName,
                 'category' => $categoryName ?: null,
                 'sub_category' => $subCategoryName ?: null,
@@ -158,21 +164,30 @@ class ProductController extends Controller
                 'status' => 'active'
             ]);
 
-            if ($request->filled('initial_qty') && (int)$request->initial_qty > 0 && $request->filled('rack_id')) {
-                GudangProduct::create([
+            $rackId = $request->rack_id ?: Rak::value('rak_kode');
+            $initialQty = (int) ($request->initial_qty ?? 0);
+
+            if ($rackId) {
+                $gp = GudangProduct::create([
                     'id' => GudangProduct::generateId($sku),
                     'supplier_product_id' => $product->id,
-                    'rack_id' => $request->rack_id,
+                    'rack_id' => $rackId,
                     'gudang_type' => $request->gudang_type ?: 'JS',
-                    'qty' => (int)$request->initial_qty,
+                    'qty' => $initialQty,
                     'price' => $request->price ?? 0,
                     'discount' => 0,
                     'status' => 'stored',
                 ]);
+
+                if ($initialQty > 0) {
+                    StockSyncService::syncGudangStock($gp, true, $supplier->id, 'Saldo Awal Master Produk');
+                }
             }
+
+            StockSyncService::syncProductCatalog($product);
         });
 
-        return redirect()->route('products.index')->with('success', 'Master Produk berhasil ditambahkan.');
+        return redirect()->route('products.index')->with('success', 'Master Produk berhasil ditambahkan dan stok disinkronkan.');
     }
 
     /**
@@ -180,14 +195,15 @@ class ProductController extends Controller
      */
     public function edit($id)
     {
-        $product = SupplierProduct::with('gudangProducts')->findOrFail($id);
+        $product = SupplierProduct::with('gudangProducts.rack')->findOrFail($id);
         $brands = Brand::orderBy('name')->get();
         $categories = Category::orderBy('name')->get();
         $subCategories = SubCategory::orderBy('name')->get();
+        $racks = Rak::orderBy('rak_kode')->get();
         $masterVariants = \App\Models\Variant::orderBy('name')->get();
         $gudangProducts = GudangProduct::with('supplierProduct')->get();
 
-        return view('products.edit', compact('product', 'brands', 'categories', 'subCategories', 'masterVariants', 'gudangProducts'));
+        return view('products.edit', compact('product', 'brands', 'categories', 'subCategories', 'racks', 'masterVariants', 'gudangProducts'));
     }
 
     /**
@@ -197,6 +213,9 @@ class ProductController extends Controller
     {
         $product = SupplierProduct::findOrFail($id);
 
+        $itemName = $request->filled('item_name') ? $request->item_name : $request->input('product_name');
+        $request->merge(['item_name' => $itemName]);
+
         $request->validate([
             'item_name' => 'required|string|max:255',
             'sku' => 'required|string|max:100',
@@ -205,19 +224,90 @@ class ProductController extends Controller
             'sub_category' => 'nullable|string|max:255',
             'price' => 'nullable|numeric|min:0',
             'unit' => 'nullable|string|max:50',
+            'stock_allocations' => 'nullable|array',
+            'stock_allocations.*.rack_id' => 'required_with:stock_allocations|exists:raks,rak_kode',
+            'stock_allocations.*.qty' => 'required_with:stock_allocations|integer|min:0',
         ]);
 
-        $product->update([
-            'item_name' => $request->item_name,
-            'sku' => $request->sku,
-            'brand' => $request->brand,
-            'category' => $request->category,
-            'sub_category' => $request->sub_category,
-            'last_purchase_price' => $request->price ?? $product->last_purchase_price,
-            'unit' => $request->unit ?: $product->unit,
-        ]);
+        DB::transaction(function () use ($request, $product, $itemName) {
+            $brandName = trim($request->brand ?? '');
+            if ($brandName !== '') {
+                $existingBrand = Brand::whereRaw('LOWER(name) = ?', [strtolower($brandName)])->first();
+                if (!$existingBrand) {
+                    $existingBrand = Brand::create(['name' => $brandName, 'image' => '', 'alt' => '']);
+                }
+                $brandName = $existingBrand->name;
+            } else {
+                $brandName = null;
+            }
 
-        return redirect()->route('products.index')->with('success', 'Master Produk berhasil diperbarui.');
+            $categoryName = trim($request->category ?? '');
+            $subCategoryName = trim($request->sub_category ?? '');
+            if ($categoryName !== '') {
+                $existingCategory = Category::whereRaw('LOWER(name) = ?', [strtolower($categoryName)])->first();
+                if (!$existingCategory) {
+                    $existingCategory = Category::create(['name' => $categoryName]);
+                }
+                $categoryName = $existingCategory->name;
+
+                if ($subCategoryName !== '') {
+                    $existingSub = SubCategory::where('category_id', $existingCategory->id)
+                        ->whereRaw('LOWER(name) = ?', [strtolower($subCategoryName)])
+                        ->first();
+                    if (!$existingSub) {
+                        SubCategory::create([
+                            'category_id' => $existingCategory->id,
+                            'name' => $subCategoryName
+                        ]);
+                    }
+                }
+            }
+
+            $product->update([
+                'item_name' => $itemName,
+                'sku' => $request->sku,
+                'brand' => $brandName,
+                'category' => $categoryName ?: null,
+                'sub_category' => $subCategoryName ?: null,
+                'last_purchase_price' => $request->price ?? $product->last_purchase_price,
+                'unit' => $request->unit ?: $product->unit,
+            ]);
+
+            // If stock allocations were provided from edit form
+            if ($request->has('stock_allocations') && is_array($request->stock_allocations)) {
+                foreach ($request->stock_allocations as $alloc) {
+                    $rackId = $alloc['rack_id'] ?? null;
+                    $qty = (int) ($alloc['qty'] ?? 0);
+                    if (!$rackId) continue;
+
+                    $gp = GudangProduct::where('supplier_product_id', $product->id)
+                        ->where('rack_id', $rackId)
+                        ->first();
+
+                    if ($gp) {
+                        $gp->update([
+                            'qty' => $qty,
+                            'price' => $request->price ?? $gp->price,
+                        ]);
+                    } else {
+                        GudangProduct::create([
+                            'id' => GudangProduct::generateId($product->sku),
+                            'supplier_product_id' => $product->id,
+                            'rack_id' => $rackId,
+                            'gudang_type' => 'JS',
+                            'qty' => $qty,
+                            'price' => $request->price ?? 0,
+                            'discount' => 0,
+                            'status' => 'stored',
+                        ]);
+                    }
+                }
+            }
+
+            StockSyncService::syncProductCatalog($product);
+        });
+
+        return redirect()->route('products.index')->with('success', 'Master Produk berhasil diperbarui dan disinkronkan.');
     }
 
     /**
@@ -225,11 +315,26 @@ class ProductController extends Controller
      */
     public function destroy($id)
     {
-        $product = SupplierProduct::findOrFail($id);
-        $product->gudangProducts()->delete();
-        $product->delete();
+        DB::transaction(function () use ($id) {
+            $product = SupplierProduct::findOrFail($id);
+            Product::where('seller_sku', $product->sku)->orWhere('product_name', $product->item_name)->delete();
+            $product->gudangProducts()->delete();
+            $product->delete();
+        });
 
         return redirect()->route('products.index')->with('success', 'Master Produk dan stoknya berhasil dihapus.');
+    }
+
+    /**
+     * Trigger full stock synchronization from Master Products UI.
+     */
+    public function sync()
+    {
+        $report = StockSyncService::reconcileAllStock();
+
+        return redirect()
+            ->route('products.index')
+            ->with('success', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan katalog ekspor telah diselaraskan.");
     }
 
     /**

@@ -147,18 +147,25 @@
     <div class="col-12">
 
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between flex-wrap">
+            <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div class="mb-2 mb-md-0">
                     <h5 class="mb-1">Daftar Produk Gudang</h5>
-                    <small class="text-muted">Data barang yang sudah ditempatkan ke rak</small>
+                    <small class="text-muted">Data stok barang per rak tersinkronisasi otomatis dengan Master Produk & Inbound</small>
                 </div>
 
                 <div class="d-inline-flex align-items-center flex-wrap gap-2">
-                    <button type="button" class="btn btn-primary btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#manualInputModal" data-bs-toggle="modal" data-bs-target="#manualInputModal" style="width: auto !important; flex: none !important;">
+                    <form action="{{ route('gudang-product.sync') }}" method="POST" class="d-inline" onsubmit="return confirm('Jalankan sinkronisasi stok menyeluruh antara Gudang, Barang Masuk, dan Master Produk?')">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-info btn-sm d-inline-flex align-items-center" style="width: auto !important; flex: none !important;">
+                            <i class="feather icon-refresh-cw me-1"></i>
+                            Sinkronisasi Stok
+                        </button>
+                    </form>
+                    <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center" data-toggle="modal" data-target="#manualInputModal" data-bs-toggle="modal" data-bs-target="#manualInputModal" style="width: auto !important; flex: none !important;">
                         <i class="feather icon-plus-circle me-1"></i>
                         Input Stock
                     </button>
-                    <button type="button" class="btn btn-outline-success btn-sm me-2 d-inline-flex align-items-center" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal" style="width: auto !important; flex: none !important;">
+                    <button type="button" class="btn btn-outline-success btn-sm d-inline-flex align-items-center" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal" style="width: auto !important; flex: none !important;">
                         <i class="feather icon-upload me-1"></i>
                         Import Stok Excel
                     </button>

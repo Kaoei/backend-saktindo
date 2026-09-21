@@ -15,16 +15,25 @@
     <div class="col-12">
 
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
                     <h5 class="mb-1">Daftar Barang Masuk</h5>
-                    <small class="text-muted">Data inbound dari supplier</small>
+                    <small class="text-muted">Data inbound dari supplier terintegrasi otomatis dengan Stok Gudang & Master Produk</small>
                 </div>
 
-                <a href="{{ route('inbound.create') }}" class="btn btn-primary btn-sm">
-                    <i class="material-icons-two-tone text-white">add_circle</i>
-                    Tambah Barang Masuk
-                </a>
+                <div class="d-flex gap-2">
+                    <form action="{{ route('inbound.sync') }}" method="POST" class="d-inline" onsubmit="return confirm('Jalankan sinkronisasi dan rekonsiliasi data stok antara Barang Masuk, Gudang, dan Master Produk?')">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-info btn-sm">
+                            <i class="feather icon-refresh-cw me-1"></i>
+                            Sinkronisasi Stok
+                        </button>
+                    </form>
+                    <a href="{{ route('inbound.create') }}" class="btn btn-primary btn-sm">
+                        <i class="feather icon-plus-circle me-1"></i>
+                        Tambah Barang Masuk
+                    </a>
+                </div>
             </div>
 
             <div class="card-body">
@@ -84,7 +93,8 @@
                                 <th>Supplier</th>
                                 <th>Barang</th>
                                 <th>SKU</th>
-                                <th>Qty Diterima</th>
+                                <th>Qty Masuk</th>
+                                <th>Total Stok Gudang</th>
                                 <th>Lokasi Rak</th>
                                 <th>Tanggal Masuk</th>
                                 <th>Status</th>
@@ -94,12 +104,23 @@
 
                         <tbody>
                             @forelse($inbounds as $inbound)
+                                @php
+                                    $currentGudangStock = $inbound->supplierProduct ? $inbound->supplierProduct->gudangProducts->sum('qty') : 0;
+                                @endphp
                                 <tr>
                                     <td>{{ $inbound->id }}</td>
                                     <td>{{ $inbound->supplier->name ?? '-' }}</td>
-                                    <td>{{ $inbound->supplierProduct->item_name ?? '-' }}</td>
-                                    <td>{{ $inbound->supplierProduct->sku ?? '-' }}</td>
-                                    <td>{{ $inbound->qty_received }}</td>
+                                    <td>
+                                        <div class="fw-bold">{{ $inbound->supplierProduct->item_name ?? '-' }}</div>
+                                        @if($inbound->supplierProduct && $inbound->supplierProduct->brand)
+                                            <small class="badge bg-light text-primary border">{{ $inbound->supplierProduct->brand }}</small>
+                                        @endif
+                                    </td>
+                                    <td><span class="badge bg-light-secondary text-dark">{{ $inbound->supplierProduct->sku ?? '-' }}</span></td>
+                                    <td><span class="badge bg-primary fs-6">{{ $inbound->qty_received }}</span></td>
+                                    <td>
+                                        <span class="badge bg-success fs-6">{{ $currentGudangStock }} {{ $inbound->supplierProduct->unit ?? 'pcs' }}</span>
+                                    </td>
                                     <td>
                                         @php
                                             $placedRacks = [];

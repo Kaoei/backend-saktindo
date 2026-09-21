@@ -194,6 +194,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/download-template', [App\Http\Controllers\ProductController::class, 'downloadTemplate'])->name('products.download-template');
     Route::post('/products/import', [App\Http\Controllers\ProductController::class, 'import'])->name('products.import');
     Route::get('/products/export', [App\Http\Controllers\ProductController::class, 'export'])->name('products.export');
+    Route::post('/products/sync', [App\Http\Controllers\ProductController::class, 'sync'])->name('products.sync');
     Route::resource('/products', App\Http\Controllers\ProductController::class);
 
     Route::prefix('master-customer')->name('master-customer.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
@@ -227,6 +228,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
         Route::get('/{inbound}/download-pdf', [InBoundController::class, 'downloadPdf'])
         ->name('pdf');
+        Route::post('/sync', [InBoundController::class, 'sync'])->name('sync');
     });
     Route::prefix('gudang-product')->name('gudang-product.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
         Route::get('/export', [GudangProductController::class, 'export'])->name('export');
@@ -242,6 +244,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/{gudangProduct}', [GudangProductController::class, 'update'])->name('update');
         Route::post('/split-rack', [GudangProductController::class, 'splitRack'])->name('splitRack');
         Route::delete('/{gudangProduct}', [GudangProductController::class, 'destroy'])->name('destroy');
+        Route::post('/sync', [GudangProductController::class, 'sync'])->name('sync');
     });
     Route::prefix('warehouse-task')->name('warehouse-task.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG . ',' . User::ROLE_SALES)->group(function () {
         Route::get('/', [WarehouseTaskController::class, 'index'])->name('index');

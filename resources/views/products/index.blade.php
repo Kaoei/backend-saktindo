@@ -18,6 +18,12 @@
                     <small class="text-muted">Master data barang terintegrasi langsung dengan Stok Gudang, Sales Order, dan Inbound</small>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
+                    <form action="{{ route('products.sync') }}" method="POST" class="d-inline" onsubmit="return confirm('Jalankan sinkronisasi dan rekonsiliasi data stok antara Master Produk, Gudang, dan Barang Masuk?')">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-info btn-sm d-inline-flex align-items-center gap-1 shadow-sm px-3">
+                            <i class="feather icon-refresh-cw me-1"></i> Sinkronisasi Stok
+                        </button>
+                    </form>
                     <button type="button" class="btn btn-outline-success btn-sm d-inline-flex align-items-center gap-1 shadow-sm px-3" data-toggle="modal" data-target="#importModal" data-bs-toggle="modal" data-bs-target="#importModal">
                         <i class="feather icon-upload me-1"></i> Import Produk
                     </button>
@@ -114,7 +120,7 @@
                                 <th>Harga Unit</th>
                                 <th>Total Stok Gudang</th>
                                 <th>Rak Penyimpanan</th>
-                                <th class="text-end" style="width: 100px;">Aksi</th>
+                                <th class="text-end" style="width: 120px;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -171,6 +177,9 @@
                                         @endforelse
                                     </td>
                                     <td class="text-end">
+                                        <a href="{{ route('products.edit', $product->id) }}" class="btn btn-icon btn-light-primary me-1" title="Edit Master Produk">
+                                            <i class="feather icon-edit-2"></i>
+                                        </a>
                                         <form method="POST" action="{{ route('products.destroy', $product->id) }}" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus produk master ini beserta seluruh data stoknya?')">
                                             @csrf
                                             @method('DELETE')

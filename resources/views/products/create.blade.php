@@ -180,19 +180,49 @@
                                         @endif
                                     </select>
                                 </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">SKU / Kode Barang</label>
+                                    <input name="sku" type="text" class="form-control" value="{{ old('sku') }}" placeholder="Auto generate jika kosong">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Harga Unit (Rp) <span class="text-danger">*</span></label>
+                                    <input name="price" type="number" step="0.01" class="form-control" value="{{ old('price', 0) }}" min="0" required>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label fw-bold">Satuan Unit</label>
+                                    <input name="unit" type="text" class="form-control" value="{{ old('unit', 'pcs') }}" placeholder="pcs / box / meter">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Stok Awal Gudang (Qty)</label>
+                                    <input name="initial_qty" type="number" class="form-control" value="{{ old('initial_qty', 0) }}" min="0">
+                                    <small class="text-muted">Jumlah stok awal yang langsung dialokasikan ke rak gudang.</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">Pilih Rak Gudang</label>
+                                    <select name="rack_id" class="form-select bg-white">
+                                        <option value="">-- Pilih Rak Penyimpanan --</option>
+                                        @if(isset($racks))
+                                            @foreach($racks as $rack)
+                                                <option value="{{ $rack->rak_kode }}" {{ old('rack_id') == $rack->rak_kode ? 'selected' : '' }}>
+                                                    {{ $rack->rak_kode }} - {{ $rack->location }} (Gudang {{ $rack->gudang ?? 'JS' }})
+                                                </option>
+                                            @endforeach
+                                        @endif
+                                    </select>
+                                </div>
                                 <div class="col-md-12 mb-3">
                                     <label class="form-label fw-bold">Product Description</label>
-                                    <textarea name="product_description" class="form-control" rows="8" placeholder="HTML and text descriptive details...">{{ old('product_description') }}</textarea>
+                                    <textarea name="product_description" class="form-control" rows="4" placeholder="Deskripsi produk atau catatan detail...">{{ old('product_description') }}</textarea>
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">TikTok Product ID</label>
-                                    <input name="product_id" type="text" class="form-control" value="{{ old('product_id') }}" placeholder="e.g. 19-digit TikTok ID (optional)">
+                                    <input name="product_id" type="text" class="form-control" value="{{ old('product_id') }}" placeholder="e.g. TikTok ID (opsional)">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">TikTok Product URL</label>
                                     <input name="tts_product_url" type="url" class="form-control" value="{{ old('tts_product_url') }}" placeholder="https://...">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Tokopedia Product URL</label>
                                     <input name="toko_product_url" type="url" class="form-control" value="{{ old('toko_product_url') }}" placeholder="https://...">
                                 </div>

@@ -12,6 +12,7 @@ use App\Models\SupplierProduct;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\SubCategory;
+use App\Services\StockSyncService;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -226,8 +227,9 @@ class GudangProductController extends Controller
                         'gudang_type' => $gudangType,
                         'status' => $request->status ?: 'stored',
                     ]);
+                    $targetGP = $existingProduct;
                 } else {
-                    GudangProduct::create([
+                    $targetGP = GudangProduct::create([
                         'id' => GudangProduct::generateId($sku),
                         'supplier_product_id' => $supplierProduct->id,
                         'rack_id' => $rackId,
@@ -238,12 +240,14 @@ class GudangProductController extends Controller
                         'status' => $request->status ?: 'stored',
                     ]);
                 }
+
+                StockSyncService::syncGudangStock($targetGP, true, $supplierProduct->supplier_id, 'Input Manual Stok Gudang');
             }
         });
 
         return redirect()
             ->route('gudang-product.index')
-            ->with('status', 'Stok barang berhasil ditambahkan ke rak.');
+            ->with('status', 'Stok barang berhasil ditambahkan ke rak dan disinkronkan.');
     }
 
     public function create(Request $request)
@@ -316,11 +320,15 @@ class GudangProductController extends Controller
                 $inBound->update([
                     'status' => 'stored',
                 ]);
+
+                if ($inBound->supplierProduct) {
+                    StockSyncService::syncProductCatalog($inBound->supplierProduct);
+                }
             });
 
             return redirect()
                 ->route('gudang-product.index')
-                ->with('success', 'Barang berhasil disimpan ke rak-rak penyimpanan.');
+                ->with('success', 'Barang berhasil disimpan ke rak-rak penyimpanan dan stok disinkronkan.');
         }
 
         // Backward compatibility for single rack submission
@@ -368,11 +376,15 @@ class GudangProductController extends Controller
             $inBound->update([
                 'status' => 'stored',
             ]);
+
+            if ($inBound->supplierProduct) {
+                StockSyncService::syncProductCatalog($inBound->supplierProduct);
+            }
         });
 
         return redirect()
             ->route('gudang-product.index')
-            ->with('success', 'Barang berhasil disimpan ke rak.');
+            ->with('success', 'Barang berhasil disimpan ke rak dan stok disinkronkan.');
     }
 
     /**
@@ -437,6 +449,10 @@ class GudangProductController extends Controller
             $sourceProduct->update([
                 'qty' => $remainingSourceQty,
             ]);
+
+            if ($sourceProduct->supplierProduct) {
+                StockSyncService::syncProductCatalog($sourceProduct->supplierProduct);
+            }
         });
 
         return redirect()->back()->with('status', 'Stok berhasil dibagi/dipindahkan ke rak tujuan.');
@@ -480,18 +496,25 @@ class GudangProductController extends Controller
             ]);
         }
 
+        StockSyncService::syncGudangStock($gudangProduct, false);
+
         return redirect()
             ->route('gudang-product.index')
-            ->with('status', 'Penempatan barang gudang berhasil diperbarui.');
+            ->with('status', 'Penempatan barang gudang berhasil diperbarui dan disinkronkan.');
     }
 
     public function destroy(GudangProduct $gudangProduct)
     {
+        $supplierProduct = $gudangProduct->supplierProduct;
         $gudangProduct->delete();
+
+        if ($supplierProduct) {
+            StockSyncService::syncProductCatalog($supplierProduct);
+        }
 
         return redirect()
             ->route('gudang-product.index')
-            ->with('success', 'Data barang gudang berhasil dihapus.');
+            ->with('success', 'Data barang gudang berhasil dihapus dan stok disinkronkan.');
     }
 
     /**
@@ -927,12 +950,14 @@ class GudangProductController extends Controller
                     if ($hasChange) {
                         $existingProduct->update($incomingStock);
                         $updatedCount++;
+                        $targetGP = $existingProduct;
                     } else {
                         $skippedCount++;
+                        $targetGP = $existingProduct;
                     }
                 } else {
                     // Create new
-                    GudangProduct::create([
+                    $targetGP = GudangProduct::create([
                         'id' => $data['id'] ?: GudangProduct::generateId($sku),
                         'supplier_product_id' => $supplierProduct->id,
                         'rack_id' => $rakKode,
@@ -943,17 +968,31 @@ class GudangProductController extends Controller
                     ]);
                     $importedCount++;
                 }
+
+                StockSyncService::syncGudangStock($targetGP, true, $supplierProduct->supplier_id, 'Import Excel Stok Gudang');
             }
 
             DB::commit();
 
             return redirect()->route('gudang-product.index')
-                ->with('status', "Import berhasil! {$importedCount} stok baru ditambahkan, {$updatedCount} diperbarui, dan {$skippedCount} dilewati (tidak ada perubahan).");
+                ->with('status', "Import berhasil! {$importedCount} stok baru ditambahkan, {$updatedCount} diperbarui, dan data stok telah disinkronkan.");
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Import Stock Error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Gagal memproses file Excel/CSV: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Trigger full stock synchronization from Gudang UI.
+     */
+    public function sync()
+    {
+        $report = StockSyncService::reconcileAllStock();
+
+        return redirect()
+            ->route('gudang-product.index')
+            ->with('status', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan riwayat barang masuk telah diselaraskan.");
     }
 }
