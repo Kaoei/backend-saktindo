@@ -293,6 +293,12 @@
                                         <span class="pc-mtext">Master Varian</span>
                                     </a>
                                 </li>
+                                <li class="pc-item">
+                                    <a href="{{ route('bundle-promos.index') }}" class="pc-link">
+                                        <span class="pc-micon"><i class="feather icon-gift"></i></span>
+                                        <span class="pc-mtext">Promo Bundling</span>
+                                    </a>
+                                </li>
                             </ul>
                         </li>
 

@@ -223,15 +223,21 @@
                     </div>
                 </div>
 
-                <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2 mb-2">
                     <div>
                         <h6 class="mb-0">Detail Item Pesanan</h6>
                         <small class="text-muted">Barang diambil dari stok Gudang yang tersimpan di rak.</small>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-item">
-                        <i class="material-icons-two-tone">add</i>
-                        Tambah Item
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-success d-inline-flex align-items-center" data-bs-toggle="modal" data-bs-target="#salesBundleModal" data-toggle="modal" data-target="#salesBundleModal" id="btn-open-sales-bundle">
+                            <i class="feather icon-gift me-1"></i>
+                            Pilih Promo Bundling
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="add-item">
+                            <i class="material-icons-two-tone">add</i>
+                            Tambah Item
+                        </button>
+                    </div>
                 </div>
 
                 @php
@@ -290,7 +296,11 @@
                                         <input type="text" name="items[{{ $index }}][unit]" class="form-control unit-input text-center px-1" value="{{ $item['unit'] ?? ($selectedProduct->unit ?? 'pcs') }}" required>
                                     </td>
                                     <td>
-                                        <input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control qty-input text-center px-1" value="{{ $qty }}" required>
+                                        <div class="input-group input-group-sm" style="min-width: 105px;">
+                                            <button type="button" class="btn btn-outline-secondary btn-qty-minus px-2">-</button>
+                                            <input type="number" step="0.01" min="0.01" name="items[{{ $index }}][quantity]" class="form-control qty-input text-center px-1" value="{{ $qty }}" required>
+                                            <button type="button" class="btn btn-outline-secondary btn-qty-plus px-2">+</button>
+                                        </div>
                                     </td>
                                     <td>
                                         <input type="number" step="0.01" min="0" name="items[{{ $index }}][unit_price]" class="form-control price-input text-end" value="{{ $price }}" required>
@@ -435,6 +445,42 @@
                 <button type="submit" class="btn btn-primary">{{ $submitLabel }}</button>
             </div>
         </form>
+    </div>
+<!-- Modal Pilih Promo Bundling Sales -->
+<div class="modal fade" id="salesBundleModal" tabindex="-1" aria-labelledby="salesBundleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light py-3">
+                <h5 class="modal-title fw-bold text-dark" id="salesBundleModalLabel">
+                    <i class="feather icon-gift text-success me-2"></i>Pilih Paket Promo Bundling
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-3">
+                <div id="sales-bundle-loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="text-muted small mt-2">Memuat daftar paket promo aktif...</div>
+                </div>
+
+                <div id="sales-bundle-list-container" style="display: none;">
+                    <p class="text-muted small mb-3">Pilih salah satu paket bundling dan tentukan kuantitas paket yang dipesan customer. Item produk akan otomatis dimasukkan ke tabel pesanan dengan harga promo.</p>
+                    <div class="list-group" id="sales-bundle-items-list">
+                        <!-- Dynamic items -->
+                    </div>
+                </div>
+
+                <div id="sales-bundle-empty" class="text-center py-4 text-muted" style="display: none;">
+                    <i class="feather icon-info mb-2" style="font-size: 2rem;"></i>
+                    <div class="fw-semibold">Tidak ada promo bundling yang aktif saat ini.</div>
+                    <small>Anda dapat membuat promo baru di menu <a href="{{ route('bundle-promos.create') }}" target="_blank">Master Promo Bundling</a>.</small>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Tutup</button>
+            </div>
+        </div>
     </div>
 </div>
 @endsection
@@ -662,7 +708,11 @@
                         <input type="text" name="items[${itemIndex}][unit]" class="form-control unit-input text-center px-1" value="pcs" required>
                     </td>
                     <td>
-                        <input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control qty-input text-center px-1" value="1" required>
+                        <div class="input-group input-group-sm" style="min-width: 105px;">
+                            <button type="button" class="btn btn-outline-secondary btn-qty-minus px-2">-</button>
+                            <input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control qty-input text-center px-1" value="1" required>
+                            <button type="button" class="btn btn-outline-secondary btn-qty-plus px-2">+</button>
+                        </div>
                     </td>
                     <td>
                         <input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control price-input text-end" value="0" required>
@@ -811,6 +861,197 @@
             } else {
                 $('#customer-block-alert').slideUp(150);
                 $('button[type="submit"]').prop('disabled', false);
+            }
+        });
+
+        // Stepper buttons (+ / -)
+        $(document).on('click', '.btn-qty-minus', function() {
+            const $input = $(this).siblings('.qty-input');
+            const currentVal = parseFloat($input.val()) || 1;
+            if (currentVal > 1) {
+                $input.val(currentVal - 1).trigger('change');
+            }
+        });
+
+        $(document).on('click', '.btn-qty-plus', function() {
+            const $input = $(this).siblings('.qty-input');
+            const currentVal = parseFloat($input.val()) || 0;
+            $input.val(currentVal + 1).trigger('change');
+        });
+
+        // Sales Promo Bundling Loader & Injector
+        let activeSalesBundles = [];
+
+        function loadActiveSalesBundles() {
+            $('#sales-bundle-loading').show();
+            $('#sales-bundle-list-container').hide();
+            $('#sales-bundle-empty').hide();
+
+            $.get('{{ route("bundle-promos.api.active") }}', function(res) {
+                $('#sales-bundle-loading').hide();
+                if (res.success && res.data && res.data.length > 0) {
+                    activeSalesBundles = res.data;
+                    renderSalesBundleList();
+                    $('#sales-bundle-list-container').show();
+                } else {
+                    $('#sales-bundle-empty').show();
+                }
+            }).fail(function() {
+                $('#sales-bundle-loading').hide();
+                $('#sales-bundle-empty').show();
+            });
+        }
+
+        function renderSalesBundleList() {
+            const $list = $('#sales-bundle-items-list');
+            $list.empty();
+
+            activeSalesBundles.forEach((b, idx) => {
+                let itemsListHtml = '';
+                b.items.forEach(it => {
+                    itemsListHtml += `<li class="small text-muted">${it.product_name} &bull; <strong>${it.qty} pcs</strong> (Rp ${new Intl.NumberFormat('id-ID').format(it.bundle_unit_price)}/pcs)</li>`;
+                });
+
+                const cardHtml = `
+                    <div class="list-group-item list-group-item-action p-3 mb-2 border rounded">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                            <div>
+                                <span class="badge bg-light-primary text-primary font-monospace fw-bold me-1">${b.bundle_code}</span>
+                                <strong class="fs-6 text-dark">${b.name}</strong>
+                                ${b.description ? `<p class="small text-muted mb-1 mt-1">${b.description}</p>` : ''}
+                                <ul class="mb-0 mt-2 ps-3">${itemsListHtml}</ul>
+                            </div>
+                            <div class="text-end">
+                                <div class="text-muted small"><del>Rp ${new Intl.NumberFormat('id-ID').format(b.original_price)}</del></div>
+                                <h5 class="text-success fw-bold mb-1">Rp ${new Intl.NumberFormat('id-ID').format(b.bundle_price)}</h5>
+                                <span class="badge bg-light-danger text-danger border border-danger-subtle mb-2">Hemat ${b.savings_percentage}%</span>
+                                
+                                <div class="d-flex align-items-center justify-content-end gap-2 mt-2">
+                                    <div class="input-group input-group-sm" style="width: 110px;">
+                                        <span class="input-group-text">Paket</span>
+                                        <input type="number" class="form-control text-center sales-bundle-pkg-qty" id="sales-bundle-qty-${idx}" min="1" value="1">
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-success btn-apply-sales-bundle" data-bundle-index="${idx}">
+                                        <i class="feather icon-plus me-1"></i> Tambah
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $list.append(cardHtml);
+            });
+        }
+
+        $('#btn-open-sales-bundle').on('click', function() {
+            loadActiveSalesBundles();
+        });
+
+        // Apply sales bundle items to table
+        $(document).on('click', '.btn-apply-sales-bundle', function() {
+            const bundleIdx = $(this).data('bundle-index');
+            const bundle = activeSalesBundles[bundleIdx];
+            const pkgQty = parseInt($(`#sales-bundle-qty-${bundleIdx}`).val()) || 1;
+
+            if (!bundle || !bundle.items || bundle.items.length === 0) {
+                alert('Paket promo tidak valid.');
+                return;
+            }
+
+            // Check if initial row is empty (first row without selected product)
+            const $firstRow = $('#items-table tbody .item-row:first');
+            let isFirstRowEmpty = false;
+            if ($('#items-table tbody .item-row').length === 1) {
+                const pVal = $firstRow.find('.product-select').val();
+                if (!pVal) {
+                    isFirstRowEmpty = true;
+                }
+            }
+
+            if (isFirstRowEmpty) {
+                $('#items-table tbody').empty();
+            }
+
+            bundle.items.forEach(it => {
+                const totalItemQty = it.qty * pkgQty;
+                const optionsHtml = buildProductOptionsHtml();
+                const d1Html = buildDiscountSelectHtml(`items[${itemIndex}][discount_1]`, 'disc1-input', 0);
+                const d2Html = buildDiscountSelectHtml(`items[${itemIndex}][discount_2]`, 'disc2-input', 0);
+                const d3Html = buildDiscountSelectHtml(`items[${itemIndex}][discount_3]`, 'disc3-input', 0);
+                const d4Html = buildDiscountSelectHtml(`items[${itemIndex}][discount_4]`, 'disc4-input', 0);
+
+                const $newRow = $(`
+                    <tr class="item-row bg-light-success-subtle">
+                        <td>
+                            <select name="items[${itemIndex}][product_code]" class="form-select product-select no-select2" required>
+                                ${optionsHtml}
+                            </select>
+                            <input type="hidden" name="items[${itemIndex}][product_name]" class="product-name-input" value="${it.product_name}">
+                            <small class="text-success d-block mt-1"><i class="feather icon-gift me-1"></i>${bundle.name} (${pkgQty} paket)</small>
+                        </td>
+                        <td>
+                            <input type="text" name="items[${itemIndex}][unit]" class="form-control unit-input text-center px-1" value="${it.unit}" required>
+                        </td>
+                        <td>
+                            <div class="input-group input-group-sm" style="min-width: 105px;">
+                                <button type="button" class="btn btn-outline-secondary btn-qty-minus px-2">-</button>
+                                <input type="number" step="0.01" min="0.01" name="items[${itemIndex}][quantity]" class="form-control qty-input text-center px-1" value="${totalItemQty}" required>
+                                <button type="button" class="btn btn-outline-secondary btn-qty-plus px-2">+</button>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" min="0" name="items[${itemIndex}][unit_price]" class="form-control price-input text-end" value="${it.bundle_unit_price}" required>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center flex-wrap gap-1 disc-container">
+                                <div class="d-flex align-items-center disc-tier-1">
+                                    ${d1Html}
+                                </div>
+                                <div class="align-items-center gap-1 disc-tier-2" style="display: none;">
+                                    <span class="text-muted small fw-bold">+</span>
+                                    ${d2Html}
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-tier-disc-btn" data-tier="2" title="Hapus Diskon 2" style="line-height: 1; text-decoration: none;"><i class="material-icons-two-tone" style="font-size: 16px;">close</i></button>
+                                </div>
+                                <div class="align-items-center gap-1 disc-tier-3" style="display: none;">
+                                    <span class="text-muted small fw-bold">+</span>
+                                    ${d3Html}
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-tier-disc-btn" data-tier="3" title="Hapus Diskon 3" style="line-height: 1; text-decoration: none;"><i class="material-icons-two-tone" style="font-size: 16px;">close</i></button>
+                                </div>
+                                <div class="align-items-center gap-1 disc-tier-4" style="display: none;">
+                                    <span class="text-muted small fw-bold">+</span>
+                                    ${d4Html}
+                                    <button type="button" class="btn btn-sm btn-link text-danger p-0 remove-tier-disc-btn" data-tier="4" title="Hapus Diskon 4" style="line-height: 1; text-decoration: none;"><i class="material-icons-two-tone" style="font-size: 16px;">close</i></button>
+                                </div>
+                                <button type="button" class="btn btn-xs btn-outline-secondary add-tier-disc-btn py-0 px-1 ms-1" title="Tambah Diskon Bertingkat (+D2, +D3, +D4)" style="font-size: 0.72rem; line-height: 1.6;">
+                                    <i class="feather icon-plus" style="font-size: 11px;"></i> Diskon
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" class="form-control total-display text-end fw-semibold" value="0,00" readonly>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger remove-item p-1" title="Hapus Baris"><i class="material-icons-two-tone">delete</i></button>
+                        </td>
+                    </tr>
+                `);
+
+                $('#items-table tbody').append($newRow);
+                $newRow.find('.product-select').val(it.product_id);
+                initProductSelect($newRow.find('.product-select'));
+                calculateRowTotal($newRow);
+                itemIndex++;
+            });
+
+            calculateSummary();
+
+            // Close modal
+            const modalEl = document.getElementById('salesBundleModal');
+            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                const inst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                inst.hide();
+            } else {
+                $('#salesBundleModal').modal('hide');
             }
         });
 

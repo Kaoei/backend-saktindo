@@ -25,6 +25,7 @@ use App\Http\Controllers\ReturController;
 use App\Http\Controllers\InternalInvoiceController;
 use App\Http\Controllers\RekeningBankController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\BundlePromoController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -154,6 +155,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('/supplier-po', SupplierPOController::class);
     Route::get('/supplier-po/{supplierPo}/invoice', [SupplierPOController::class, 'invoice'])
     ->name('supplier-po.invoice');
+
+    Route::get('/bundle-promos/api/active', [BundlePromoController::class, 'apiActiveList'])->name('bundle-promos.api.active');
+    Route::resource('/bundle-promos', BundlePromoController::class);
 
     Route::post('/invoices/{invoice}/delivery-note', [SalesFinanceController::class, 'storeDeliveryNote'])
         ->middleware('permission:sales_finance.edit')
