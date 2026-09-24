@@ -80,7 +80,11 @@ class ProductController extends Controller
         $categories = Category::orderBy('name')->get();
         $subCategories = SubCategory::orderBy('name')->get();
         $racks = Rak::orderBy('rak_kode')->get();
-        $masterVariants = \App\Models\Variant::orderBy('name')->get();
+        try {
+            $masterVariants = \App\Models\Variant::orderBy('name')->get();
+        } catch (\Throwable $e) {
+            $masterVariants = collect();
+        }
         $gudangProducts = GudangProduct::with('supplierProduct')->get();
 
         return view('products.create', compact('brands', 'categories', 'subCategories', 'racks', 'masterVariants', 'gudangProducts'));
@@ -200,7 +204,11 @@ class ProductController extends Controller
         $categories = Category::orderBy('name')->get();
         $subCategories = SubCategory::orderBy('name')->get();
         $racks = Rak::orderBy('rak_kode')->get();
-        $masterVariants = \App\Models\Variant::orderBy('name')->get();
+        try {
+            $masterVariants = \App\Models\Variant::orderBy('name')->get();
+        } catch (\Throwable $e) {
+            $masterVariants = collect();
+        }
         $gudangProducts = GudangProduct::with('supplierProduct')->get();
 
         return view('products.edit', compact('product', 'brands', 'categories', 'subCategories', 'racks', 'masterVariants', 'gudangProducts'));
