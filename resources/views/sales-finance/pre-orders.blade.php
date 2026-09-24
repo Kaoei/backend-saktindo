@@ -4,6 +4,23 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('sales-finance.index').'">Sales & Finance</a></li><li class="breadcrumb-item">Pre-Order</li>',
 ])
 
+@push('styles')
+<style>
+    .preorder-table-container {
+        overflow-x: auto;
+        min-height: 250px;
+    }
+    @media (min-width: 992px) {
+        .preorder-table-container {
+            overflow: visible !important;
+        }
+    }
+    .dropdown-menu {
+        z-index: 1060 !important;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="row">
     <div class="col-12">
@@ -101,7 +118,7 @@
             <div class="col-md-3">
                 <select name="dp_status" class="form-select">
                     <option value="">-- Semua Status DP --</option>
-                    <option value="unpaid" @selected(request('dp_status') === 'unpaid')>Belum Bayar DP</option>
+                    <option value="unpaid" @selected(request('dp_status') === 'unpaid')>Belum DP</option>
                     <option value="partial" @selected(request('dp_status') === 'partial')>DP Sebagian</option>
                     <option value="paid" @selected(request('dp_status') === 'paid')>DP Lunas</option>
                 </select>
@@ -109,36 +126,48 @@
             <div class="col-md-3">
                 <select name="customer_id" class="form-select">
                     <option value="">-- Semua Customer --</option>
-                    @foreach($customers as $cust)
-                        <option value="{{ $cust->id }}" @selected(request('customer_id') == $cust->id)>{{ $cust->nama_customer }}</option>
+                    @foreach($customers as $c)
+                        <option value="{{ $c->id }}" @selected(request('customer_id') == $c->id)>{{ $c->name }}</option>
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-2 d-flex gap-2">
-                <button type="submit" class="btn btn-primary w-100">Filter</button>
-                @if(request()->anyFilled(['search', 'dp_status', 'customer_id']))
-                    <a href="{{ route('sales-finance.pre-orders.index') }}" class="btn btn-light"><i class="feather icon-refresh-cw"></i></a>
-                @endif
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="feather icon-filter me-1"></i> Filter
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Table Card -->
-<div class="card border shadow-sm">
+<!-- Data Table -->
+<div class="card border-0 shadow-sm">
     <div class="card-body p-0">
-        <div class="table-responsive">
+        @if(session('status'))
+            <div class="alert alert-success m-3 alert-dismissible fade show">
+                {{ session('status') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="alert alert-danger m-3 alert-dismissible fade show">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        <div class="table-responsive preorder-table-container">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-3">No. SO & PO Cust</th>
-                        <th>Customer</th>
-                        <th>Item Pesanan</th>
-                        <th>Estimasi Kedatangan (ETA)</th>
-                        <th>Grand Total & DP</th>
-                        <th>Status DP</th>
-                        <th>Status Stok</th>
-                        <th class="text-end pe-3">Aksi</th>
+                        <th class="ps-3">NO. SO & PO CUST</th>
+                        <th>CUSTOMER</th>
+                        <th>ITEM PESANAN</th>
+                        <th>ESTIMASI KEDATANGAN (ETA)</th>
+                        <th>GRAND TOTAL & DP</th>
+                        <th>STATUS DP</th>
+                        <th>STATUS STOK</th>
+                        <th class="text-end pe-3" style="min-width: 110px;">AKSI</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -210,39 +239,49 @@
                                 @endif
                             </td>
                             <td class="text-end pe-3">
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                         Pilihan
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow">
-                                        <li><a class="dropdown-item" href="{{ route('sales-finance.show', $so) }}"><i class="feather icon-eye me-2"></i> Detail Order</a></li>
+                                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-right shadow border-0 py-2">
+                                        <li>
+                                            <a class="dropdown-item py-2" href="{{ route('sales-finance.show', $so) }}">
+                                                <i class="feather icon-eye text-primary me-2"></i> Detail Order
+                                            </a>
+                                        </li>
                                         
                                         @if($so->proformaInvoice)
-                                            <li><a class="dropdown-item" href="{{ route('sales-finance.proforma.print', $so) }}" target="_blank"><i class="feather icon-printer me-2"></i> Cetak Proforma (PI)</a></li>
+                                            <li>
+                                                <a class="dropdown-item py-2" href="{{ route('sales-finance.proforma.print', $so) }}" target="_blank">
+                                                    <i class="feather icon-printer text-info me-2"></i> Cetak Proforma (PI)
+                                                </a>
+                                            </li>
                                         @else
                                             <li>
                                                 <form method="POST" action="{{ route('sales-finance.proforma.generate', $so) }}">
                                                     @csrf
-                                                    <button type="submit" class="dropdown-item"><i class="feather icon-file-text me-2"></i> Buat Proforma (PI)</button>
+                                                    <button type="submit" class="dropdown-item py-2">
+                                                        <i class="feather icon-file-text text-info me-2"></i> Buat Proforma (PI)
+                                                    </button>
                                                 </form>
                                             </li>
                                         @endif
 
                                         <li>
-                                            <button type="button" class="dropdown-item btn-record-dp" 
+                                            <button type="button" class="dropdown-item py-2 btn-record-dp" 
                                                     data-id="{{ $so->id }}"
                                                     data-customer="{{ $so->customer_name }}"
                                                     data-target-dp="{{ $so->dp_amount > 0 ? $so->dp_amount : $so->grand_total }}"
                                                     data-dp-paid="{{ $so->dp_paid }}"
                                                     data-action="{{ route('sales-finance.dp-payment.store', $so) }}">
-                                                <i class="feather icon-dollar-sign me-2"></i> Catat Pembayaran DP
+                                                <i class="feather icon-dollar-sign text-success me-2"></i> Catat Pembayaran DP
                                             </button>
                                         </li>
 
                                         @if($so->stock_status !== 'available')
-                                            <li><hr class="dropdown-divider"></li>
+                                            <li><hr class="dropdown-divider my-1"></li>
                                             <li>
-                                                <a class="dropdown-item text-primary" href="{{ route('supplier-po.create-from-shortage', ['shortage_items' => $so->items->map(fn($it) => ['product_code' => $it->product_code, 'product_name' => $it->product_name, 'qty' => $it->quantity, 'unit' => $it->unit, 'price' => $it->unit_price])->toArray()]) }}">
+                                                <a class="dropdown-item py-2 text-primary fw-semibold" href="{{ route('supplier-po.create-from-shortage', ['shortage_items' => $so->items->map(fn($it) => ['product_code' => $it->product_code, 'product_name' => $it->product_name, 'qty' => $it->quantity, 'unit' => $it->unit, 'price' => $it->unit_price])->toArray()]) }}">
                                                     <i class="feather icon-shopping-cart me-2"></i> Pesan ke Supplier (PO)
                                                 </a>
                                             </li>
@@ -320,7 +359,30 @@
 @push('scripts')
 <script>
 $(function() {
-    $('.btn-record-dp').on('click', function() {
+    // Dropdown toggle click handler
+    $(document).on('click', '.dropdown-toggle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const $dropdown = $(this).closest('.dropdown');
+        const $menu = $dropdown.find('.dropdown-menu');
+        
+        $('.dropdown-menu').not($menu).removeClass('show');
+        $('.dropdown-toggle').not(this).removeClass('show').attr('aria-expanded', 'false');
+        
+        $menu.toggleClass('show');
+        $(this).toggleClass('show').attr('aria-expanded', $menu.hasClass('show'));
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('.dropdown').length) {
+            $('.dropdown-menu').removeClass('show');
+            $('.dropdown-toggle').removeClass('show').attr('aria-expanded', 'false');
+        }
+    });
+
+    // Modal Catat DP
+    $(document).on('click', '.btn-record-dp', function(e) {
+        e.preventDefault();
         const action = $(this).data('action');
         const customer = $(this).data('customer');
         const id = $(this).data('id');
@@ -334,7 +396,15 @@ $(function() {
         $('#dpModalPaid').text('Rp ' + new Intl.NumberFormat('id-ID').format(dpPaid));
         $('#dpModalAmountInput').val(remaining > 0 ? remaining : targetDp);
 
-        new bootstrap.Modal(document.getElementById('modalRecordDp')).show();
+        $('.dropdown-menu').removeClass('show');
+
+        const modalEl = document.getElementById('modalRecordDp');
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const inst = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            inst.show();
+        } else {
+            $('#modalRecordDp').modal('show');
+        }
     });
 });
 </script>
