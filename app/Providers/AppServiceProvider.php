@@ -96,7 +96,7 @@ class AppServiceProvider extends ServiceProvider
     private function toAssetUrl(?string $path, string $defaultPath): string
     {
         if (! is_string($path) || trim($path) === '') {
-            return asset($defaultPath);
+            return '/'.ltrim($defaultPath, '/');
         }
 
         if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
@@ -106,9 +106,9 @@ class AppServiceProvider extends ServiceProvider
         $cleanPath = ltrim(str_replace('public/', '', $path), '/');
 
         if (str_starts_with($cleanPath, 'branding/')) {
-            return asset('storage/'.$cleanPath);
+            return '/storage/'.$cleanPath;
         }
 
-        return asset($path);
+        return '/'.ltrim($cleanPath, '/');
     }
 }
