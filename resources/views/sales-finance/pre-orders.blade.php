@@ -27,60 +27,60 @@
 <!-- KPI Cards -->
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
-        <div class="card bg-primary text-white mb-0 shadow-sm border-0">
+        <div class="card border-0 shadow-sm mb-0">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="text-white-50 mb-1">Total Pre-Order</h6>
-                        <h3 class="mb-0 fw-bold text-white">{{ number_format($totalPreOrders) }}</h3>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="text-muted small fw-semibold mb-1">Total Pre-Order</p>
+                        <h3 class="mb-0 fw-bold text-dark">{{ number_format($totalPreOrders) }}</h3>
                     </div>
-                    <div class="flex-shrink-0 bg-white bg-opacity-25 p-3 rounded">
-                        <i class="feather icon-clock fs-3"></i>
+                    <div class="rounded-circle bg-light-primary p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                        <i class="feather icon-clock text-primary" style="font-size: 24px;"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="card bg-warning text-dark mb-0 shadow-sm border-0">
+        <div class="card border-0 shadow-sm mb-0">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="text-dark text-opacity-75 mb-1">Menunggu DP</h6>
-                        <h3 class="mb-0 fw-bold text-dark">{{ number_format($totalPendingDp) }}</h3>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="text-muted small fw-semibold mb-1">Menunggu DP</p>
+                        <h3 class="mb-0 fw-bold text-warning">{{ number_format($totalPendingDp) }}</h3>
                     </div>
-                    <div class="flex-shrink-0 bg-dark bg-opacity-10 p-3 rounded">
-                        <i class="feather icon-alert-circle fs-3 text-dark"></i>
+                    <div class="rounded-circle bg-light-warning p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                        <i class="feather icon-alert-circle text-warning" style="font-size: 24px;"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="card bg-success text-white mb-0 shadow-sm border-0">
+        <div class="card border-0 shadow-sm mb-0">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="text-white-50 mb-1">Total DP Diterima</h6>
-                        <h4 class="mb-0 fw-bold text-white">Rp {{ number_format($totalDpCollected, 0, ',', '.') }}</h4>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="text-muted small fw-semibold mb-1">Total DP Diterima</p>
+                        <h4 class="mb-0 fw-bold text-success">Rp {{ number_format($totalDpCollected, 0, ',', '.') }}</h4>
                     </div>
-                    <div class="flex-shrink-0 bg-white bg-opacity-25 p-3 rounded">
-                        <i class="feather icon-dollar-sign fs-3"></i>
+                    <div class="rounded-circle bg-light-success p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                        <i class="feather icon-dollar-sign text-success" style="font-size: 24px;"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">
-        <div class="card bg-info text-white mb-0 shadow-sm border-0">
+        <div class="card border-0 shadow-sm mb-0">
             <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="text-white-50 mb-1">Estimasi Tiba (7 Hari)</h6>
-                        <h3 class="mb-0 fw-bold text-white">{{ number_format($upcomingEtaCount) }}</h3>
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <p class="text-muted small fw-semibold mb-1">Estimasi Tiba (7 Hari)</p>
+                        <h3 class="mb-0 fw-bold text-info">{{ number_format($upcomingEtaCount) }}</h3>
                     </div>
-                    <div class="flex-shrink-0 bg-white bg-opacity-25 p-3 rounded">
-                        <i class="feather icon-truck fs-3"></i>
+                    <div class="rounded-circle bg-light-info p-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+                        <i class="feather icon-truck text-info" style="font-size: 24px;"></i>
                     </div>
                 </div>
             </div>
