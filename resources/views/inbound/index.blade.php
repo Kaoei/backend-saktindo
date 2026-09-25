@@ -90,13 +90,15 @@
                         <thead>
                             <tr>
                                 <th>ID Inbound</th>
+                                <th>Tanggal Masuk</th>
+                                <th>No. PO</th>
+                                <th>No. Manual (Invoice / SJ)</th>
                                 <th>Supplier</th>
                                 <th>Barang</th>
                                 <th>SKU</th>
                                 <th>Qty Masuk</th>
                                 <th>Total Stok Gudang</th>
                                 <th>Lokasi Rak</th>
-                                <th>Tanggal Masuk</th>
                                 <th>Status</th>
                                 <th class="text-end" style="width: 120px;">Aksi</th>
                             </tr>
@@ -108,7 +110,32 @@
                                     $currentGudangStock = $inbound->supplierProduct ? $inbound->supplierProduct->gudangProducts->sum('qty') : 0;
                                 @endphp
                                 <tr>
-                                    <td>{{ $inbound->id }}</td>
+                                    <td><span class="font-monospace fw-bold">{{ $inbound->id }}</span></td>
+                                    <td>
+                                        <span class="text-dark fw-semibold">
+                                            <i class="feather icon-calendar me-1 text-muted"></i>{{ $inbound->received_date ? \Carbon\Carbon::parse($inbound->received_date)->format('d/m/Y') : '-' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if($inbound->supplierPo)
+                                            <span class="badge bg-light-primary text-primary border">
+                                                <i class="feather icon-file-text me-1"></i>{{ $inbound->supplierPo->po_number }}
+                                            </span>
+                                        @elseif($inbound->supplier_po_id)
+                                            <span class="badge bg-light text-dark border">{{ $inbound->supplier_po_id }}</span>
+                                        @else
+                                            <span class="text-muted small">Non-PO</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($inbound->invoice_number)
+                                            <span class="badge bg-light-info text-dark border fw-bold">
+                                                <i class="feather icon-tag me-1 text-info"></i>{{ $inbound->invoice_number }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted small">-</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $inbound->supplier->name ?? '-' }}</td>
                                     <td>
                                         <div class="fw-bold">{{ $inbound->supplierProduct->item_name ?? '-' }}</div>
@@ -140,7 +167,6 @@
                                             <span class="text-muted small">Belum di rak</span>
                                         @endif
                                     </td>
-                                    <td>{{ $inbound->received_date }}</td>
                                     <td>
                                         @if ($inbound->status == 'pending')
                                             <span class="badge bg-warning">Pending</span>
@@ -263,32 +289,34 @@ $(function () {
         columnDefs: [
             {
                 orderable: false,
-                targets: [8]
+                targets: [11]
             }
         ]
     });
 
-    // Filter Status
+    // Filter Status (kolom 10)
     $('#filterStatus').on('change', function () {
-        table.column(7).search(this.value).draw();
+        table.column(10).search(this.value).draw();
     });
 
-    // Filter Supplier
+    // Filter Supplier (kolom 4)
     $('#filterSupplier').on('change', function () {
-        table.column(1).search(this.value).draw();
+        table.column(4).search(this.value).draw();
     });
 
-    // Filter Tanggal
+    // Filter Tanggal (kolom 1)
     $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
 
         const filterDate = $('#filterDate').val();
-        const tableDate = data[6];
-
         if (!filterDate) {
             return true;
         }
 
-        return tableDate === filterDate;
+        const tableDate = (data[1] || '').trim();
+        const parts = filterDate.split('-');
+        const formattedFilter = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : filterDate;
+
+        return tableDate.includes(formattedFilter) || tableDate.includes(filterDate);
     });
 
     $('#filterDate').on('change', function () {

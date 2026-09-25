@@ -342,7 +342,8 @@ class ProductController extends Controller
 
         return redirect()
             ->route('products.index')
-            ->with('success', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan katalog ekspor telah diselaraskan.");
+            ->with('success', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan katalog ekspor telah diselaraskan.")
+            ->with('status', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan katalog ekspor telah diselaraskan.");
     }
 
     /**

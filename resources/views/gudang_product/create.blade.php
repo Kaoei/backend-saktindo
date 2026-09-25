@@ -56,16 +56,21 @@
                                         }
                                     }
                                     $existingRacksStr = count($existingRacks) > 0 ? implode(', ', $existingRacks) : 'Belum ada di rak';
+                                    $formattedDate = $inbound->received_date ? \Carbon\Carbon::parse($inbound->received_date)->format('d/m/Y') : '-';
+                                    $poNum = $inbound->supplierPo->po_number ?? ($inbound->supplier_po_id ?? 'Non-PO');
+                                    $manualNum = $inbound->invoice_number ?? '-';
                                 @endphp
                                 <option value="{{ $inbound->id }}"
                                     data-item-name="{{ $inbound->supplierProduct->item_name ?? '-' }}"
                                     data-sku="{{ $inbound->supplierProduct->sku ?? '-' }}"
                                     data-qty="{{ $inbound->qty_received }}"
                                     data-supplier="{{ $inbound->supplier->name ?? '-' }}"
-                                    data-date="{{ $inbound->received_date }}"
+                                    data-date="{{ $formattedDate }}"
+                                    data-po="{{ $poNum }}"
+                                    data-manual="{{ $manualNum }}"
                                     data-existing-racks="{{ $existingRacksStr }}"
                                     {{ old('in_bound_id', $selectedInbound) == $inbound->id ? 'selected' : '' }}>
-                                    {{ $inbound->id }} - {{ $inbound->supplierProduct->item_name ?? '-' }} (Qty: {{ $inbound->qty_received }} pcs) - Supplier: {{ $inbound->supplier->name ?? '-' }}
+                                    {{ $inbound->id }} [Tgl: {{ $formattedDate }} | PO: {{ $poNum }}{{ $manualNum !== '-' ? ' | No: ' . $manualNum : '' }}] - {{ $inbound->supplierProduct->item_name ?? '-' }} (Qty: {{ $inbound->qty_received }} pcs)
                                 </option>
                             @endforeach
                         </select>
@@ -74,20 +79,26 @@
                     <!-- Inbound Details Card -->
                     <div id="inbound-info-card" class="card bg-light border-0 mb-4 p-3" style="display: none;">
                         <div class="row g-3 align-items-center">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <small class="text-muted d-block">Nama Barang & SKU</small>
                                 <strong id="info-item-name" class="text-dark fs-6">-</strong>
                                 <span id="info-sku" class="badge bg-secondary ms-1">-</span>
                             </div>
                             <div class="col-md-3">
-                                <small class="text-muted d-block">Supplier</small>
+                                <small class="text-muted d-block">Supplier & Tanggal Masuk</small>
                                 <span id="info-supplier" class="fw-semibold text-dark">-</span>
+                                <small id="info-date" class="d-block text-muted"><i class="feather icon-calendar me-1"></i>-</small>
+                            </div>
+                            <div class="col-md-2">
+                                <small class="text-muted d-block">No. PO & No. Manual</small>
+                                <span id="info-po" class="badge bg-light-primary text-primary border">-</span>
+                                <small id="info-manual" class="d-block text-muted font-monospace mt-1">-</small>
                             </div>
                             <div class="col-md-2 text-md-center">
                                 <small class="text-muted d-block">Total Diterima</small>
                                 <span id="info-total-qty" class="badge bg-primary fs-6 px-3 py-2">0 pcs</span>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-2">
                                 <small class="text-muted d-block">Lokasi Rak Saat Ini</small>
                                 <small id="info-existing-racks" class="text-muted fw-semibold">-</small>
                             </div>
@@ -315,11 +326,16 @@ $(document).ready(function() {
         const sku = $selected.attr('data-sku') || '-';
         const qty = parseInt($selected.attr('data-qty')) || 0;
         const supplier = $selected.attr('data-supplier') || '-';
-        const existingRacks = $selected.attr('data-existing-racks') || '-';
+        const date = $selected.attr('data-date') || '-';
+        const po = $selected.attr('data-po') || '-';
+        const manual = $selected.attr('data-manual') || '-';
 
         $infoItemName.text(itemName);
         $infoSku.text('SKU: ' + sku);
         $infoSupplier.text(supplier);
+        $('#info-date').html('<i class="feather icon-calendar me-1"></i>' + date);
+        $('#info-po').text('PO: ' + po);
+        $('#info-manual').text(manual !== '-' ? 'SJ: ' + manual : '-');
         $infoTotalQty.text(qty + ' pcs');
         $infoExistingRacks.text(existingRacks);
 

@@ -174,7 +174,7 @@
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Status Order</label>
                         <select name="order_status" class="form-select">
-                            @foreach(['draft', 'stock_check', 'ready_invoice', 'pending_stock', 'invoiced', 'partial_delivery', 'delivered', 'completed', 'cancelled'] as $status)
+                            @foreach(['draft', 'stock_check', 'ready_to_invoice', 'pending_stock', 'invoiced', 'partial_delivery', 'delivered', 'completed', 'cancelled'] as $status)
                                 <option value="{{ $status }}" @selected(old('order_status', $order->order_status ?: 'draft') === $status)>{{ str_replace('_', ' ', ucfirst($status)) }}</option>
                             @endforeach
                         </select>

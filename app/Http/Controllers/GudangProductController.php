@@ -21,7 +21,11 @@ class GudangProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = GudangProduct::with(['supplierProduct.gudangProducts.rack', 'rack']);
+        $query = GudangProduct::with([
+            'supplierProduct.gudangProducts.rack',
+            'supplierProduct.inbounds.supplierPo',
+            'rack',
+        ]);
 
         if ($request->filled('gudang')) {
             $query->whereHas('rack', function ($q) use ($request) {
@@ -252,7 +256,7 @@ class GudangProductController extends Controller
 
     public function create(Request $request)
     {
-        $inbounds = InBound::with(['supplier', 'supplierProduct.gudangProducts.rack'])
+        $inbounds = InBound::with(['supplier', 'supplierProduct.gudangProducts.rack', 'supplierPo'])
             ->whereIn('status', ['pending', 'partial'])
             ->latest()
             ->get();
@@ -969,13 +973,15 @@ class GudangProductController extends Controller
                     $importedCount++;
                 }
 
-                StockSyncService::syncGudangStock($targetGP, true, $supplierProduct->supplier_id, 'Import Excel Stok Gudang');
+                // Import stok dari Excel tidak membuat log barang masuk dummy; barang masuk hanya dari tanda terima supplier
+                StockSyncService::syncGudangStock($targetGP, false, $supplierProduct->supplier_id);
             }
 
             DB::commit();
 
             return redirect()->route('gudang-product.index')
-                ->with('status', "Import berhasil! {$importedCount} stok baru ditambahkan, {$updatedCount} diperbarui, dan data stok telah disinkronkan.");
+                ->with('status', "Import berhasil! {$importedCount} stok baru ditambahkan, {$updatedCount} diperbarui, dan data stok telah disinkronkan.")
+                ->with('success', "Import berhasil! {$importedCount} stok baru ditambahkan, {$updatedCount} diperbarui, dan data stok telah disinkronkan.");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -993,6 +999,7 @@ class GudangProductController extends Controller
 
         return redirect()
             ->route('gudang-product.index')
-            ->with('status', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan riwayat barang masuk telah diselaraskan.");
+            ->with('status', "Sinkronisasi berhasil! {$report['synced_count']} data produk dan stok gudang telah diselaraskan.")
+            ->with('success', "Sinkronisasi berhasil! {$report['synced_count']} data produk dan stok gudang telah diselaraskan.");
     }
 }

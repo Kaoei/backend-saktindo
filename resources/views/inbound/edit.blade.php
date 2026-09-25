@@ -97,6 +97,32 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
+                            <label class="form-label">Nomor PO Supplier (Opsional)</label>
+                            <select name="supplier_po_id" class="form-select @error('supplier_po_id') is-invalid @enderror">
+                                <option value="">-- Tanpa PO (Pembelian Langsung) --</option>
+                                @foreach($supplierPos as $po)
+                                    <option value="{{ $po->id }}" {{ old('supplier_po_id', $inbound->supplier_po_id) == $po->id ? 'selected' : '' }}>
+                                        {{ $po->po_number ?? $po->id }} - {{ $po->supplier->name ?? 'Supplier' }} ({{ $po->order_date }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('supplier_po_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">No. Invoice / Surat Jalan (Nomor Manual Supplier)</label>
+                            <input type="text"
+                                   name="invoice_number"
+                                   class="form-control @error('invoice_number') is-invalid @enderror"
+                                   placeholder="Contoh: INV-2026/07/001 atau SJ-998"
+                                   value="{{ old('invoice_number', $inbound->invoice_number) }}">
+                            @error('invoice_number') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <small class="text-muted">Nomor surat jalan atau invoice fisik yang diberikan supplier</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
                             <label class="form-label">Qty Diterima <span class="text-danger">*</span></label>
                             <input type="number"
                                    name="qty_received"

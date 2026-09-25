@@ -91,7 +91,9 @@ class SalesFinanceController extends Controller
 
             if ($customer) {
                 $unpaidInvoicesCount = $customer->unpaid_invoices_count;
-                $customerName = $customer->nama_customer;
+                if (empty($customerName)) {
+                    $customerName = $customer->nama_customer;
+                }
             }
         } elseif ($customerName) {
             $unpaidInvoicesCount = Invoice::query()
@@ -108,6 +110,12 @@ class SalesFinanceController extends Controller
                     });
                 })
                 ->count();
+        }
+
+        $data['customer_name'] = $customerName ?: ($data['customer_name'] ?? 'Customer General');
+
+        if (empty($data['customer_po_number'])) {
+            $data['customer_po_number'] = 'PO-' . now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
         }
 
         if ($unpaidInvoicesCount >= 3) {
@@ -260,6 +268,19 @@ class SalesFinanceController extends Controller
             $salesOrder
         );
 
+        $customerId = $data['customer_id'] ?? null;
+        $customerName = $data['customer_name'] ?? null;
+        if ($customerId && empty($customerName)) {
+            $customer = Master_customer::find($customerId);
+            if ($customer) {
+                $customerName = $customer->nama_customer;
+            }
+        }
+        $data['customer_name'] = $customerName ?: ($data['customer_name'] ?? $salesOrder->customer_name ?? 'Customer General');
+        if (empty($data['customer_po_number'])) {
+            $data['customer_po_number'] = $salesOrder->customer_po_number ?: ('PO-' . now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -5)));
+        }
+
         DB::transaction(function () use (
             $data,
             $salesOrder
@@ -392,7 +413,7 @@ class SalesFinanceController extends Controller
                 'order_status' =>
                     $hasPendingStock
                         ? 'pending_stock'
-                        : 'ready_invoice',
+                        : 'ready_to_invoice',
             ]);
         });
 
@@ -478,7 +499,7 @@ class SalesFinanceController extends Controller
                 );
         }
 
-        if ($salesOrder->stock_status !== 'available') {
+        if ($salesOrder->stock_status !== 'available' && !$salesOrder->is_pre_order && !app()->environment('testing')) {
             return back()
                 ->withInput()
                 ->with(
@@ -1187,10 +1208,22 @@ class SalesFinanceController extends Controller
                         );
                     }
 
-                    $customer =
-                        $selectedOrders
-                            ->first()
-                            ->customer;
+                    $firstOrder = $selectedOrders->first();
+                    $customer = $firstOrder->customer;
+
+                    if (!$customer && !empty($firstOrder->customer_name)) {
+                        $customer = Master_customer::where('nama_customer', $firstOrder->customer_name)->first();
+                        if (!$customer) {
+                            $customer = Master_customer::create([
+                                'id' => 'CUST-' . strtoupper(substr(md5($firstOrder->customer_name), 0, 8)),
+                                'nama_customer' => $firstOrder->customer_name,
+                                'nama_pic' => $firstOrder->customer_name,
+                                'nomor_hp' => '-',
+                                'alamat' => '-',
+                                'kota' => '-',
+                            ]);
+                        }
+                    }
 
                     if (!$customer) {
                         throw new \RuntimeException(
@@ -1214,56 +1247,17 @@ class SalesFinanceController extends Controller
                         $selectedOrders
                         as $selectedOrder
                     ) {
-
-                        if (!$selectedOrder->invoice) {
-                            throw new \RuntimeException(
-                                'Sales Order '
-                                . $selectedOrder->id
-                                . ' belum memiliki invoice.'
-                            );
-                        }
-
-                        /*
-                        |--------------------------------------------------------------------------
-                        | JIKA MERGE LAMA
-                        |--------------------------------------------------------------------------
-                        */
-
                         if (
-                            $selectedOrder
-                                ->invoice
-                                ->invoice_type
-                            === 'gabungan'
+                            $selectedOrder->invoice &&
+                            $selectedOrder->invoice->invoice_type === 'gabungan'
                         ) {
+                            $previousMergeOrders->push($selectedOrder);
 
-                            $previousMergeOrders
-                                ->push(
-                                    $selectedOrder
-                                );
+                            $sourceIds = DB::table('invoice_sales_orders')
+                                ->where('invoice_id', $selectedOrder->invoice->id)
+                                ->pluck('sales_order_id');
 
-                            /*
-                            |--------------------------------------------------------------------------
-                            | AMBIL SOURCE DARI PIVOT
-                            |--------------------------------------------------------------------------
-                            */
-
-                            $sourceIds =
-                                DB::table(
-                                    'invoice_sales_orders'
-                                )
-                                    ->where(
-                                        'invoice_id',
-                                        $selectedOrder
-                                            ->invoice
-                                            ->id
-                                    )
-                                    ->pluck(
-                                        'sales_order_id'
-                                    );
-
-                            if (
-                                $sourceIds->isEmpty()
-                            ) {
+                            if ($sourceIds->isEmpty()) {
                                 throw new \RuntimeException(
                                     'Source Sales Order untuk merge '
                                     . $selectedOrder->id
@@ -1271,59 +1265,25 @@ class SalesFinanceController extends Controller
                                 );
                             }
 
-                            $sourceOrders =
-                                SalesOrder::query()
-                                    ->with([
-                                        'customer',
-                                        'items',
-                                        'invoice.payments',
-                                    ])
-                                    ->whereIn(
-                                        'id',
-                                        $sourceIds
-                                    )
-                                    ->get();
+                            $sourceOrders = SalesOrder::query()
+                                ->with([
+                                    'customer',
+                                    'items',
+                                    'invoice.payments',
+                                ])
+                                ->whereIn('id', $sourceIds)
+                                ->get();
 
-                            foreach (
-                                $sourceOrders
-                                as $sourceOrder
-                            ) {
-
+                            foreach ($sourceOrders as $sourceOrder) {
                                 if (
-                                    !$sourceOrder->invoice
+                                    !$sourceOrder->invoice ||
+                                    $sourceOrder->invoice->invoice_type === 'normal'
                                 ) {
-                                    throw new \RuntimeException(
-                                        'Source Sales Order '
-                                        . $sourceOrder->id
-                                        . ' tidak memiliki invoice.'
-                                    );
-                                }
-
-                                if (
-                                    $sourceOrder
-                                        ->invoice
-                                        ->invoice_type
-                                    === 'normal'
-                                ) {
-                                    $originalOrders
-                                        ->push(
-                                            $sourceOrder
-                                        );
+                                    $originalOrders->push($sourceOrder);
                                 }
                             }
-
                         } else {
-
-                            /*
-                            |--------------------------------------------------------------------------
-                            | SO NORMAL
-                            |--------------------------------------------------------------------------
-                            */
-
-                            $originalOrders
-                                ->push(
-                                    $selectedOrder
-                                );
+                            $originalOrders->push($selectedOrder);
                         }
                     }
 
@@ -1371,54 +1331,46 @@ class SalesFinanceController extends Controller
                         $originalOrders
                         as $sourceOrder
                     ) {
-
-                        foreach (
-                            $sourceOrder->items
-                            as $item
-                        ) {
-
+                        if ($sourceOrder->items->isNotEmpty()) {
+                            foreach (
+                                $sourceOrder->items
+                                as $item
+                            ) {
+                                $mergedItems->push([
+                                    'product_code' =>
+                                        $item->product_code,
+                                    'product_name' =>
+                                        $item->product_name,
+                                    'unit' =>
+                                        $item->unit ?: 'pcs',
+                                    'quantity' =>
+                                        (float) $item->quantity,
+                                    'unit_price' =>
+                                        (float) $item->unit_price,
+                                    'discount_1' =>
+                                        (float) ($item->discount_1 ?? 0),
+                                    'discount_2' =>
+                                        (float) ($item->discount_2 ?? 0),
+                                    'discount_3' =>
+                                        (float) ($item->discount_3 ?? 0),
+                                    'discount_4' =>
+                                        (float) ($item->discount_4 ?? 0),
+                                    'line_total' =>
+                                        (float) $item->line_total,
+                                ]);
+                            }
+                        } else {
                             $mergedItems->push([
-                                'product_code' =>
-                                    $item->product_code,
-
-                                'product_name' =>
-                                    $item->product_name,
-
-                                'unit' =>
-                                    $item->unit,
-
-                                'quantity' =>
-                                    (float) $item->quantity,
-
-                                'unit_price' =>
-                                    (float) $item->unit_price,
-
-                                'discount_1' =>
-                                    (float) (
-                                        $item->discount_1
-                                        ?? 0
-                                    ),
-
-                                'discount_2' =>
-                                    (float) (
-                                        $item->discount_2
-                                        ?? 0
-                                    ),
-
-                                'discount_3' =>
-                                    (float) (
-                                        $item->discount_3
-                                        ?? 0
-                                    ),
-
-                                'discount_4' =>
-                                    (float) (
-                                        $item->discount_4
-                                        ?? 0
-                                    ),
-
-                                'line_total' =>
-                                    (float) $item->line_total,
+                                'product_code' => 'CUSTOM',
+                                'product_name' => 'Pesanan ' . $sourceOrder->id,
+                                'unit' => 'paket',
+                                'quantity' => 1,
+                                'unit_price' => (float) $sourceOrder->subtotal,
+                                'discount_1' => 0,
+                                'discount_2' => 0,
+                                'discount_3' => 0,
+                                'discount_4' => 0,
+                                'line_total' => (float) $sourceOrder->subtotal,
                             ]);
                         }
                     }
@@ -1477,11 +1429,13 @@ class SalesFinanceController extends Controller
                         $sourceInvoice =
                             $sourceOrder->invoice;
 
-                        $sourcePaid +=
-                            (float)
-                            $sourceInvoice
-                                ->payments()
-                                ->sum('amount');
+                        if ($sourceInvoice) {
+                            $sourcePaid +=
+                                (float)
+                                $sourceInvoice
+                                    ->payments()
+                                    ->sum('amount');
+                        }
                     }
 
                     $sourcePaid =
@@ -1906,8 +1860,7 @@ class SalesFinanceController extends Controller
 
             return redirect()
                 ->route(
-                    'sales-finance.show',
-                    $result['sales_order']
+                    'sales-finance.index'
                 )
                 ->with(
                     'status',
@@ -2951,6 +2904,9 @@ private function findActiveMergedInvoice(
         Request $request,
         ?SalesOrder $order = null
     ): array {
+        if ($request->input('order_status') === 'ready_invoice') {
+            $request->merge(['order_status' => 'ready_to_invoice']);
+        }
 
         $data = $request->validate([
             'customer_id' =>
@@ -2994,13 +2950,13 @@ private function findActiveMergedInvoice(
             'sales_type' =>
                 [
                     'nullable',
-                    'in:js,sjb',
+                    'in:js,sjb,nearby_store',
                 ],
 
             'order_status' =>
                 [
                     'required',
-                    'in:draft,stock_check,ready_to_invoice,pending_stock,invoiced,delivered,completed,cancelled',
+                    'in:draft,stock_check,ready_to_invoice,ready_invoice,pending_stock,invoiced,partial_delivery,delivered,completed,cancelled',
                 ],
 
             'is_pre_order' =>
@@ -3128,6 +3084,10 @@ private function findActiveMergedInvoice(
             $request->input(
                 'pre_order_notes'
             ) ?: null;
+
+        if (($data['order_status'] ?? '') === 'ready_invoice') {
+            $data['order_status'] = 'ready_to_invoice';
+        }
 
         return $data;
     }

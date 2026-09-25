@@ -197,6 +197,7 @@
                                 <th>Gudang</th>
                                 <th>Rak</th>
                                 <th>Lokasi</th>
+                                <th>Barang Masuk (Tgl / PO)</th>
                                 <th>Status</th>
                                 <th class="text-end" style="width: 80px;">Aksi</th>
                             </tr>
@@ -216,6 +217,7 @@
                                         }
                                     }
                                     $otherDetailsText = count($otherDetails) > 0 ? implode(', ', $otherDetails) : '';
+                                    $latestInbound = $product->supplierProduct?->inbounds?->sortByDesc('received_date')?->first();
                                 @endphp
                                 <tr>
                                     <td>{{ $product->id }}</td>
@@ -244,6 +246,29 @@
                                         <span class="badge bg-light text-dark border">{{ $product->rack->rak_kode ?? '-' }}</span>
                                     </td>
                                     <td>{{ $product->rack->location ?? '-' }}</td>
+                                    <td>
+                                        @if($latestInbound)
+                                            <div class="small fw-semibold text-dark">
+                                                <i class="feather icon-calendar me-1 text-muted"></i>{{ $latestInbound->received_date ? \Carbon\Carbon::parse($latestInbound->received_date)->format('d/m/Y') : '-' }}
+                                            </div>
+                                            @if($latestInbound->supplierPo)
+                                                <small class="badge bg-light-primary text-primary border" title="Nomor PO Supplier">
+                                                    PO: {{ $latestInbound->supplierPo->po_number }}
+                                                </small>
+                                            @elseif($latestInbound->supplier_po_id)
+                                                <small class="badge bg-light text-dark border">
+                                                    PO: {{ $latestInbound->supplier_po_id }}
+                                                </small>
+                                            @endif
+                                            @if($latestInbound->invoice_number)
+                                                <small class="badge bg-light-info text-dark border d-block mt-1" title="Nomor Manual / Surat Jalan Supplier">
+                                                    SJ: {{ $latestInbound->invoice_number }}
+                                                </small>
+                                            @endif
+                                        @else
+                                            <span class="text-muted small">-</span>
+                                        @endif
+                                    </td>
                                     <td>
                                         <span class="badge bg-success">
                                             {{ ucfirst($product->status) }}
@@ -599,7 +624,7 @@ $(function () {
         columnDefs: [
             {
                 orderable: false,
-                targets: [9]
+                targets: [10]
             }
         ]
     });

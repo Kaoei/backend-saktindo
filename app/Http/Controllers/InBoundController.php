@@ -243,6 +243,7 @@ class InBoundController extends Controller
 
         return redirect()
             ->route('inbound.index')
-            ->with('success', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan riwayat barang masuk telah diselaraskan.");
+            ->with('success', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan master produk telah diselaraskan.")
+            ->with('status', "Sinkronisasi berhasil! {$report['synced_count']} data produk, stok gudang, dan master produk telah diselaraskan.");
     }
 }

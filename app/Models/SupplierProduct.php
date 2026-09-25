@@ -58,6 +58,15 @@ class SupplierProduct extends Model
         );
     }
 
+    public function inbounds()
+    {
+        return $this->hasMany(
+            InBound::class,
+            'supplier_product_id',
+            'id'
+        );
+    }
+
     public function getProductNameAttribute(): ?string
     {
         return $this->item_name;
