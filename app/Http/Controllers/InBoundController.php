@@ -205,11 +205,19 @@ class InBoundController extends Controller
         return view('inbound.print', compact('inbound'));
     }
 
-    public function destroy(InBound $inbound)
+    public function destroy($inbound)
     {
-        DB::transaction(function () use ($inbound) {
-            StockSyncService::handleInboundCancelOrDelete($inbound);
-            $inbound->delete();
+        $inboundModel = $inbound instanceof InBound ? $inbound : InBound::find($inbound);
+
+        if (!$inboundModel) {
+            return redirect()
+                ->route('inbound.index')
+                ->with('info', 'Data barang masuk sudah dihapus atau tidak ditemukan.');
+        }
+
+        DB::transaction(function () use ($inboundModel) {
+            StockSyncService::handleInboundCancelOrDelete($inboundModel);
+            $inboundModel->delete();
         });
 
         return redirect()

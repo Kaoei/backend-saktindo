@@ -79,7 +79,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Brand / Merk</label>
                             <select name="brand" class="form-select">
                                 <option value="">-- Pilih Brand --</option>
@@ -90,26 +90,26 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Satuan</label>
                             <input name="unit" type="text" class="form-control" value="{{ old('unit', $product->unit) }}" placeholder="pcs, roll, meter">
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Harga Terakhir</label>
                             <input name="last_purchase_price" type="number" min="0" step="0.01" class="form-control" value="{{ old('last_purchase_price', $product->last_purchase_price ?? 0) }}">
                         </div>
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">MOQ</label>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">MOQ (Minimum Order Qty)</label>
                             <input name="minimum_order_qty" type="number" min="1" class="form-control" value="{{ old('minimum_order_qty', $product->minimum_order_qty ?? 1) }}">
                         </div>
-                        <div class="col-md-2 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Lead Time</label>
                             <div class="input-group">
-                                <input name="lead_time_days" type="number" min="0" class="form-control" value="{{ old('lead_time_days', $product->lead_time_days ?? 0) }}">
+                                <input name="lead_time_days" type="number" min="0" class="form-control" style="min-width: 100px;" value="{{ old('lead_time_days', $product->lead_time_days ?? 0) }}">
                                 <span class="input-group-text">hari</span>
                             </div>
                         </div>
-                        <div class="col-md-2 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
                                 @foreach(['active' => 'Active', 'inactive' => 'Inactive'] as $value => $label)

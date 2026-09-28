@@ -198,8 +198,10 @@ class SupplierPOController extends Controller
 
         $pdf->setPaper('a4', 'portrait');
 
+        $safePoNumber = str_replace(['/', '\\'], '-', $supplierPo->po_number ?: $supplierPo->id);
+
         return $pdf->download(
-            'Faktur-' . $supplierPo->po_number . '.pdf'
+            'Faktur-' . $safePoNumber . '.pdf'
         );
     }
 }

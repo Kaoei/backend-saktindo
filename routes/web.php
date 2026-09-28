@@ -230,6 +230,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/{inbound}/cancel', [InBoundController::class, 'cancel'])->name('cancel');
         Route::get('/{inbound}/print', [InBoundController::class, 'printInbound'])->name('print');
         Route::delete('/{inbound}', [InBoundController::class, 'destroy'])->name('destroy');
+        Route::match(['delete', 'post'], '/{inbound}/delete', [InBoundController::class, 'destroy'])->name('destroy.alt');
         Route::get('/{inbound}/download-pdf', [InBoundController::class, 'downloadPdf'])
         ->name('pdf');
         Route::post('/sync', [InBoundController::class, 'sync'])->name('sync');

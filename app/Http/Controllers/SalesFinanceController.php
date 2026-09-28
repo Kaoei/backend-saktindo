@@ -3666,13 +3666,10 @@ private function findActiveMergedInvoice(
             [0, 0, 0]
         );
 
+        $safeInvoiceNumber = str_replace(['/', '\\'], '-', $invoice->invoice_number ?? $invoice->id);
+
         return $pdf->download(
-            'Invoice-'
-            . (
-                $invoice->invoice_number
-                ?? $invoice->id
-            )
-            . '.pdf'
+            'Invoice-' . $safeInvoiceNumber . '.pdf'
         );
     }
 

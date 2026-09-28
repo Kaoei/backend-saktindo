@@ -261,7 +261,7 @@
                     @csrf
                     @method('DELETE')
 
-                    <button type="submit" class="btn btn-danger">
+                    <button type="submit" class="btn btn-danger" id="btnConfirmDelete">
                         Hapus
                     </button>
                 </form>
@@ -335,15 +335,24 @@ $(function () {
 
     // Modal delete
     $(document).on('click', '.btn-delete-inbound', function () {
+        const inboundName = $(this).attr('data-inbound-name') || this.dataset.inboundName;
+        const inboundAction = $(this).attr('data-inbound-action') || this.dataset.inboundAction;
 
-        document.getElementById('deleteInboundName').textContent =
-            this.dataset.inboundName;
+        $('#deleteInboundName').text(inboundName);
+        $('#deleteForm').attr('action', inboundAction);
+        $('#btnConfirmDelete').prop('disabled', false).text('Hapus');
 
-        document.getElementById('deleteForm').action =
-            this.dataset.inboundAction;
+        const modalEl = document.getElementById('deleteModal');
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        } else {
+            $('#deleteModal').modal('show');
+        }
+    });
 
-        const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-        modal.show();
+    $('#deleteForm').on('submit', function () {
+        $('#btnConfirmDelete').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Menghapus...');
     });
 
 });

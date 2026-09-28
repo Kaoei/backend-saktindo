@@ -292,8 +292,8 @@
                         <div class="tab-pane fade" id="shipping" role="tabpanel" aria-labelledby="shipping-tab">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label fw-bold">Package Weight (grams) <span class="text-danger">*</span></label>
-                                    <input name="parcel_weight" type="number" class="form-control" value="{{ old('parcel_weight', $product->parcel_weight) }}" required min="0">
+                                    <label class="form-label fw-bold">Package Weight (grams)</label>
+                                    <input name="parcel_weight" type="number" class="form-control" value="{{ old('parcel_weight', $product->parcel_weight) }}" min="0">
                                     <small class="text-muted">Weight of the product including package box/wrapping.</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -320,8 +320,8 @@
                             <p class="text-muted small">We recommend hosting images on your public storage or TikTok Media Center. Enter image URLs below.</p>
                             <div class="row">
                                 <div class="col-md-12 mb-3">
-                                    <label class="form-label fw-bold">Main Image URL <span class="text-danger">*</span></label>
-                                    <input name="main_image" type="url" class="form-control" value="{{ old('main_image', $product->main_image) }}" required placeholder="https://...">
+                                    <label class="form-label fw-bold">Main Image URL</label>
+                                    <input name="main_image" type="url" class="form-control" value="{{ old('main_image', $product->main_image) }}" placeholder="https://...">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label fw-bold">Image 2 URL</label>
@@ -483,13 +483,13 @@
             let html = `
                 <tr>
                     <td>
-                        <input name="variations[${varIndex}][variation_value]" type="text" class="form-control" value="${variantValue}" list="master-variants-list" placeholder="Pilih/ketik varian" required>
+                        <input name="variations[${varIndex}][variation_value]" type="text" class="form-control" value="${variantValue}" list="master-variants-list" placeholder="Pilih/ketik varian">
                     </td>
                     <td>
-                        <input name="variations[${varIndex}][price]" type="number" class="form-control" value="0" required min="0">
+                        <input name="variations[${varIndex}][price]" type="number" class="form-control" value="0" min="0">
                     </td>
                     <td>
-                        <input name="variations[${varIndex}][quantity]" type="number" class="form-control" value="0" required min="0">
+                        <input name="variations[${varIndex}][quantity]" type="number" class="form-control" value="0" min="0">
                     </td>
                     <td>
                         <input name="variations[${varIndex}][sku_id]" type="text" class="form-control" placeholder="Auto generated">
@@ -535,6 +535,23 @@
             } else {
                 alert('Product must have at least one variation.');
             }
+        });
+
+        // Switch to the appropriate tab if any input triggers validation error
+        document.querySelectorAll('form input, form select, form textarea').forEach(el => {
+            el.addEventListener('invalid', function() {
+                const pane = this.closest('.tab-pane');
+                if (pane && !pane.classList.contains('active')) {
+                    const tabTrigger = document.querySelector(`a[href="#${pane.id}"]`);
+                    if (tabTrigger) {
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                            new bootstrap.Tab(tabTrigger).show();
+                        } else if ($(tabTrigger).tab) {
+                            $(tabTrigger).tab('show');
+                        }
+                    }
+                }
+            });
         });
     });
 </script>
