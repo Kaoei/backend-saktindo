@@ -60,6 +60,16 @@
                                         Detail
                                     </a>
 
+                                    {{-- Edit --}}
+                                    @if($po->status !== 'cancelled')
+                                        <a href="{{ route('supplier-po.edit', $po->id) }}"
+                                        class="btn btn-sm btn-outline-warning"
+                                        title="Edit Purchase Order">
+                                            <i class="feather icon-edit me-1"></i>
+                                            Edit
+                                        </a>
+                                    @endif
+
                                     {{-- Process --}}
                                     @if($po->status === 'pending')
                                       <a href="{{ route('inbound.create', ['supplier_po_id' => $po->id]) }}"

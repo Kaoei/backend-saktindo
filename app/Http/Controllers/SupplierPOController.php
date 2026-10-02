@@ -117,6 +117,95 @@ class SupplierPOController extends Controller
         return view('supplier_po.show', compact('supplierPo'));
     }
 
+    public function edit(SupplierPO $supplierPo)
+    {
+        $supplierPo->load(['supplier', 'items.supplierProduct']);
+        $suppliers = Supplier::orderBy('name')->get();
+        $products = SupplierProduct::orderBy('item_name')->get();
+
+        return view('supplier_po.edit', compact('supplierPo', 'suppliers', 'products'));
+    }
+
+    public function update(Request $request, SupplierPO $supplierPo): RedirectResponse
+    {
+        $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'order_date' => 'required|date',
+            'reference_number' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
+            'status' => 'nullable|in:pending,received,cancelled',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:supplier_products,id',
+            'items.*.qty' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.discount' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_1' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_2' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_3' => 'nullable|numeric|min:0|max:100',
+            'items.*.discount_4' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $totalAmount = 0;
+            $itemsToInsert = [];
+
+            foreach ($request->items as $item) {
+                $d1 = (float) ($item['discount_1'] ?? $item['discount'] ?? 0);
+                $d2 = (float) ($item['discount_2'] ?? 0);
+                $d3 = (float) ($item['discount_3'] ?? 0);
+                $d4 = (float) ($item['discount_4'] ?? 0);
+                $price = (float) $item['price'];
+                $qty = (int) $item['qty'];
+
+                $lineNetUnitPrice = $price * (1 - $d1 / 100) * (1 - $d2 / 100) * (1 - $d3 / 100) * (1 - $d4 / 100);
+                $lineTotal = $lineNetUnitPrice * $qty;
+                $totalAmount += $lineTotal;
+
+                $itemsToInsert[] = [
+                    'supplier_po_id' => $supplierPo->id,
+                    'supplier_product_id' => $item['product_id'],
+                    'qty' => $qty,
+                    'price' => $price,
+                    'discount' => $d1,
+                    'discount_1' => $d1,
+                    'discount_2' => $d2,
+                    'discount_3' => $d3,
+                    'discount_4' => $d4,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            $updateData = [
+                'supplier_id' => $request->supplier_id,
+                'reference_number' => $request->reference_number,
+                'order_date' => $request->order_date,
+                'total_amount' => $totalAmount,
+                'notes' => $request->notes,
+            ];
+
+            if ($request->filled('status')) {
+                $updateData['status'] = $request->status;
+            }
+
+            $supplierPo->update($updateData);
+
+            // Sinkronkan ulang items
+            $supplierPo->items()->delete();
+            SupplierPOItem::insert($itemsToInsert);
+
+            DB::commit();
+            return redirect()->route('supplier-po.index')
+                ->with('status', 'Supplier PO ' . $supplierPo->po_number . ' berhasil diperbarui.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Gagal memperbarui Supplier PO: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Render PO create form with pre-filled items from dashboard shortage data.
      */

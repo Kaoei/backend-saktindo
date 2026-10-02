@@ -300,7 +300,23 @@ class SystemFeatureHealthCheckTest extends TestCase
         ]);
 
         $this->actingAs($this->admin)->get(route('supplier-po.show', $supplierPo))->assertStatus(200);
+        $this->actingAs($this->admin)->get(route('supplier-po.edit', $supplierPo))->assertStatus(200);
         $this->actingAs($this->admin)->get(route('supplier-po.invoice', $supplierPo))->assertStatus(200);
+
+        $this->actingAs($this->admin)->put(route('supplier-po.update', $supplierPo), [
+            'supplier_id' => $supplier->id,
+            'order_date' => now()->toDateString(),
+            'reference_number' => 'REF-EDITED-01',
+            'notes' => 'Catatan diperbarui',
+            'items' => [
+                [
+                    'product_id' => $supplierProduct->id,
+                    'qty' => 15,
+                    'price' => 50000,
+                    'discount_1' => 10,
+                ],
+            ],
+        ])->assertRedirect(route('supplier-po.index'));
 
         // 7. Bundle Promo
         $bundlePromo = BundlePromo::create([

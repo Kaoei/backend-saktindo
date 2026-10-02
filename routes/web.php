@@ -156,7 +156,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::post('/supplier-po/create-from-shortage', [SupplierPOController::class, 'createFromShortage'])->name('supplier-po.create-from-shortage');
-    Route::resource('/supplier-po', SupplierPOController::class)->except(['edit', 'update', 'destroy']);
+    Route::resource('/supplier-po', SupplierPOController::class)->except(['destroy']);
     Route::get('/supplier-po/{supplierPo}/invoice', [SupplierPOController::class, 'invoice'])
         ->name('supplier-po.invoice');
 
