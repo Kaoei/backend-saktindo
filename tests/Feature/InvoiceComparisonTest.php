@@ -93,7 +93,7 @@ class InvoiceComparisonTest extends TestCase
         $this->assertStringContainsString('PT Toko Pembeli Jaya', $view);
         $this->assertStringContainsString('PO-CUST-9988', $view);
         $this->assertStringContainsString('Tiga Ratus Tujuh Puluh Ribu', $view);
-        $this->assertStringContainsString('Barang barang yang telah dibeli tidak dapat dikembalikan', $view);
+        $this->assertStringContainsString('Barang-barang yang telah dibeli tidak dapat dikembalikan', $view);
     }
 
     public function test_purchase_invoice_renders_properly()

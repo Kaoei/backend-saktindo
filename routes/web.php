@@ -127,9 +127,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
         Route::post('/{salesOrder}/proforma-invoice', [SalesFinanceController::class, 'generateProformaInvoice'])->middleware('permission:sales_finance.create')->name('proforma.generate');
         Route::get('/{salesOrder}/proforma-invoice/print', [SalesFinanceController::class, 'printProformaInvoice'])->middleware('permission:sales_finance.view')->name('proforma.print');
-          Route::get('/invoices/{invoice}/pdf', [SalesFinanceController::class, 'invoicePdf'])
-        ->middleware('permission:sales_finance.view')
-        ->name('invoices.pdf');
+        Route::match(['get', 'post'], '/invoices/{invoice}/pdf', [SalesFinanceController::class, 'invoicePdf'])
+            ->middleware('permission:sales_finance.view')
+            ->name('invoices.pdf');
         Route::post('/invoice/consolidate', [SalesFinanceController::class, 'consolidateInvoices'])->middleware('permission:sales_finance.create')->name('invoice.consolidate');
         Route::post('/{salesOrder}/dp-payment', [SalesFinanceController::class, 'recordDpPayment'])->middleware('permission:sales_finance.create')->name('dp-payment.store');
         Route::get('/delivery-notes/{deliveryNote}/print', [SalesFinanceController::class, 'printDeliveryNote'])

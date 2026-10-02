@@ -209,7 +209,9 @@
                             @csrf
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold">Nominal Bayar DP (Rp)</label>
-                                @php($remainingDp = max(0, ((float)($order->dp_amount > 0 ? $order->dp_amount : $order->grand_total)) - (float)$order->dp_paid))
+                                @php
+                                    $remainingDp = max(0, ((float)($order->dp_amount > 0 ? $order->dp_amount : $order->grand_total)) - (float)$order->dp_paid);
+                                @endphp
                                 <input type="number" step="0.01" min="1" name="dp_paid_amount" class="form-control form-control-sm" value="{{ $remainingDp }}" required>
                             </div>
                             <div class="col-md-3">
@@ -248,9 +250,13 @@
                                 <i class="feather icon-mail me-1"></i> Kirim Tagihan Email
                             </button>
                         @endif
-                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}" class="btn btn-outline-primary btn-sm" target="_blank">PDF Invoice</a>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editFakturModal" data-toggle="modal" data-target="#editFakturModal">
+                            <i class="feather icon-printer me-1"></i> Cetak / Sesuaikan Faktur
+                        </button>
+                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}" class="btn btn-outline-secondary btn-sm" target="_blank" title="Download Faktur Default">
+                            <i class="feather icon-download me-1"></i> PDF Cepat
+                        </a>
                     </div>
-                </div>
 
                 {{-- Faktur Checklist Bar --}}
                 @if($invoice->faktur_number)
@@ -435,7 +441,9 @@
                             <thead><tr><th>Item Pesanan</th><th class="text-end">Sisa Qty Kirim</th><th class="text-end">Qty Dikirim Ini</th></tr></thead>
                             <tbody>
                                 @foreach($invoiceItems as $index => $item)
-                                    @php($remainingQty = max(0, (float) $item->quantity - (float) $item->delivered_qty))
+                                    @php
+                                        $remainingQty = max(0, (float) $item->quantity - (float) $item->delivered_qty);
+                                    @endphp
                                     <tr>
                                         <td>{{ $item->product_name }}<div class="small text-muted">{{ $item->salesOrder?->id }}</div></td>
                                         <td class="text-end">{{ number_format($remainingQty, 2, ',', '.') }} {{ $item->unit }}</td>
@@ -562,10 +570,9 @@
 
                                 @foreach($sourceSalesOrders as $sourceSalesOrder)
 
-                                    @php(
-                                        $sourceTask =
-                                        $sourceWarehouseTasks->get($sourceSalesOrder->id)
-                                    )
+                                    @php
+                                        $sourceTask = $sourceWarehouseTasks->get($sourceSalesOrder->id);
+                                    @endphp
 
                                     <li>
                                         {{ $sourceSalesOrder->id }} —
@@ -826,6 +833,283 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Cetak / Sesuaikan Faktur Penjualan -->
+@php
+    $modalItems = $invoiceItems;
+    if ($modalItems->isEmpty() && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
+        $modalItems = $invoice->salesOrders->flatMap(fn($so) => $so->items ?? collect());
+    }
+    $modalCustomerName = $order->customer_name ?? $order->customer?->nama_customer ?? ($invoice->salesOrders?->first()?->customer_name ?? '');
+    $modalCustomerAddress = $order->customer?->alamat 
+        ? $order->customer->alamat . (!empty($order->customer->kota) ? ', ' . $order->customer->kota : '')
+        : ($order->shipping_address ?? '');
+    $modalPoNumber = $order->customer_po_number ?? '';
+    if (empty($modalPoNumber) && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
+        $modalPoNumber = $invoice->salesOrders->pluck('customer_po_number')->filter()->unique()->join(', ');
+    }
+@endphp
+<div class="modal fade" id="editFakturModal" tabindex="-1" aria-labelledby="editFakturModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="formEditFaktur" method="POST" action="{{ route('sales-finance.invoices.pdf', $invoice) }}" target="_blank">
+                @csrf
+                <input type="hidden" name="action" id="faktur-action" value="stream">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title text-white fw-bold" id="editFakturModalLabel">
+                        <i class="feather icon-printer me-2"></i> Sesuaikan & Cetak Faktur Penjualan
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-3">
+                        <i class="feather icon-info me-2 fs-5"></i>
+                        <div>
+                            Anda dapat mengubah keterangan, nama barang, harga, diskon, dan total sebelum mencetak faktur agar tidak ada data yang kosong sesuai format faktur fisik PT. SAKTINDO JAYA BERSAMA.
+                        </div>
+                    </div>
+
+                    <!-- Dokumen & Pelanggan Info -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white py-2 fw-bold text-primary">
+                                    <i class="feather icon-file-text me-1"></i> Informasi Faktur
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-sm-6">
+                                            <label class="form-label small fw-semibold">No. Faktur</label>
+                                            <input type="text" name="invoice_number" class="form-control form-control-sm" value="{{ $invoice->invoice_number }}">
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <label class="form-label small fw-semibold">No. Reff (PO Customer)</label>
+                                            <input type="text" name="po_number" class="form-control form-control-sm" value="{{ $modalPoNumber }}">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-sm-6">
+                                            <label class="form-label small fw-semibold">Tanggal Faktur</label>
+                                            <input type="date" name="invoice_date" class="form-control form-control-sm" value="{{ $invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') : date('Y-m-d') }}">
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <label class="form-label small fw-semibold">Jatuh Tempo</label>
+                                            <input type="date" name="due_date" class="form-control form-control-sm" value="{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('Y-m-d') : '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-sm-6">
+                                            <label class="form-label small fw-semibold">Keterangan (misal: Tk. 238)</label>
+                                            <input type="text" name="notes" class="form-control form-control-sm" value="{{ $order->notes ?? '' }}" placeholder="Contoh: Tk. 238">
+                                        </div>
+                                        <div class="col-sm-6">
+                                            <label class="form-label small fw-semibold">No. Seri Faktur Pajak</label>
+                                            <input type="text" name="faktur_pajak" class="form-control form-control-sm" value="{{ $invoice->faktur_number ?? '' }}" placeholder="-">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white py-2 fw-bold text-primary">
+                                    <i class="feather icon-user me-1"></i> Kepada Yth (Pelanggan)
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold">Nama Customer</label>
+                                        <input type="text" name="customer_name" class="form-control form-control-sm" value="{{ $modalCustomerName }}" required>
+                                    </div>
+                                    <div>
+                                        <label class="form-label small fw-semibold">Alamat Customer</label>
+                                        <textarea name="customer_address" class="form-control form-control-sm" rows="3" placeholder="Alamat lengkap...">{{ $modalCustomerAddress }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabel Item Barang -->
+                    <div class="card shadow-sm border-0 mb-3">
+                        <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+                            <span class="fw-bold text-primary"><i class="feather icon-box me-1"></i> Rincian Barang</span>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="btnAddFakturRow">
+                                <i class="feather icon-plus me-1"></i> Tambah Baris Barang
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm align-middle mb-0" id="fakturItemsTable">
+                                    <thead class="table-light text-center small">
+                                        <tr>
+                                            <th style="width: 40px;">No</th>
+                                            <th>Nama Barang</th>
+                                            <th style="width: 90px;">Qty</th>
+                                            <th style="width: 90px;">Satuan</th>
+                                            <th style="width: 140px;">Harga (Rp)</th>
+                                            <th style="width: 75px;">Disc 1%</th>
+                                            <th style="width: 75px;">Disc 2%</th>
+                                            <th style="width: 150px;">Jumlah (Rp)</th>
+                                            <th style="width: 45px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fakturItemsBody">
+                                        @forelse($modalItems as $idx => $it)
+                                        <tr class="faktur-item-row">
+                                            <td class="text-center row-num">{{ $loop->iteration }}</td>
+                                            <td>
+                                                <input type="text" name="items[{{ $idx }}][item_name]" class="form-control form-control-sm item-name" value="{{ $it->item_name }}" required>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" name="items[{{ $idx }}][qty]" class="form-control form-control-sm text-end item-qty" value="{{ $it->quantity }}" required>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="items[{{ $idx }}][unit]" class="form-control form-control-sm text-center item-unit" value="{{ $it->unit ?? 'ROL' }}">
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm text-end item-price" value="{{ $it->unit_price }}" required>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" max="100" name="items[{{ $idx }}][discount1]" class="form-control form-control-sm text-end item-d1" value="{{ $it->discount1 ?? 0 }}">
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" max="100" name="items[{{ $idx }}][discount2]" class="form-control form-control-sm text-end item-d2" value="{{ $it->discount2 ?? 0 }}">
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" name="items[{{ $idx }}][subtotal]" class="form-control form-control-sm text-end item-subtotal" value="{{ $it->subtotal ?? ($it->quantity * $it->unit_price) }}">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-outline-danger p-1 btn-del-row" title="Hapus"><i class="feather icon-trash-2"></i></button>
+                                            </td>
+                                        </tr>
+                                        @empty
+                                        <tr class="faktur-item-row">
+                                            <td class="text-center row-num">1</td>
+                                            <td>
+                                                <input type="text" name="items[0][item_name]" class="form-control form-control-sm item-name" value="FLEX. STEEL 1/2&quot; @ 50M" required>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" name="items[0][qty]" class="form-control form-control-sm text-end item-qty" value="1" required>
+                                            </td>
+                                            <td>
+                                                <input type="text" name="items[0][unit]" class="form-control form-control-sm text-center item-unit" value="ROL">
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" name="items[0][unit_price]" class="form-control form-control-sm text-end item-price" value="370000" required>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" max="100" name="items[0][discount1]" class="form-control form-control-sm text-end item-d1" value="0">
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" min="0" max="100" name="items[0][discount2]" class="form-control form-control-sm text-end item-d2" value="0">
+                                            </td>
+                                            <td>
+                                                <input type="number" step="any" name="items[0][subtotal]" class="form-control form-control-sm text-end item-subtotal" value="370000">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-outline-danger p-1 btn-del-row" title="Hapus"><i class="feather icon-trash-2"></i></button>
+                                            </td>
+                                        </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Perhitungan & Terbilang -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-7">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white py-2 fw-bold text-primary">
+                                    <i class="feather icon-info me-1"></i> Klausul Perhatian (Notes Cetak)
+                                </div>
+                                <div class="card-body p-3 small text-secondary">
+                                    <ol class="mb-0 ps-3">
+                                        <li class="mb-1">Barang-barang yang telah dibeli tidak dapat dikembalikan.</li>
+                                        <li class="mb-1">Pembayaran dengan cek/giro belum berarti lunas sebelum diuangkan.</li>
+                                        <li>CEK/GIRO atas nama : <strong>PT. SAKTINDO JAYA BERSAMA</strong>. BCA KENARI . REK NO. 068.3055678</li>
+                                    </ol>
+                                    <hr class="my-2">
+                                    <div class="mb-2">
+                                        <label class="form-label small fw-semibold text-dark">Terbilang</label>
+                                        <input type="text" name="terbilang" id="fakturTerbilangInput" class="form-control form-control-sm" value="" placeholder="Otomatis terisi...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-5">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white py-2 fw-bold text-primary">
+                                    <i class="feather icon-dollar-sign me-1"></i> Ringkasan Nilai
+                                </div>
+                                <div class="card-body p-3">
+                                    <div class="mb-2 row align-items-center">
+                                        <label class="col-sm-5 col-form-label col-form-label-sm small fw-semibold">Subtotal (Rp)</label>
+                                        <div class="col-sm-7">
+                                            <input type="number" step="any" name="subtotal" id="fakturSubtotalInput" class="form-control form-control-sm text-end" value="{{ $invoice->subtotal ?? 0 }}">
+                                        </div>
+                                    </div>
+                                    <div class="mb-2 row align-items-center">
+                                        <label class="col-sm-5 col-form-label col-form-label-sm small fw-semibold">PPN / Tax (Rp)</label>
+                                        <div class="col-sm-7">
+                                            <input type="number" step="any" name="tax_amount" id="fakturTaxInput" class="form-control form-control-sm text-end" value="{{ $invoice->tax_amount ?? 0 }}">
+                                        </div>
+                                    </div>
+                                    <div class="row align-items-center">
+                                        <label class="col-sm-5 col-form-label col-form-label-sm small fw-bold text-primary">Total Rp</label>
+                                        <div class="col-sm-7">
+                                            <input type="number" step="any" name="grand_total" id="fakturGrandTotalInput" class="form-control form-control-sm text-end fw-bold text-primary" value="{{ $invoice->grand_total ?? 0 }}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Penandatangan & Footer Cetak -->
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white py-2 fw-bold text-primary">
+                            <i class="feather icon-check-square me-1"></i> Info Tanda Tangan & Komputer
+                        </div>
+                        <div class="card-body p-3">
+                            <div class="row g-2">
+                                <div class="col-sm-3">
+                                    <label class="form-label small fw-semibold">Nama Penandatangan</label>
+                                    <input type="text" name="signer_name" class="form-control form-control-sm" value="FENIKI">
+                                </div>
+                                <div class="col-sm-3">
+                                    <label class="form-label small fw-semibold">Jabatan</label>
+                                    <input type="text" name="signer_title" class="form-control form-control-sm" value="DIREKTUR">
+                                </div>
+                                <div class="col-sm-3">
+                                    <label class="form-label small fw-semibold">User Operator</label>
+                                    <input type="text" name="user_name" class="form-control form-control-sm" value="{{ auth()->user()?->name ?? 'SALSA' }}">
+                                </div>
+                                <div class="col-sm-3">
+                                    <label class="form-label small fw-semibold">Nama Komputer</label>
+                                    <input type="text" name="computer_name" class="form-control form-control-sm" value="JAYA">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-white">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Tutup</button>
+                    <button type="submit" class="btn btn-outline-primary" onclick="$('#faktur-action').val('stream');">
+                        <i class="feather icon-eye me-1"></i> Preview & Cetak Langsung
+                    </button>
+                    <button type="submit" class="btn btn-primary" onclick="$('#faktur-action').val('download');">
+                        <i class="feather icon-download me-1"></i> Download PDF
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endif
 @endsection
 
@@ -839,6 +1123,134 @@ $(function() {
         } else {
             $('#so-giro-fields').slideUp(200);
             $('#so-giro-bank, #so-giro-number, #so-giro-due-date').prop('required', false);
+        }
+    });
+
+    // Helper terbilang JS
+    function angkaTerbilang(angka) {
+        angka = Math.floor(Math.abs(Number(angka))) || 0;
+        var huruf = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+        if (angka < 12) return huruf[angka];
+        if (angka < 20) return (angkaTerbilang(angka - 10) + ' Belas').trim();
+        if (angka < 100) return (angkaTerbilang(Math.floor(angka / 10)) + ' Puluh ' + huruf[angka % 10]).trim();
+        if (angka < 200) return ('Seratus ' + angkaTerbilang(angka - 100)).trim();
+        if (angka < 1000) return (angkaTerbilang(Math.floor(angka / 100)) + ' Ratus ' + angkaTerbilang(angka % 100)).trim();
+        if (angka < 2000) return ('Seribu ' + angkaTerbilang(angka - 1000)).trim();
+        if (angka < 1000000) return (angkaTerbilang(Math.floor(angka / 1000)) + ' Ribu ' + angkaTerbilang(angka % 1000)).trim();
+        if (angka < 1000000000) return (angkaTerbilang(Math.floor(angka / 1000000)) + ' Juta ' + angkaTerbilang(angka % 1000000)).trim();
+        if (angka < 1000000000000) return (angkaTerbilang(Math.floor(angka / 1000000000)) + ' Milyar ' + angkaTerbilang(angka % 1000000000)).trim();
+        return '';
+    }
+
+    function recalculateFakturTotals() {
+        var subtotal = 0;
+        $('#fakturItemsBody .faktur-item-row').each(function(i, row) {
+            $(row).find('.row-num').text(i + 1);
+            var qty = parseFloat($(row).find('.item-qty').val()) || 0;
+            var price = parseFloat($(row).find('.item-price').val()) || 0;
+            var d1 = parseFloat($(row).find('.item-d1').val()) || 0;
+            var d2 = parseFloat($(row).find('.item-d2').val()) || 0;
+            
+            var rowTotal = qty * price;
+            if (d1 > 0) rowTotal = rowTotal * (1 - (d1 / 100));
+            if (d2 > 0) rowTotal = rowTotal * (1 - (d2 / 100));
+            rowTotal = Math.round(rowTotal * 100) / 100;
+            
+            $(row).find('.item-subtotal').val(rowTotal);
+            subtotal += rowTotal;
+        });
+
+        $('#fakturSubtotalInput').val(subtotal);
+        var tax = parseFloat($('#fakturTaxInput').val()) || 0;
+        var grandTotal = subtotal + tax;
+        $('#fakturGrandTotalInput').val(grandTotal);
+
+        var terbilang = angkaTerbilang(grandTotal);
+        if (terbilang) {
+            $('#fakturTerbilangInput').val(terbilang + ' Rupiah');
+        } else {
+            $('#fakturTerbilangInput').val('Nol Rupiah');
+        }
+    }
+
+    $(document).on('input', '.item-qty, .item-price, .item-d1, .item-d2', function() {
+        recalculateFakturTotals();
+    });
+
+    $('#fakturTaxInput').on('input', function() {
+        var subtotal = parseFloat($('#fakturSubtotalInput').val()) || 0;
+        var tax = parseFloat($(this).val()) || 0;
+        var grandTotal = subtotal + tax;
+        $('#fakturGrandTotalInput').val(grandTotal);
+        var terbilang = angkaTerbilang(grandTotal);
+        $('#fakturTerbilangInput').val(terbilang ? terbilang + ' Rupiah' : 'Nol Rupiah');
+    });
+
+    $('#fakturSubtotalInput').on('input', function() {
+        var subtotal = parseFloat($(this).val()) || 0;
+        var tax = parseFloat($('#fakturTaxInput').val()) || 0;
+        var grandTotal = subtotal + tax;
+        $('#fakturGrandTotalInput').val(grandTotal);
+        var terbilang = angkaTerbilang(grandTotal);
+        $('#fakturTerbilangInput').val(terbilang ? terbilang + ' Rupiah' : 'Nol Rupiah');
+    });
+
+    $('#fakturGrandTotalInput').on('input', function() {
+        var grandTotal = parseFloat($(this).val()) || 0;
+        var terbilang = angkaTerbilang(grandTotal);
+        $('#fakturTerbilangInput').val(terbilang ? terbilang + ' Rupiah' : 'Nol Rupiah');
+    });
+
+    // Tambah baris barang
+    $('#btnAddFakturRow').on('click', function() {
+        var index = $('#fakturItemsBody .faktur-item-row').length;
+        var rowHtml = `
+            <tr class="faktur-item-row">
+                <td class="text-center row-num">${index + 1}</td>
+                <td>
+                    <input type="text" name="items[${index}][item_name]" class="form-control form-control-sm item-name" placeholder="Nama barang..." required>
+                </td>
+                <td>
+                    <input type="number" step="any" min="0" name="items[${index}][qty]" class="form-control form-control-sm text-end item-qty" value="1" required>
+                </td>
+                <td>
+                    <input type="text" name="items[${index}][unit]" class="form-control form-control-sm text-center item-unit" value="ROL">
+                </td>
+                <td>
+                    <input type="number" step="any" min="0" name="items[${index}][unit_price]" class="form-control form-control-sm text-end item-price" value="0" required>
+                </td>
+                <td>
+                    <input type="number" step="any" min="0" max="100" name="items[${index}][discount1]" class="form-control form-control-sm text-end item-d1" value="0">
+                </td>
+                <td>
+                    <input type="number" step="any" min="0" max="100" name="items[${index}][discount2]" class="form-control form-control-sm text-end item-d2" value="0">
+                </td>
+                <td>
+                    <input type="number" step="any" name="items[${index}][subtotal]" class="form-control form-control-sm text-end item-subtotal" value="0">
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-outline-danger p-1 btn-del-row" title="Hapus"><i class="feather icon-trash-2"></i></button>
+                </td>
+            </tr>
+        `;
+        $('#fakturItemsBody').append(rowHtml);
+        recalculateFakturTotals();
+    });
+
+    // Hapus baris barang
+    $(document).on('click', '.btn-del-row', function() {
+        if ($('#fakturItemsBody .faktur-item-row').length > 1) {
+            $(this).closest('tr').remove();
+            recalculateFakturTotals();
+        } else {
+            alert('Minimal satu baris barang harus ada.');
+        }
+    });
+
+    // Hitung awal saat modal dibuka
+    $('#editFakturModal').on('shown.bs.modal', function() {
+        if (!$('#fakturTerbilangInput').val()) {
+            recalculateFakturTotals();
         }
     });
 });

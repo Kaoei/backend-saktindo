@@ -47,21 +47,56 @@
         }
     }
 
-    $grandTotal = (float) ($invoice->grand_total ?? 0);
-    $subtotal   = (float) ($invoice->subtotal ?? 0);
-    $taxAmount  = (float) ($invoice->tax_amount ?? 0);
+    // Ambil data custom jika disediakan dari form cetak
+    $c = $custom ?? [];
 
-    // Nama yang tampil di kotak "Kepada Yth" -> pakai customer_name dari sales order
-    $customerDisplayName = $order?->customer_name
-        ?? $invoice->salesOrders?->first()?->customer_name
-        ?? ($customer->nama_customer ?? 'CASH');
+    $invoiceNumber = !empty($c['invoice_number']) ? $c['invoice_number'] : ($invoice->invoice_number ?? $invoice->id);
+    $poNumber = !empty($c['po_number']) ? $c['po_number'] : ($order?->customer_po_number);
+    if (empty($poNumber) && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
+        $poNumber = $invoice->salesOrders->pluck('customer_po_number')->filter()->unique()->join(', ');
+    }
+    if (empty($poNumber)) {
+        $poNumber = '-';
+    }
 
-    $taxTypeLabel = match ($invoice->tax_type ?? null) {
-        'js' => 'JS',
-        'sjb_non_pajak' => 'SJB Non Pajak',
-        'sjb_pajak' => 'SJB Pajak',
-        default => '-',
-    };
+    $invoiceDateObj = !empty($c['invoice_date']) ? \Carbon\Carbon::parse($c['invoice_date']) : ($invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date) : now());
+    $dueDateObj = !empty($c['due_date']) ? \Carbon\Carbon::parse($c['due_date']) : ($invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date) : null);
+    $notesText = isset($c['notes']) ? $c['notes'] : ($order->notes ?? '');
+    $fakturPajakText = isset($c['faktur_pajak']) ? $c['faktur_pajak'] : ($invoice->faktur_number ?? '-');
+
+    $customerDisplayName = !empty($c['customer_name'])
+        ? $c['customer_name']
+        : ($order?->customer_name ?? $invoice->salesOrders?->first()?->customer_name ?? ($customer->nama_customer ?? 'CASH'));
+
+    $customerAddressText = !empty($c['customer_address'])
+        ? $c['customer_address']
+        : ($customer?->alamat ? $customer->alamat . (!empty($customer->kota) ? ', ' . $customer->kota : '') : ($order->shipping_address ?? ''));
+
+    // Items list
+    $customItemsList = !empty($c['items']) && is_array($c['items']) ? collect($c['items']) : null;
+
+    $subtotal = isset($c['subtotal']) && $c['subtotal'] !== ''
+        ? (float) str_replace(['.', ','], ['', '.'], (string) $c['subtotal'])
+        : (float) ($invoice->subtotal ?? 0);
+
+    $taxAmount = isset($c['tax_amount']) && $c['tax_amount'] !== ''
+        ? (float) str_replace(['.', ','], ['', '.'], (string) $c['tax_amount'])
+        : (float) ($invoice->tax_amount ?? 0);
+
+    $grandTotal = isset($c['grand_total']) && $c['grand_total'] !== ''
+        ? (float) str_replace(['.', ','], ['', '.'], (string) $c['grand_total'])
+        : (float) ($invoice->grand_total ?? 0);
+
+    if ($grandTotal <= 0 && $subtotal > 0) {
+        $grandTotal = $subtotal + $taxAmount;
+    }
+
+    $terbilangText = !empty($c['terbilang']) ? $c['terbilang'] : (trim(terbilang($grandTotal)) . ' Rupiah');
+
+    $signerName = !empty($c['signer_name']) ? $c['signer_name'] : 'FENIKI';
+    $signerTitle = !empty($c['signer_title']) ? $c['signer_title'] : 'DIREKTUR';
+    $userName = !empty($c['user_name']) ? $c['user_name'] : (auth()->user()?->name ?? 'SALSA');
+    $computerName = !empty($c['computer_name']) ? $c['computer_name'] : 'JAYA';
 
     // Logo Perusahaan dari Web Customization (Sidebar Logo)
     $logoBase64 = null;
@@ -94,36 +129,27 @@
             break;
         }
     }
-
-    // Nomor PO Pelanggan (No Reff)
-    $poNumber = $order?->customer_po_number;
-    if (empty($poNumber) && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
-        $poNumber = $invoice->salesOrders->pluck('customer_po_number')->filter()->unique()->join(', ');
-    }
-    if (empty($poNumber)) {
-        $poNumber = '-';
-    }
 @endphp
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Faktur {{ $invoice->invoice_number ?? $invoice->id }}</title>
+    <title>Faktur {{ $invoiceNumber }}</title>
     <style>
         @page {
-            margin: 20px 30px;
+            margin: 15px 25px 15px 25px;
         }
 
         body {
-            font-family: Helvetica, Arial, sans-serif;
-            font-size: 11px;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10px;
             color: #000;
         }
 
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .header-table td {
@@ -132,54 +158,62 @@
         }
 
         .company-name {
-            font-size: 15px;
+            font-size: 13px;
             font-weight: bold;
             margin-bottom: 2px;
         }
 
         .company-address {
-            font-size: 10px;
-            line-height: 1.4;
+            font-size: 9px;
+            line-height: 1.3;
         }
 
         .faktur-title {
             text-align: center;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: bold;
             text-decoration: underline;
-            padding-top: 6px;
+            padding-top: 4px;
+            letter-spacing: 1px;
         }
 
         .info-table {
             width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 3px;
         }
 
         .info-table td {
-            padding: 1px 4px;
-            font-size: 11px;
+            padding: 1px 2px;
+            font-size: 10px;
             vertical-align: top;
         }
 
-        .cash-box {
-            border: 1.5px solid #000;
+        .customer-box {
+            border: 1px solid #000;
             width: 100%;
-            height: 34px;
-            text-align: center;
+            min-height: 48px;
+            text-align: left;
+            padding: 4px 6px;
+            font-size: 9.5px;
+            line-height: 1.35;
+        }
+
+        .customer-name {
             font-weight: bold;
-            font-size: 13px;
-            vertical-align: middle;
-            padding-top: 8px;
+            font-size: 10.5px;
+            margin-bottom: 2px;
         }
 
         .ref-table {
             width: 100%;
-            margin-top: 10px;
+            margin-top: 6px;
             border-collapse: collapse;
         }
 
         .ref-table td {
             padding: 2px 0;
-            font-size: 11px;
+            font-size: 10px;
         }
 
         .label-bold {
@@ -189,19 +223,20 @@
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
+            margin-top: 6px;
         }
 
         .items-table th,
         .items-table td {
             border: 1px solid #000;
-            padding: 5px 6px;
+            padding: 4px 5px;
+            font-size: 9.5px;
         }
 
         .items-table th {
             font-weight: bold;
             text-align: center;
-            background: #f2f2f2;
+            background: #fff;
         }
 
         .items-table td.center {
@@ -213,7 +248,7 @@
         }
 
         .items-table .empty-row td {
-            height: 22px;
+            height: 18px;
             border-left: 1px solid #000;
             border-right: 1px solid #000;
             border-top: none;
@@ -226,43 +261,28 @@
 
         .footer-table {
             width: 100%;
-            margin-top: 8px;
+            margin-top: 4px;
+            border-collapse: collapse;
         }
 
         .footer-table td {
             vertical-align: top;
-            font-size: 11px;
-            padding: 2px 4px;
-        }
-
-        .total-box {
-            text-align: right;
-            font-weight: bold;
-            font-size: 13px;
+            font-size: 10px;
+            padding: 2px 0;
         }
 
         .signature-block {
             text-align: center;
-            margin-top: 10px;
+            margin-top: 6px;
         }
 
         .signature-space {
-            height: 60px;
+            height: 42px;
         }
 
         .signature-name {
             font-weight: bold;
             text-decoration: underline;
-        }
-
-        .notes {
-            font-size: 9.5px;
-            line-height: 1.5;
-        }
-
-        .page-footer {
-            font-size: 9px;
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -271,37 +291,39 @@
     {{-- HEADER --}}
     <table class="header-table">
         <tr>
-            <td style="width: 42%;">
+            <td style="width: 40%;">
                 @if(!empty($logoBase64))
-                    <div style="margin-bottom: 5px;">
-                        <img src="{{ $logoBase64 }}" style="max-height: 40px; max-width: 220px; object-fit: contain;">
+                    <div style="margin-bottom: 3px;">
+                        <img src="{{ $logoBase64 }}" style="max-height: 38px; max-width: 200px; object-fit: contain;">
                     </div>
                 @endif
                 <div class="company-name">PT. SAKTINDO JAYA BERSAMA</div>
                 <div class="company-address">
-                    PASAR KENARI ALO O AKS 110<br>
+                    PASAR KENARI ALO D AKS 110<br>
                     JL. SALEMBA RAYA<br>
-                    SENEN, JAKARTA PUSAT-10430
+                    SENEN , JAKARTA PUSAT-10430
                 </div>
             </td>
-            <td style="width: 26%;">
+            <td style="width: 25%; text-align: center;">
                 <div class="faktur-title">FAKTUR</div>
             </td>
-            <td style="width: 32%;">
+            <td style="width: 35%;">
                 <table class="info-table">
                     <tr>
-                        <td style="width: 40%;" class="label-bold">Tanggal</td>
-                        <td style="width: 60%;">
-                            {{ optional($invoice->invoice_date)->translatedFormat('d-F-Y') }}
+                        <td style="width: 35%; font-weight: bold;">Tanggal</td>
+                        <td style="width: 65%;">
+                            {{ $invoiceDateObj ? $invoiceDateObj->translatedFormat('d-F-Y') : now()->translatedFormat('d-F-Y') }}
                         </td>
                     </tr>
                     <tr>
-                        <td class="label-bold">Kepada Yth :</td>
-                        <td></td>
+                        <td colspan="2" style="font-weight: bold; padding-top: 2px;">Kepada Yth :</td>
                     </tr>
                 </table>
-                <div class="cash-box">
-                    {{ $customerDisplayName }}
+                <div class="customer-box">
+                    <div class="customer-name">{{ $customerDisplayName }}</div>
+                    @if(!empty($customerAddressText))
+                        <div>{!! nl2br(e($customerAddressText)) !!}</div>
+                    @endif
                 </div>
             </td>
         </tr>
@@ -312,7 +334,7 @@
         <tr>
             <td style="width: 34%;">
                 <span class="label-bold">No. Faktur :</span>
-                {{ $invoice->invoice_number ?? $invoice->id }}
+                {{ $invoiceNumber }}
             </td>
             <td style="width: 33%;">
                 <span class="label-bold">No Reff :</span>
@@ -320,57 +342,70 @@
             </td>
             <td style="width: 33%;">
                 <span class="label-bold">Keterangan :</span>
-                {{ $order->notes ?? '' }}
+                {{ $notesText }}
             </td>
         </tr>
         <tr>
             <td colspan="2">
-                <span class="label-bold">No. Seri faktur Pajak :</span>
-                {{ $invoice->faktur_number ?? '-' }}
+                <span class="label-bold">No . Seri faktur Pajak :</span>
+                {{ $fakturPajakText }}
             </td>
             <td></td>
         </tr>
     </table>
 
     {{-- TABEL BARANG --}}
+    @php
+        $displayItems = $customItemsList ?? $items;
+        $rowCount = count($displayItems);
+        $emptyRows = max(0, 5 - $rowCount);
+    @endphp
     <table class="items-table">
         <thead>
             <tr>
                 <th style="width: 4%;">No</th>
-                <th style="width: 38%;">Nama Barang</th>
-                <th style="width: 12%;">Qty</th>
+                <th style="width: 40%;">Nama Barang</th>
+                <th style="width: 13%;">Qty</th>
                 <th style="width: 14%;">Harga</th>
-                <th style="width: 10%;">Disc</th>
-                <th style="width: 22%;">Jumlah</th>
+                <th style="width: 9%;">Disc</th>
+                <th style="width: 20%;">Jumlah</th>
             </tr>
         </thead>
         <tbody>
-            @foreach ($items as $index => $item)
+            @foreach ($displayItems as $index => $item)
                 @php
+                    $pName = is_array($item) ? ($item['name'] ?? $item['product_name'] ?? '') : ($item->product_name ?? '');
+                    $pQty = (float) (is_array($item) ? ($item['qty'] ?? $item['quantity'] ?? 0) : ($item->quantity ?? 0));
+                    $pUnit = is_array($item) ? ($item['unit'] ?? 'PCS') : ($item->unit ?? 'PCS');
+                    $rawPrice = is_array($item) ? ($item['price'] ?? $item['unit_price'] ?? 0) : ($item->unit_price ?? 0);
+                    $pPrice = (float) str_replace(['.', ','], ['', '.'], (string) $rawPrice);
+
+                    $d1 = (float) (is_array($item) ? ($item['discount_1'] ?? 0) : ($item->discount_1 ?? $item->discount ?? 0));
+                    $d2 = (float) (is_array($item) ? ($item['discount_2'] ?? 0) : ($item->discount_2 ?? 0));
+
                     $discs = [];
-                    foreach (['discount_1', 'discount_2', 'discount_3', 'discount_4'] as $dField) {
-                        $val = (float) ($item->{$dField} ?? 0);
-                        if ($val > 0) {
-                            $discs[] = rtrim(rtrim(number_format($val, 2), '0'), '.');
-                        }
+                    if ($d1 > 0) $discs[] = rtrim(rtrim(number_format($d1, 2), '0'), '.');
+                    if ($d2 > 0) $discs[] = rtrim(rtrim(number_format($d2, 2), '0'), '.');
+                    $discDisplay = !empty($discs) ? implode('+ ', $discs) : '0+ 0';
+
+                    $pTotal = is_array($item) && isset($item['line_total']) && $item['line_total'] !== ''
+                        ? (float) str_replace(['.', ','], ['', '.'], (string) $item['line_total'])
+                        : ($pPrice * (1 - $d1/100) * (1 - $d2/100) * $pQty);
+                    if ($pTotal <= 0 && !is_array($item)) {
+                        $pTotal = (float) ($item->line_total ?? ($pPrice * $pQty));
                     }
-                    if (empty($discs) && (float) ($item->discount ?? 0) > 0) {
-                        $discs[] = rtrim(rtrim(number_format((float) $item->discount, 2), '0'), '.');
-                    }
-                    $discDisplay = !empty($discs) ? implode('+', $discs) : '-';
                 @endphp
                 <tr>
                     <td class="center">{{ $index + 1 }}</td>
-                    <td>{{ $item->product_name }}</td>
-                    <td class="center">{{ number_format($item->quantity, 2) }} {{ $item->unit }}</td>
-                    <td class="right">{{ number_format($item->unit_price, 2) }}</td>
+                    <td>{{ $pName }}</td>
+                    <td class="center">{{ number_format($pQty, 2, ',', '.') }} {{ strtoupper($pUnit) }}</td>
+                    <td class="right">{{ number_format($pPrice, 2, ',', '.') }}</td>
                     <td class="center">{{ $discDisplay }}</td>
-                    <td class="right">{{ number_format($item->line_total, 2) }}</td>
+                    <td class="right">{{ number_format($pTotal, 2, ',', '.') }}</td>
                 </tr>
             @endforeach
 
-            {{-- baris kosong pengisi ruang, meniru tampilan asli --}}
-            @php $emptyRows = max(0, 6 - $items->count()); @endphp
+            {{-- Baris kosong pengisi ruang meniru cetakan asli --}}
             @for ($i = 0; $i < $emptyRows; $i++)
                 <tr class="empty-row {{ $i == $emptyRows - 1 ? 'last-row' : '' }}">
                     <td></td>
@@ -384,58 +419,51 @@
         </tbody>
     </table>
 
-    {{-- SUBTOTAL / PAJAK / TERBILANG / TOTAL --}}
-    <table class="footer-table">
+    {{-- SUBTOTAL / TERBILANG --}}
+    <table class="footer-table" style="margin-top: 6px;">
         <tr>
-            <td style="width: 70%;">
+            <td style="width: 70%; vertical-align: top;">
                 <span class="label-bold">Terbilang :</span>
-                {{ trim(terbilang($grandTotal)) }} Rupiah
+                {{ $terbilangText }}
             </td>
-            <td style="width: 30%;">
-                <table style="width: 100%;">
-                    <tr>
-                        <td>Subtotal</td>
-                        <td style="text-align: right;">{{ number_format($subtotal, 2) }}</td>
-                    </tr>
-                    @if ($taxAmount > 0)
-                        <tr>
-                            <td>PPN 11%</td>
-                            <td style="text-align: right;">{{ number_format($taxAmount, 2) }}</td>
-                        </tr>
-                    @endif
-                </table>
+            <td style="width: 30%; text-align: right; vertical-align: top; font-weight: bold; font-size: 11px;">
+                {{ number_format($subtotal > 0 ? $subtotal : $grandTotal, 2, ',', '.') }}
             </td>
         </tr>
     </table>
 
-    <table class="footer-table">
+    {{-- JATUH TEMPO, PERHATIAN, HORMAT KAMI, DAN TOTAL RP --}}
+    <table class="footer-table" style="margin-top: 8px;">
         <tr>
-            <td style="width: 50%;">
-                <div style="margin-top: 10px;">
+            <td style="width: 60%; vertical-align: top;">
+                <div style="font-size: 10.5px; margin-bottom: 8px;">
                     <span class="label-bold">Jatuh Tempo pada Tanggal :</span>
-                    {{ optional($invoice->due_date)->translatedFormat('l, j F, Y') }}
+                    {{ $dueDateObj ? $dueDateObj->translatedFormat('l, d F, Y') : ($invoiceDateObj ? $invoiceDateObj->translatedFormat('l, d F, Y') : '-') }}
                 </div>
 
-                <div class="notes" style="margin-top: 15px;">
-                    <span class="label-bold">Perhatian</span><br>
-                    1. Barang barang yang telah dibeli tidak dapat dikembalikan<br>
-                    2. Pembayaran dengan cek/giro belum berarti lunas sebelum diuangkan<br>
-                    3. CEK/ GIRO atas nama : PT.SAKTINDO JAYA BERSAMA<br>
-                    &nbsp;&nbsp;&nbsp;BCA KENARI, REK NO. 068.3055678
-                </div>
+                <table style="width: 100%; font-size: 9px; line-height: 1.45; border-collapse: collapse;">
+                    <tr>
+                        <td style="width: 17%; vertical-align: top; font-weight: bold; padding: 0;">Perhatian</td>
+                        <td style="width: 83%; vertical-align: top; padding: 0;">
+                            1. Barang-barang yang telah dibeli tidak dapat dikembalikan.<br>
+                            2. Pembayaran dengan cek/giro belum berarti lunas sebelum diuangkan.<br>
+                            3. CEK/GIRO atas nama : PT. SAKTINDO JAYA BERSAMA. BCA KENARI . REK NO. 068.3055678
+                        </td>
+                    </tr>
+                </table>
             </td>
-            <td style="width: 50%;">
+            <td style="width: 40%; vertical-align: top;">
                 <div class="signature-block">
                     Hormat Kami
                     <div class="signature-space"></div>
-                    <div class="signature-name">FENIKI</div>
-                    <div>DIREKTUR</div>
+                    <div class="signature-name">{{ $signerName }}</div>
+                    <div style="font-weight: bold; font-size: 9.5px;">{{ $signerTitle }}</div>
                 </div>
-                <table style="width: 100%; margin-top: 10px;">
+                <table style="width: 100%; margin-top: 8px;">
                     <tr>
-                        <td style="width: 40%;" class="label-bold">Total Rp.</td>
-                        <td style="width: 60%; text-align: right; font-weight: bold; border-top: 1px solid #000;">
-                            {{ number_format($grandTotal, 2) }}
+                        <td style="width: 35%; font-weight: bold; font-size: 11.5px; padding: 4px 0;">Total Rp.</td>
+                        <td style="width: 65%; text-align: right; font-weight: bold; font-size: 11.5px; border-bottom: 2px solid #000; padding: 4px 0;">
+                            {{ number_format($grandTotal, 2, ',', '.') }}
                         </td>
                     </tr>
                 </table>
@@ -443,10 +471,17 @@
         </tr>
     </table>
 
-    <div class="page-footer">
-        User : {{ auth()->user()->name ?? '-' }},
-        Tgl & Jam Cetak : {{ now()->format('d/m/Y H:i:s') }} WIB
-    </div>
+    {{-- FOOTER BAWAH --}}
+    <table style="width: 100%; margin-top: 18px; font-size: 8px; border-collapse: collapse;">
+        <tr>
+            <td style="width: 75%; text-align: left;">
+                User : {{ $userName }}, Tgl & Jam Cetak : {{ now()->format('d/m/Y H:i:s') }} WIB ,Komp : {{ $computerName }}
+            </td>
+            <td style="width: 25%; text-align: right;">
+                Page 1 of 1
+            </td>
+        </tr>
+    </table>
 
 </body>
 </html>

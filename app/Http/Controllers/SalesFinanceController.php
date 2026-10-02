@@ -3630,51 +3630,56 @@ private function findActiveMergedInvoice(
     */
 
     public function invoicePdf(
+        Request $request,
         Invoice $invoice
     ) {
-
         $invoice->load([
             'salesOrder.customer',
             'salesOrder.items',
-            'salesOrders',
+            'salesOrders.items',
+            'salesOrders.customer',
             'payments',
             'deliveryNote',
             'warehouseTask',
         ]);
 
-        $pdf =
-            Pdf::loadView(
-                'sales-finance.pdf.invoice',
-                [
-                    'invoice' =>
-                        $invoice,
-                ]
-            );
+        $custom = [
+            'invoice_number' => $request->input('invoice_number'),
+            'po_number' => $request->input('po_number'),
+            'invoice_date' => $request->input('invoice_date'),
+            'due_date' => $request->input('due_date'),
+            'faktur_pajak' => $request->input('faktur_pajak'),
+            'notes' => $request->input('notes'),
+            'customer_name' => $request->input('customer_name'),
+            'customer_address' => $request->input('customer_address'),
+            'items' => $request->input('items'),
+            'subtotal' => $request->input('subtotal'),
+            'tax_amount' => $request->input('tax_amount'),
+            'grand_total' => $request->input('grand_total'),
+            'terbilang' => $request->input('terbilang'),
+            'signer_name' => $request->input('signer_name', 'FENIKI'),
+            'signer_title' => $request->input('signer_title', 'DIREKTUR'),
+            'user_name' => $request->input('user_name', auth()->user()?->name ?? 'SALSA'),
+            'computer_name' => $request->input('computer_name', 'JAYA'),
+        ];
 
-        $pdf->setPaper(
-            'a4',
-            'landscape'
-        );
+        $pdf = Pdf::loadView('sales-finance.pdf.invoice', [
+            'invoice' => $invoice,
+            'custom' => $custom,
+        ]);
 
-        $canvas =
-            $pdf
-                ->getDomPDF()
-                ->getCanvas();
+        $pdf->setPaper('a4', 'landscape');
 
-        $canvas->page_text(
-            750,
-            570,
-            'Page {PAGE_NUM} of {PAGE_COUNT}',
-            null,
-            7,
-            [0, 0, 0]
-        );
+        $displayNumber = !empty($custom['invoice_number'])
+            ? $custom['invoice_number']
+            : ($invoice->invoice_number ?? $invoice->id);
+        $safeInvoiceNumber = str_replace(['/', '\\'], '-', $displayNumber);
 
-        $safeInvoiceNumber = str_replace(['/', '\\'], '-', $invoice->invoice_number ?? $invoice->id);
+        if ($request->input('action') === 'stream' || $request->input('preview') == 1) {
+            return $pdf->stream('Faktur-' . $safeInvoiceNumber . '.pdf');
+        }
 
-        return $pdf->download(
-            'Invoice-' . $safeInvoiceNumber . '.pdf'
-        );
+        return $pdf->download('Faktur-' . $safeInvoiceNumber . '.pdf');
     }
 
     /*
