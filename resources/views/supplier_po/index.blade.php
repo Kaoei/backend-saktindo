@@ -28,6 +28,7 @@
                 <thead class="table-light">
                     <tr>
                         <th>No. PO</th>
+                        <th>No. Referensi</th>
                         <th>Supplier</th>
                         <th>Tgl Order</th>
                         <th class="text-end">Total Amount</th>
@@ -39,6 +40,13 @@
                     @forelse($supplierPos as $po)
                         <tr>
                             <td class="fw-semibold">{{ $po->po_number }}</td>
+                            <td>
+                                @if($po->reference_number)
+                                    <span class="badge bg-light text-dark border">{{ $po->reference_number }}</span>
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
                             <td>{{ $po->supplier->name ?? 'N/A' }}</td>
                             <td>{{ $po->order_date->format('d/m/Y') }}</td>
                             <td class="text-end fw-bold text-success">Rp {{ number_format($po->total_amount, 0, ',', '.') }}</td>
@@ -92,7 +100,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Belum ada Purchase Order Supplier.</td>
+                            <td colspan="7" class="text-center text-muted py-4">Belum ada Purchase Order Supplier.</td>
                         </tr>
                     @endforelse
                 </tbody>
