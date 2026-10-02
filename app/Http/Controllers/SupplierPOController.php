@@ -33,6 +33,9 @@ class SupplierPOController extends Controller
             'order_date' => 'required|date',
             'reference_number' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            'additional_discount' => 'nullable|numeric|min:0',
+            'tax_type' => 'nullable|in:non_pajak,pajak',
+            'tax_amount' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:supplier_products,id',
             'items.*.qty' => 'required|integer|min:1',
@@ -59,7 +62,7 @@ class SupplierPOController extends Controller
             $sequence = str_pad($count + 1, 4, '0', STR_PAD_LEFT);
             $poNumber = "P-{$year}/{$month}/{$sequence}";
             
-            $totalAmount = 0;
+            $subtotal = 0;
             $itemsToInsert = [];
 
             foreach ($request->items as $item) {
@@ -72,7 +75,7 @@ class SupplierPOController extends Controller
 
                 $lineNetUnitPrice = $price * (1 - $d1 / 100) * (1 - $d2 / 100) * (1 - $d3 / 100) * (1 - $d4 / 100);
                 $lineTotal = $lineNetUnitPrice * $qty;
-                $totalAmount += $lineTotal;
+                $subtotal += $lineTotal;
 
                 $itemsToInsert[] = [
                     'supplier_po_id' => $poId,
@@ -89,12 +92,22 @@ class SupplierPOController extends Controller
                 ];
             }
 
+            $additionalDiscount = (float) ($request->additional_discount ?? 0);
+            $taxType = $request->tax_type ?? 'non_pajak';
+            $taxAmount = ($taxType === 'pajak') ? (float) ($request->tax_amount ?? 0) : 0;
+            $dpp = max(0, $subtotal - $additionalDiscount);
+            $totalAmount = $dpp + $taxAmount;
+
             $supplierPo = SupplierPO::create([
                 'id' => $poId,
                 'supplier_id' => $request->supplier_id,
                 'po_number' => $poNumber,
                 'reference_number' => $request->reference_number,
                 'order_date' => $request->order_date,
+                'subtotal' => $subtotal,
+                'additional_discount' => $additionalDiscount,
+                'tax_type' => $taxType,
+                'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
                 'status' => 'pending',
                 'notes' => $request->notes,
@@ -134,6 +147,9 @@ class SupplierPOController extends Controller
             'reference_number' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'status' => 'nullable|in:pending,received,cancelled',
+            'additional_discount' => 'nullable|numeric|min:0',
+            'tax_type' => 'nullable|in:non_pajak,pajak',
+            'tax_amount' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:supplier_products,id',
             'items.*.qty' => 'required|integer|min:1',
@@ -148,7 +164,7 @@ class SupplierPOController extends Controller
         try {
             DB::beginTransaction();
 
-            $totalAmount = 0;
+            $subtotal = 0;
             $itemsToInsert = [];
 
             foreach ($request->items as $item) {
@@ -161,7 +177,7 @@ class SupplierPOController extends Controller
 
                 $lineNetUnitPrice = $price * (1 - $d1 / 100) * (1 - $d2 / 100) * (1 - $d3 / 100) * (1 - $d4 / 100);
                 $lineTotal = $lineNetUnitPrice * $qty;
-                $totalAmount += $lineTotal;
+                $subtotal += $lineTotal;
 
                 $itemsToInsert[] = [
                     'supplier_po_id' => $supplierPo->id,
@@ -178,10 +194,20 @@ class SupplierPOController extends Controller
                 ];
             }
 
+            $additionalDiscount = (float) ($request->additional_discount ?? 0);
+            $taxType = $request->tax_type ?? 'non_pajak';
+            $taxAmount = ($taxType === 'pajak') ? (float) ($request->tax_amount ?? 0) : 0;
+            $dpp = max(0, $subtotal - $additionalDiscount);
+            $totalAmount = $dpp + $taxAmount;
+
             $updateData = [
                 'supplier_id' => $request->supplier_id,
                 'reference_number' => $request->reference_number,
                 'order_date' => $request->order_date,
+                'subtotal' => $subtotal,
+                'additional_discount' => $additionalDiscount,
+                'tax_type' => $taxType,
+                'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
                 'notes' => $request->notes,
             ];

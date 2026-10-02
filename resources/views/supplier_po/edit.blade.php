@@ -191,9 +191,58 @@
                         <textarea name="notes" class="form-control" rows="3" placeholder="Tambahkan catatan khusus PO...">{{ old('notes', $supplierPo->notes) }}</textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label fw-medium text-dark">Diskon Tambahan (Nominal / Rp)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted">Rp</span>
+                            <input type="number" step="any" min="0" name="additional_discount" id="additional-discount" class="form-control text-end" value="{{ old('additional_discount', (float)($supplierPo->additional_discount ?? 0)) }}" placeholder="0">
+                        </div>
+                        <small class="text-muted">Potongan nominal langsung pada subtotal</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-medium text-dark">Pilihan Pajak <span class="text-danger">*</span></label>
+                        <select name="tax_type" id="tax-type" class="form-select">
+                            <option value="non_pajak" {{ old('tax_type', $supplierPo->tax_type ?? 'non_pajak') === 'non_pajak' ? 'selected' : '' }}>Non Pajak (Tanpa PPN)</option>
+                            <option value="pajak" {{ old('tax_type', $supplierPo->tax_type ?? '') === 'pajak' ? 'selected' : '' }}>Pajak (PPN)</option>
+                        </select>
+                    </div>
+
+                    @php
+                        $isTaxActive = old('tax_type', $supplierPo->tax_type ?? 'non_pajak') === 'pajak';
+                    @endphp
+                    <div class="mb-3" id="tax-amount-container" style="{{ $isTaxActive ? '' : 'display: none;' }}">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-medium text-dark mb-0">Nominal Pajak PPN (Rp)</label>
+                            <button type="button" class="btn btn-xs btn-link text-decoration-none p-0 text-primary" id="btn-calc-tax-11" style="font-size: 0.78rem;">
+                                <i class="feather icon-refresh-cw me-1"></i>Otomatis 11%
+                            </button>
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light text-muted">Rp</span>
+                            <input type="number" step="any" min="0" name="tax_amount" id="tax-amount" class="form-control text-end" value="{{ old('tax_amount', (float)($supplierPo->tax_amount ?? 0)) }}" placeholder="0">
+                        </div>
+                        <small class="text-muted">Bisa di-input / diedit secara manual</small>
+                    </div>
+
                     <hr>
 
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small">Subtotal:</span>
+                        <span class="fw-medium text-dark small" id="summary-subtotal">Rp 0</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-1" id="summary-discount-row" style="display: none;">
+                        <span class="text-muted small">Diskon Tambahan:</span>
+                        <span class="fw-medium text-danger small" id="summary-discount">- Rp 0</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2" id="summary-tax-row" style="display: none;">
+                        <span class="text-muted small">Pajak (PPN):</span>
+                        <span class="fw-medium text-dark small" id="summary-tax">+ Rp 0</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 pt-2 border-top">
                         <span class="fw-semibold text-dark">Grand Total:</span>
                         <span class="fw-bold text-success fs-5" id="grand-total">Rp {{ number_format($supplierPo->total_amount, 0, ',', '.') }}</span>
                     </div>
@@ -277,12 +326,77 @@
         }
 
         function calculateGrandTotal() {
-            let grandTotal = 0;
+            let itemsSubtotal = 0;
             $('#items-body .item-row').each(function() {
-                grandTotal += calculateLineSubtotal($(this));
+                itemsSubtotal += calculateLineSubtotal($(this));
             });
+
+            const additionalDiscount = parseFloat($('#additional-discount').val()) || 0;
+            const taxType = $('#tax-type').val();
+            let taxAmount = parseFloat($('#tax-amount').val()) || 0;
+
+            if (taxType === 'non_pajak') {
+                taxAmount = 0;
+                $('#tax-amount-container').slideUp(150);
+                $('#summary-tax-row').hide();
+            } else {
+                $('#tax-amount-container').slideDown(150);
+                if (taxAmount > 0) {
+                    $('#summary-tax-row').show();
+                    $('#summary-tax').text('+ Rp ' + Math.round(taxAmount).toLocaleString('id-ID'));
+                } else {
+                    $('#summary-tax-row').hide();
+                }
+            }
+
+            const dpp = Math.max(0, itemsSubtotal - additionalDiscount);
+            const grandTotal = dpp + (taxType === 'pajak' ? taxAmount : 0);
+
+            $('#summary-subtotal').text('Rp ' + Math.round(itemsSubtotal).toLocaleString('id-ID'));
+
+            if (additionalDiscount > 0) {
+                $('#summary-discount-row').show();
+                $('#summary-discount').text('- Rp ' + Math.round(additionalDiscount).toLocaleString('id-ID'));
+            } else {
+                $('#summary-discount-row').hide();
+            }
+
             $('#grand-total').text('Rp ' + Math.round(grandTotal).toLocaleString('id-ID'));
         }
+
+        $('#tax-type').on('change', function() {
+            if ($(this).val() === 'pajak') {
+                let itemsSubtotal = 0;
+                $('#items-body .item-row').each(function() {
+                    itemsSubtotal += calculateLineSubtotal($(this));
+                });
+                const additionalDiscount = parseFloat($('#additional-discount').val()) || 0;
+                const dpp = Math.max(0, itemsSubtotal - additionalDiscount);
+                const currentTax = parseFloat($('#tax-amount').val()) || 0;
+                if (currentTax === 0) {
+                    const defaultTax = Math.round(dpp * 0.11);
+                    $('#tax-amount').val(defaultTax);
+                }
+            }
+            calculateGrandTotal();
+        });
+
+        $('#btn-calc-tax-11').on('click', function(e) {
+            e.preventDefault();
+            let itemsSubtotal = 0;
+            $('#items-body .item-row').each(function() {
+                itemsSubtotal += calculateLineSubtotal($(this));
+            });
+            const additionalDiscount = parseFloat($('#additional-discount').val()) || 0;
+            const dpp = Math.max(0, itemsSubtotal - additionalDiscount);
+            const defaultTax = Math.round(dpp * 0.11);
+            $('#tax-amount').val(defaultTax);
+            calculateGrandTotal();
+        });
+
+        $('#additional-discount, #tax-amount').on('input change', function() {
+            calculateGrandTotal();
+        });
 
         // Initialize calculations
         calculateGrandTotal();

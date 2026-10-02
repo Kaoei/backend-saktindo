@@ -952,6 +952,21 @@
 
                 </tr>
 
+                @if((float)($supplierPo->additional_discount ?? 0) > 0)
+                <tr>
+
+                    <td class="total-label">
+                        Diskon Tambahan
+                    </td>
+
+                    <td class="total-value">
+
+                        - Rp {{ number_format($supplierPo->additional_discount, 2, ',', '.') }}
+
+                    </td>
+
+                </tr>
+                @endif
 
                 @if((float)($supplierPo->tax_amount ?? 0) > 0)
                 <tr>

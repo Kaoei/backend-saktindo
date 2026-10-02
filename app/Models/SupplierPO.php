@@ -22,6 +22,10 @@ class SupplierPO extends Model
         'po_number',
         'reference_number',
         'order_date',
+        'subtotal',
+        'additional_discount',
+        'tax_type',
+        'tax_amount',
         'total_amount',
         'status',
         'notes',
@@ -29,8 +33,18 @@ class SupplierPO extends Model
 
     protected $casts = [
         'order_date' => 'date',
+        'subtotal' => 'decimal:2',
+        'additional_discount' => 'decimal:2',
+        'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
     ];
+
+    public function getDppAttribute(): float
+    {
+        $subtotal = (float) ($this->subtotal > 0 ? $this->subtotal : $this->total_amount);
+        $discount = (float) ($this->additional_discount ?? 0);
+        return max(0, $subtotal - $discount);
+    }
 
     public static function generateId()
     {

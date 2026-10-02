@@ -38,7 +38,28 @@
                         <td>{{ $supplierPo->order_date->format('d/m/Y') }}</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Total Amount</td>
+                        <td class="text-muted">Subtotal Barang</td>
+                        <td class="fw-semibold">Rp {{ number_format($supplierPo->subtotal > 0 ? $supplierPo->subtotal : $supplierPo->total_amount, 0, ',', '.') }}</td>
+                    </tr>
+                    @if((float)($supplierPo->additional_discount ?? 0) > 0)
+                    <tr>
+                        <td class="text-muted">Diskon Tambahan</td>
+                        <td class="fw-semibold text-danger">- Rp {{ number_format($supplierPo->additional_discount, 0, ',', '.') }}</td>
+                    </tr>
+                    @endif
+                    <tr>
+                        <td class="text-muted">Pajak</td>
+                        <td>
+                            @if($supplierPo->tax_type === 'pajak' || (float)($supplierPo->tax_amount ?? 0) > 0)
+                                <span class="badge bg-light-primary text-primary">Pajak (PPN)</span>
+                                <span class="fw-semibold text-dark ms-1">Rp {{ number_format($supplierPo->tax_amount, 0, ',', '.') }}</span>
+                            @else
+                                <span class="badge bg-light text-muted border">Non Pajak</span>
+                            @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Grand Total</td>
                         <td class="fw-bold text-success fs-5">Rp {{ number_format($supplierPo->total_amount, 0, ',', '.') }}</td>
                     </tr>
                     <tr>
