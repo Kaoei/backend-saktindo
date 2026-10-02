@@ -37,12 +37,24 @@
     $customer = $order?->customer; // Master_customer (bisa null jika order dibuat manual dgn customer_name saja)
     $items = $order?->items ?? collect();
 
+    // Jika faktur gabungan, kumpulkan item dari semua sales order terkait
+    if ($items->isEmpty() && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
+        $items = $invoice->salesOrders->flatMap(function($so) {
+            return $so->items ?? collect();
+        });
+        if (!$customer) {
+            $customer = $invoice->salesOrders->first()?->customer;
+        }
+    }
+
     $grandTotal = (float) ($invoice->grand_total ?? 0);
     $subtotal   = (float) ($invoice->subtotal ?? 0);
     $taxAmount  = (float) ($invoice->tax_amount ?? 0);
 
     // Nama yang tampil di kotak "Kepada Yth" -> pakai customer_name dari sales order
-    $customerDisplayName = $order->customer_name ?? ($customer->nama_customer ?? 'CASH');
+    $customerDisplayName = $order?->customer_name
+        ?? $invoice->salesOrders?->first()?->customer_name
+        ?? ($customer->nama_customer ?? 'CASH');
 
     $taxTypeLabel = match ($invoice->tax_type ?? null) {
         'js' => 'JS',
@@ -334,14 +346,25 @@
         </thead>
         <tbody>
             @foreach ($items as $index => $item)
+                @php
+                    $discs = [];
+                    foreach (['discount_1', 'discount_2', 'discount_3', 'discount_4'] as $dField) {
+                        $val = (float) ($item->{$dField} ?? 0);
+                        if ($val > 0) {
+                            $discs[] = rtrim(rtrim(number_format($val, 2), '0'), '.');
+                        }
+                    }
+                    if (empty($discs) && (float) ($item->discount ?? 0) > 0) {
+                        $discs[] = rtrim(rtrim(number_format((float) $item->discount, 2), '0'), '.');
+                    }
+                    $discDisplay = !empty($discs) ? implode('+', $discs) : '-';
+                @endphp
                 <tr>
                     <td class="center">{{ $index + 1 }}</td>
                     <td>{{ $item->product_name }}</td>
                     <td class="center">{{ number_format($item->quantity, 2) }} {{ $item->unit }}</td>
                     <td class="right">{{ number_format($item->unit_price, 2) }}</td>
-                    <td class="center">
-                        {{ rtrim(rtrim(number_format($item->discount_1 ?? 0, 2), '0'), '.') }}+{{ rtrim(rtrim(number_format($item->discount_2 ?? 0, 2), '0'), '.') }}
-                    </td>
+                    <td class="center">{{ $discDisplay }}</td>
                     <td class="right">{{ number_format($item->line_total, 2) }}</td>
                 </tr>
             @endforeach

@@ -1,9 +1,54 @@
+@php
+    if (!function_exists('terbilang')) {
+        function terbilang($angka)
+        {
+            $angka = (int) $angka;
+            $huruf = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+            if ($angka < 0) {
+                return 'Minus ' . terbilang(abs($angka));
+            } elseif ($angka < 12) {
+                return $huruf[$angka];
+            } elseif ($angka < 20) {
+                return trim(terbilang($angka - 10) . ' Belas');
+            } elseif ($angka < 100) {
+                return trim(terbilang(intval($angka / 10)) . ' Puluh ' . terbilang($angka % 10));
+            } elseif ($angka < 200) {
+                return trim('Seratus ' . terbilang($angka - 100));
+            } elseif ($angka < 1000) {
+                return trim(terbilang(intval($angka / 100)) . ' Ratus ' . terbilang($angka % 100));
+            } elseif ($angka < 2000) {
+                return trim('Seribu ' . terbilang($angka - 1000));
+            } elseif ($angka < 1000000) {
+                return trim(terbilang(intval($angka / 1000)) . ' Ribu ' . terbilang($angka % 1000));
+            } elseif ($angka < 1000000000) {
+                return trim(terbilang(intval($angka / 1000000)) . ' Juta ' . terbilang($angka % 1000000));
+            } elseif ($angka < 1000000000000) {
+                return trim(terbilang(intval($angka / 1000000000)) . ' Milyar ' . terbilang($angka % 1000000000));
+            }
+            return '';
+        }
+    }
+
+    // Hitung akumulasi subtotal
+    $calculatedSubtotal = 0;
+    foreach ($supplierPo->items as $item) {
+        $qty = (float) ($item->qty ?? 0);
+        $price = (float) ($item->price ?? 0);
+        $d1 = (float) ($item->discount_1 ?? $item->discount ?? 0);
+        $d2 = (float) ($item->discount_2 ?? 0);
+        $d3 = (float) ($item->discount_3 ?? 0);
+        $d4 = (float) ($item->discount_4 ?? 0);
+        $net = $price * (1 - ($d1 / 100)) * (1 - ($d2 / 100)) * (1 - ($d3 / 100)) * (1 - ($d4 / 100));
+        $calculatedSubtotal += ($net * $qty);
+    }
+    $finalTotal = (float) ($supplierPo->total_amount > 0 ? $supplierPo->total_amount : $calculatedSubtotal);
+@endphp
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
 
-    <title>Faktur Penjualan - {{ $supplierPo->po_number }}</title>
+    <title>Faktur Pembelian - {{ $supplierPo->po_number }}</title>
 
     <style>
         @page {
@@ -421,7 +466,7 @@
         <div class="top-right">
 
             <div class="invoice-title">
-                Faktur Penjualan
+                Faktur Pembelian
             </div>
 
             <table class="invoice-info">
@@ -443,15 +488,11 @@
                     <td class="info-value-left">
 
                         @if(!empty($supplierPo->invoice_date))
-
-                            {{ \Carbon\Carbon::parse(
-                                $supplierPo->invoice_date
-                            )->format('d M Y') }}
-
+                            {{ \Carbon\Carbon::parse($supplierPo->invoice_date)->format('d M Y') }}
+                        @elseif(!empty($supplierPo->order_date))
+                            {{ \Carbon\Carbon::parse($supplierPo->order_date)->format('d M Y') }}
                         @else
-
                             __________
-
                         @endif
 
                     </td>
@@ -467,7 +508,7 @@
 
                     <td class="info-value-right">
 
-                        {{ $supplierPo->invoice_number ?? '__________' }}
+                        {{ $supplierPo->invoice_number ?? $supplierPo->po_number ?? '__________' }}
 
                     </td>
 
@@ -491,15 +532,9 @@
                     <td class="info-value-left">
 
                         @if(!empty($supplierPo->due_date))
-
-                            {{ \Carbon\Carbon::parse(
-                                $supplierPo->due_date
-                            )->format('d M Y') }}
-
+                            {{ \Carbon\Carbon::parse($supplierPo->due_date)->format('d M Y') }}
                         @else
-
                             __________
-
                         @endif
 
                     </td>
@@ -516,15 +551,11 @@
                     <td class="info-value-right">
 
                         @if(!empty($supplierPo->received_date))
-
-                            {{ \Carbon\Carbon::parse(
-                                $supplierPo->received_date
-                            )->format('d M Y') }}
-
+                            {{ \Carbon\Carbon::parse($supplierPo->received_date)->format('d M Y') }}
+                        @elseif(!empty($supplierPo->order_date))
+                            {{ \Carbon\Carbon::parse($supplierPo->order_date)->format('d M Y') }}
                         @else
-
                             __________
-
                         @endif
 
                     </td>
@@ -563,7 +594,7 @@
 
                     <td class="info-value-right">
 
-                        {{ $supplierPo->surat_jalan_number ?? '__________' }}
+                        {{ $supplierPo->reference_number ?? $supplierPo->surat_jalan_number ?? '__________' }}
 
                     </td>
 
@@ -880,7 +911,7 @@
                     Terbilang :
                 </span>
 
-                {{ $supplierPo->terbilang ?? '-' }}
+                {{ trim(terbilang($finalTotal)) }} Rupiah
 
             </div>
 
@@ -915,63 +946,42 @@
 
                     <td class="total-value">
 
-                        Rp
-                        {{ number_format(
-                            $supplierPo->subtotal
-                            ?? $supplierPo->total_amount
-                            ?? 0,
-                            2,
-                            ',',
-                            '.'
-                        ) }}
+                        Rp {{ number_format($calculatedSubtotal > 0 ? $calculatedSubtotal : $finalTotal, 2, ',', '.') }}
 
                     </td>
 
                 </tr>
 
 
-                {{-- DPP --}}
+                @if((float)($supplierPo->tax_amount ?? 0) > 0)
                 <tr>
 
                     <td class="total-label">
-                        DPP (11%)
+                        DPP
                     </td>
 
                     <td class="total-value">
 
-                        Rp
-                        {{ number_format(
-                            $supplierPo->dpp ?? 0,
-                            2,
-                            ',',
-                            '.'
-                        ) }}
+                        Rp {{ number_format($supplierPo->dpp ?? ($finalTotal - $supplierPo->tax_amount), 2, ',', '.') }}
 
                     </td>
 
                 </tr>
 
-
-                {{-- VAT --}}
                 <tr>
 
                     <td class="total-label">
-                        VAT
+                        PPN / VAT
                     </td>
 
                     <td class="total-value">
 
-                        Rp
-                        {{ number_format(
-                            $supplierPo->tax_amount ?? 0,
-                            2,
-                            ',',
-                            '.'
-                        ) }}
+                        Rp {{ number_format($supplierPo->tax_amount, 2, ',', '.') }}
 
                     </td>
 
                 </tr>
+                @endif
 
 
                 {{-- GRAND TOTAL --}}
@@ -983,13 +993,7 @@
 
                     <td class="total-value">
 
-                        Rp
-                        {{ number_format(
-                            $supplierPo->total_amount ?? 0,
-                            2,
-                            ',',
-                            '.'
-                        ) }}
+                        Rp {{ number_format($finalTotal, 2, ',', '.') }}
 
                     </td>
 

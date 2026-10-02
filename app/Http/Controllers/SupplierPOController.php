@@ -196,7 +196,7 @@ class SupplierPOController extends Controller
             'supplierPo' => $supplierPo,
         ]);
 
-        $pdf->setPaper('a4', 'portrait');
+        $pdf->setPaper('a4', 'landscape');
 
         $safePoNumber = str_replace(['/', '\\'], '-', $supplierPo->po_number ?: $supplierPo->id);
 
