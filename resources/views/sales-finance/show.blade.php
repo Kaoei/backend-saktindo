@@ -332,7 +332,6 @@
                                         <td>{{ $note->print_count }}x</td>
                                         <td class="text-end">
                                             <a href="{{ route('sales-finance.delivery-notes.print', $note) }}" class="btn btn-sm btn-light" target="_blank">Print</a>
-                                            {{-- <a href="{{ route('sales-finance.delivery-notes.pdf', $note) }}" class="btn btn-sm btn-outline-primary" target="_blank">PDF A7</a> --}}
                                         </td>
                                     </tr>
                                 @empty

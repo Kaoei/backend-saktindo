@@ -147,7 +147,7 @@
                                     </td>
                                     <td class="text-end">
                                         <div class="d-inline-flex gap-1">
-                                            <a href="{{ route('finance.show', $invoice->id) }}" class="btn btn-sm btn-outline-primary" title="Detail Invoice">
+                                            <a href="{{ route('finance.showPiutang', $invoice->id) }}" class="btn btn-sm btn-outline-primary" title="Detail Invoice">
                                                 <i class="feather icon-eye"></i>
                                             </a>
 

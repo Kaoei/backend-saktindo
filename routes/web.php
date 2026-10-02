@@ -135,6 +135,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/delivery-notes/{deliveryNote}/print', [SalesFinanceController::class, 'printDeliveryNote'])
             ->middleware('permission:sales_finance.view')
             ->name('delivery-notes.print');
+        Route::post('/delivery-notes/{deliveryNote}/returns', [SalesFinanceController::class, 'storeReturn'])
+            ->middleware('permission:sales_finance.edit')
+            ->name('delivery-notes.returns.store');
     });
 
     Route::post('/sales-finance/merge', [SalesFinanceController::class, 'mergeInvoices'])->name('sales-finance.merge');
@@ -144,6 +147,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/ar', [FinanceController::class, 'ar'])->name('ar');
         Route::get('/receivables', [FinanceController::class, 'receivables'])->name('receivables');
         Route::get('/receivables/{invoice}', [FinanceController::class, 'showPiutang'])->name('showPiutang');
+        Route::get('/invoices/{invoice}', [FinanceController::class, 'showPiutang'])->name('show');
         Route::get('/receivables/{invoice}/payment', [FinanceController::class, 'paymentForm'])->name('payment.form');
         Route::get('/ap', [FinanceController::class, 'ap'])->name('ap');
         Route::post('/payment/{invoice?}', [FinanceController::class, 'storePayment'])->name('payment.store');
@@ -152,9 +156,9 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::post('/supplier-po/create-from-shortage', [SupplierPOController::class, 'createFromShortage'])->name('supplier-po.create-from-shortage');
-    Route::resource('/supplier-po', SupplierPOController::class);
+    Route::resource('/supplier-po', SupplierPOController::class)->except(['edit', 'update', 'destroy']);
     Route::get('/supplier-po/{supplierPo}/invoice', [SupplierPOController::class, 'invoice'])
-    ->name('supplier-po.invoice');
+        ->name('supplier-po.invoice');
 
     Route::get('/bundle-promos/api/active', [BundlePromoController::class, 'apiActiveList'])->name('bundle-promos.api.active');
     Route::resource('/bundle-promos', BundlePromoController::class);
@@ -271,13 +275,13 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{outBound}', [OutBoundController::class, 'destroy'])->name('destroy');
     });
 
-    Route::resource('/brands', BrandController::class);
-    Route::resource('/categories', CategoryController::class);
-    Route::resource('/sub-categories', SubCategoryController::class);
-    Route::resource('/variants', VariantController::class);
+    Route::resource('/brands', BrandController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('/categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('/sub-categories', SubCategoryController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('/variants', VariantController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('/returs', ReturController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::resource('/internal-invoices', InternalInvoiceController::class)->only(['index', 'create', 'store', 'destroy']);
-    Route::resource('/rekening-banks', RekeningBankController::class);
+    Route::resource('/rekening-banks', RekeningBankController::class)->except(['show']);
 });
 
 Route::post('/api/external-orders', [\App\Http\Controllers\ExternalOrderController::class, 'store']);

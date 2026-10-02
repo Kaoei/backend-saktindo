@@ -50,6 +50,47 @@
         'sjb_pajak' => 'SJB Pajak',
         default => '-',
     };
+
+    // Logo Perusahaan dari Web Customization (Sidebar Logo)
+    $logoBase64 = null;
+    $sidebarLogoSetting = \App\Models\WebSetting::getValue('sidebar_logo_path');
+    $possibleLogoPaths = [];
+
+    if (!empty($sidebarLogoSetting)) {
+        $cleanPath = ltrim(str_replace('public/', '', $sidebarLogoSetting), '/');
+        $possibleLogoPaths[] = storage_path('app/public/' . $cleanPath);
+        $possibleLogoPaths[] = public_path('storage/' . $cleanPath);
+        $possibleLogoPaths[] = public_path($cleanPath);
+    }
+    // Fallback paths
+    $possibleLogoPaths[] = storage_path('app/public/branding/logo-saktindo.png');
+    $possibleLogoPaths[] = public_path('images/logo-saktindo.png');
+    $possibleLogoPaths[] = public_path('src/img/gapuraWhite.png');
+    $possibleLogoPaths[] = public_path('DashboardKit-main/images/logo.svg');
+
+    foreach ($possibleLogoPaths as $path) {
+        if (!empty($path) && file_exists($path) && is_readable($path) && filesize($path) > 0) {
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            $mime = match($ext) {
+                'png' => 'image/png',
+                'jpg', 'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                'webp' => 'image/webp',
+                default => mime_content_type($path) ?: 'image/png',
+            };
+            $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path));
+            break;
+        }
+    }
+
+    // Nomor PO Pelanggan (No Reff)
+    $poNumber = $order?->customer_po_number;
+    if (empty($poNumber) && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
+        $poNumber = $invoice->salesOrders->pluck('customer_po_number')->filter()->unique()->join(', ');
+    }
+    if (empty($poNumber)) {
+        $poNumber = '-';
+    }
 @endphp
 <!DOCTYPE html>
 <html>
@@ -218,7 +259,12 @@
     {{-- HEADER --}}
     <table class="header-table">
         <tr>
-            <td style="width: 40%;">
+            <td style="width: 42%;">
+                @if(!empty($logoBase64))
+                    <div style="margin-bottom: 5px;">
+                        <img src="{{ $logoBase64 }}" style="max-height: 40px; max-width: 220px; object-fit: contain;">
+                    </div>
+                @endif
                 <div class="company-name">PT. SAKTINDO JAYA BERSAMA</div>
                 <div class="company-address">
                     PASAR KENARI ALO O AKS 110<br>
@@ -226,10 +272,10 @@
                     SENEN, JAKARTA PUSAT-10430
                 </div>
             </td>
-            <td style="width: 30%;">
+            <td style="width: 26%;">
                 <div class="faktur-title">FAKTUR</div>
             </td>
-            <td style="width: 30%;">
+            <td style="width: 32%;">
                 <table class="info-table">
                     <tr>
                         <td style="width: 40%;" class="label-bold">Tanggal</td>
@@ -243,7 +289,7 @@
                     </tr>
                 </table>
                 <div class="cash-box">
-                    
+                    {{ $customerDisplayName }}
                 </div>
             </td>
         </tr>
@@ -258,7 +304,7 @@
             </td>
             <td style="width: 33%;">
                 <span class="label-bold">No Reff :</span>
-                
+                {{ $poNumber }}
             </td>
             <td style="width: 33%;">
                 <span class="label-bold">Keterangan :</span>
@@ -376,7 +422,7 @@
 
     <div class="page-footer">
         User : {{ auth()->user()->name ?? '-' }},
-        Tgl Cetak : {{ now()->format('d/m/Y H:i:s') }}
+        Tgl & Jam Cetak : {{ now()->format('d/m/Y H:i:s') }} WIB
     </div>
 
 </body>

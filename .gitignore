@@ -28,6 +28,7 @@ Archive*.zip
 archive/
 archives/
 *.zip
+*.sql
 *.tar
 *.gz
 *.rar

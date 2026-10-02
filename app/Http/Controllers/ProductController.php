@@ -195,6 +195,14 @@ class ProductController extends Controller
     }
 
     /**
+     * Display the specified product.
+     */
+    public function show($id)
+    {
+        return $this->edit($id);
+    }
+
+    /**
      * Show edit form.
      */
     public function edit($id)

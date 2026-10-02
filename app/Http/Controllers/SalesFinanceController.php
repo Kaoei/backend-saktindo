@@ -9,6 +9,8 @@ use App\Models\GudangProduct;
 use App\Models\Master_customer;
 use App\Models\ProformaInvoice;
 use App\Models\SalesOrder;
+use App\Models\SalesOrderItem;
+use App\Models\SalesReturn;
 use App\Models\SupplierProduct;
 use App\Models\WarehouseTask;
 use App\Support\ActivityLogger;
@@ -16,6 +18,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class SalesFinanceController extends Controller
@@ -3633,6 +3636,7 @@ private function findActiveMergedInvoice(
         $invoice->load([
             'salesOrder.customer',
             'salesOrder.items',
+            'salesOrders',
             'payments',
             'deliveryNote',
             'warehouseTask',
@@ -3717,5 +3721,70 @@ private function findActiveMergedInvoice(
                 ->delivery_note_number
             . '.pdf'
         );
+    }
+
+    public function storeReturn(Request $request, DeliveryNote $deliveryNote): RedirectResponse
+    {
+        $data = $request->validate([
+            'return_date' => ['required', 'date'],
+            'received_date' => ['nullable', 'date', 'after_or_equal:return_date'],
+            'status' => ['required', 'in:requested,approved,received,cancelled'],
+            'notes' => ['nullable', 'string'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.sales_order_item_id' => ['required', 'exists:sales_order_items,id'],
+            'items.*.qty_returned' => ['required', 'numeric', 'min:0'],
+            'items.*.reason' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        DB::transaction(function () use ($data, $deliveryNote) {
+            $deliveryNote->load('items');
+            $allowedItemIds = $deliveryNote->items->pluck('sales_order_item_id')->all();
+
+            $salesReturn = SalesReturn::query()->create([
+                'id' => (string) Str::uuid(),
+                'delivery_note_id' => $deliveryNote->id,
+                'return_date' => $data['return_date'],
+                'received_date' => $data['received_date'] ?? null,
+                'status' => $data['status'],
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            foreach ($data['items'] as $itemData) {
+                $qtyReturned = (float) $itemData['qty_returned'];
+
+                if ($qtyReturned <= 0) {
+                    continue;
+                }
+
+                if (! in_array((int) $itemData['sales_order_item_id'], $allowedItemIds, true)) {
+                    abort(422, 'Item retur tidak sesuai dengan Surat Jalan.');
+                }
+
+                $sentQty = (float) $deliveryNote->items
+                    ->where('sales_order_item_id', $itemData['sales_order_item_id'])
+                    ->sum('qty_sent');
+
+                if ($qtyReturned > $sentQty) {
+                    abort(422, 'Qty retur melebihi qty Surat Jalan.');
+                }
+
+                $salesReturn->items()->create([
+                    'sales_order_item_id' => $itemData['sales_order_item_id'],
+                    'qty_returned' => $qtyReturned,
+                    'reason' => $itemData['reason'] ?? null,
+                ]);
+
+                if ($data['status'] === 'received') {
+                    $soItem = SalesOrderItem::findOrFail($itemData['sales_order_item_id']);
+                    $soItem->update([
+                        'delivered_qty' => max(0, (float) $soItem->delivered_qty - $qtyReturned),
+                    ]);
+                }
+            }
+
+            ActivityLogger::log('create', 'sales_return', $salesReturn);
+        });
+
+        return back()->with('status', 'Retur barang berhasil disimpan.');
     }
 }

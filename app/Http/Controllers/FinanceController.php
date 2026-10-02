@@ -197,13 +197,23 @@ class FinanceController extends Controller
      */
     public function report()
     {
+        $driver = DB::connection()->getDriverName();
+        $invoiceMonthExpr = $driver === 'sqlite'
+            ? "strftime('%Y-%m', invoice_date)"
+            : "DATE_FORMAT(invoice_date, '%Y-%m')";
+        $purchaseMonthExpr = $driver === 'sqlite'
+            ? "strftime('%Y-%m', purchase_date)"
+            : "DATE_FORMAT(purchase_date, '%Y-%m')";
+
         // Monthly AR/AP report summaries
-        $arMonthly = Invoice::selectRaw("DATE_FORMAT(invoice_date, '%Y-%m') as month, SUM(grand_total) as total_billing, SUM(paid_amount) as total_collected")
+        $arMonthly = Invoice::selectRaw("{$invoiceMonthExpr} as month, SUM(grand_total) as total_billing, SUM(paid_amount) as total_collected")
+            ->whereNotNull('invoice_date')
             ->groupBy('month')
             ->orderBy('month', 'desc')
             ->get();
 
-        $apMonthly = SupplierPurchaseHistory::selectRaw("DATE_FORMAT(purchase_date, '%Y-%m') as month, SUM(total_amount) as total_purchase")
+        $apMonthly = SupplierPurchaseHistory::selectRaw("{$purchaseMonthExpr} as month, SUM(total_amount) as total_purchase")
+            ->whereNotNull('purchase_date')
             ->groupBy('month')
             ->orderBy('month', 'desc')
             ->get();
