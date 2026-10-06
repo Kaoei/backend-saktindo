@@ -142,6 +142,35 @@
         </div>
     </div>
 
+    <div class="col-md-3 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <p class="text-muted mb-1">Gudang RK</p>
+                        <h3 class="mb-0">{{ $totalRK ?? 0 }}</h3>
+                    </div>
+                    <i class="feather icon-layers text-info" style="font-size:32px"></i>
+                </div>
+
+                <hr>
+
+                <small class="text-muted fw-bold">Top 3 Rak</small>
+
+                @forelse($topRakRK ?? [] as $rak)
+                    <div class="d-flex justify-content-between mt-2">
+                        <span>{{ $rak->rack_id }}</span>
+                        <span class="fw-bold">{{ $rak->total_qty }}</span>
+                    </div>
+                @empty
+                    <div class="text-muted mt-2">Belum ada data</div>
+                @endforelse
+
+            </div>
+        </div>
+    </div>
+
 </div>
 <div class="row">
     <div class="col-12">
@@ -564,6 +593,7 @@
                             <select name="target_gudang_type" id="split_target_gudang" class="form-select" required>
                                 <option value="JS">Gudang JS</option>
                                 <option value="SJB">Gudang SJB</option>
+                                <option value="RK">Gudang RK</option>
                             </select>
                         </div>
                         <div class="col-md-7 mb-3">
@@ -743,6 +773,7 @@ $(function () {
                     <select name="allocations[${index}][gudang_type]" class="form-select form-select-sm manual-gudang-select" required>
                         <option value="JS" ${gudangType === 'JS' ? 'selected' : ''}>Gudang JS</option>
                         <option value="SJB" ${gudangType === 'SJB' ? 'selected' : ''}>Gudang SJB</option>
+                        <option value="RK" ${gudangType === 'RK' ? 'selected' : ''}>Gudang RK</option>
                     </select>
                 </td>
                 <td>

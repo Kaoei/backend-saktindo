@@ -25,11 +25,13 @@ class RakController extends Controller
         $request->validate([
             'rak_kode' => 'required|string|max:255|unique:raks,rak_kode',
             'location' => 'required|string|max:255',
+            'gudang' => 'nullable|in:js,sjb,rk,JS,SJB,RK',
         ]);
 
         Rak::create([
             'rak_kode' => $request->rak_kode,
             'location' => $request->location,
+            'gudang' => strtolower($request->gudang ?? 'js'),
         ]);
 
         return redirect()
@@ -49,29 +51,31 @@ class RakController extends Controller
         return view('rak.edit', compact('rak'));
     }
 
-   public function update(Request $request, $rak_kode)
-{
-    $request->validate([
-        'rak_kode' => [
-            'required',
-            'string',
-            'max:255',
-            Rule::unique('raks', 'rak_kode')->ignore($rak_kode, 'rak_kode')
-        ],
-        'location' => 'required|string|max:255',
-    ]);
+    public function update(Request $request, $rak_kode)
+    {
+        $request->validate([
+            'rak_kode' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('raks', 'rak_kode')->ignore($rak_kode, 'rak_kode')
+            ],
+            'location' => 'required|string|max:255',
+            'gudang' => 'nullable|in:js,sjb,rk,JS,SJB,RK',
+        ]);
 
-    $rak = Rak::findOrFail($rak_kode);
+        $rak = Rak::findOrFail($rak_kode);
 
-    $rak->update([
-        'rak_kode' => $request->rak_kode,
-        'location' => $request->location,
-    ]);
+        $rak->update([
+            'rak_kode' => $request->rak_kode,
+            'location' => $request->location,
+            'gudang' => strtolower($request->gudang ?? ($rak->gudang ?? 'js')),
+        ]);
 
-    return redirect()
-        ->route('rak.index')
-        ->with('status', 'Rak berhasil diperbarui');
-}
+        return redirect()
+            ->route('rak.index')
+            ->with('status', 'Rak berhasil diperbarui');
+    }
     public function destroy($rak_kode)
     {
         $rak = Rak::findOrFail($rak_kode);

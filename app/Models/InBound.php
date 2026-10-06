@@ -17,6 +17,7 @@ protected $fillable = [
     'supplier_id',
     'supplier_product_id',
     'qty_received',
+    'qty_allocated',
     'qty_damaged',
     'qty_missing',
     'hpp',
@@ -26,6 +27,19 @@ protected $fillable = [
     'status',
     'notes',
 ]; 
+
+protected $casts = [
+    'qty_received' => 'integer',
+    'qty_allocated' => 'integer',
+    'qty_damaged' => 'integer',
+    'qty_missing' => 'integer',
+    'hpp' => 'decimal:2',
+];
+
+public function getRemainingQtyAttribute()
+{
+    return max(0, (int)$this->qty_received - (int)($this->qty_allocated ?? 0));
+} 
     public static function generateId()
     {
         $last = self::orderBy('id', 'desc')->first();

@@ -44,6 +44,27 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 @endif
+
+                {{-- Status Bar Migrasi & Saldo Awal Filter --}}
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 p-2 px-3 rounded bg-light border">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary fs-6">{{ $inbounds->count() }} Data Barang Masuk</span>
+                        @if(!$showSaldoAwal && ($saldoAwalCount ?? 0) > 0)
+                            <span class="badge bg-secondary" title="Data migrasi stok awal disembunyikan agar list barang masuk tetap rapi">
+                                <i class="feather icon-eye-off me-1"></i>{{ $saldoAwalCount }} Saldo Awal Migrasi Disembunyikan
+                            </span>
+                        @endif
+                    </div>
+                    @if(($saldoAwalCount ?? 0) > 0)
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="toggleSaldoAwal" {{ $showSaldoAwal ? 'checked' : '' }} onchange="window.location.href = '{{ route('inbound.index') }}' + (this.checked ? '?show_saldo_awal=1' : '')">
+                            <label class="form-check-label small fw-semibold text-muted" for="toggleSaldoAwal">
+                                Tampilkan Saldo Awal Migrasi ({{ $saldoAwalCount }})
+                            </label>
+                        </div>
+                    @endif
+                </div>
+
                 <div class="row mb-3">
 
                     <div class="col-md-3">
@@ -121,16 +142,33 @@
                                             <span class="badge bg-light-primary text-primary border">
                                                 <i class="feather icon-file-text me-1"></i>{{ $inbound->supplierPo->po_number }}
                                             </span>
+                                            @if($inbound->supplierPo->reference_number)
+                                                <div class="small text-muted mt-1" title="Nomor Referensi/SJ Supplier">
+                                                    Ref: <span class="fw-semibold text-dark">{{ $inbound->supplierPo->reference_number }}</span>
+                                                </div>
+                                            @endif
                                         @elseif($inbound->supplier_po_id)
                                             <span class="badge bg-light text-dark border">{{ $inbound->supplier_po_id }}</span>
                                         @else
                                             <span class="text-muted small">Non-PO</span>
+                                        @endif
+
+                                        @if(str_contains(strtolower($inbound->notes ?? ''), 'saldo awal') || str_contains(strtolower($inbound->notes ?? ''), 'auto reconcile') || str_contains(strtolower($inbound->notes ?? ''), 'import excel'))
+                                            <div class="mt-1">
+                                                <span class="badge bg-light-warning text-dark border small" title="{{ $inbound->notes }}">
+                                                    <i class="feather icon-database me-1 text-warning"></i>Migrasi / Saldo Awal
+                                                </span>
+                                            </div>
                                         @endif
                                     </td>
                                     <td>
                                         @if($inbound->invoice_number)
                                             <span class="badge bg-light-info text-dark border fw-bold">
                                                 <i class="feather icon-tag me-1 text-info"></i>{{ $inbound->invoice_number }}
+                                            </span>
+                                        @elseif($inbound->supplierPo && $inbound->supplierPo->reference_number)
+                                            <span class="badge bg-light-info text-dark border fw-bold" title="Dari Ref PO Supplier">
+                                                <i class="feather icon-tag me-1 text-info"></i>{{ $inbound->supplierPo->reference_number }}
                                             </span>
                                         @else
                                             <span class="text-muted small">-</span>
@@ -171,7 +209,9 @@
                                         @if ($inbound->status == 'pending')
                                             <span class="badge bg-warning">Pending</span>
                                         @elseif ($inbound->status == 'partial')
-                                            <span class="badge bg-info text-white">Partial</span>
+                                            <span class="badge bg-info text-white" title="Teralokasi: {{ (int)$inbound->qty_allocated }} / {{ $inbound->qty_received }}">
+                                                Partial ({{ (int)$inbound->qty_allocated }}/{{ $inbound->qty_received }})
+                                            </span>
                                         @elseif ($inbound->status == 'stored')
                                             <span class="badge bg-success">Stored</span>
                                         @else
@@ -283,6 +323,7 @@ $(function () {
 
     const table = $('#inbound-table').DataTable({
         pageLength: 25,
+        order: [], // Pertahankan urutan data dari server (terbaru di paling atas)
         language: {
             emptyTable: 'Belum ada data barang masuk.'
         },

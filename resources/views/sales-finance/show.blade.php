@@ -106,6 +106,11 @@
                                         <div class="fw-bold text-dark">{{ $item->product_name }}</div>
                                         <div class="small text-muted">
                                             SKU: <code>{{ $item->product_code ?: '-' }}</code>
+                                            @if($item->rack_id)
+                                                <span class="badge bg-light-primary text-primary ms-1 border" title="Ambil dari Rak">
+                                                    <i class="feather icon-box me-1"></i>Rak: {{ $item->rack_id }}
+                                                </span>
+                                            @endif
                                             @php
                                                 $gpLocs = \App\Models\GudangProduct::with('rack')->where('supplier_product_id', $item->product_code)->where('qty', '>', 0)->get();
                                             @endphp
@@ -129,8 +134,16 @@
                         </tbody>
                         <tfoot>
                             <tr><th colspan="8" class="text-end">Subtotal</th><th class="text-end">Rp {{ number_format((float) $order->subtotal, 0, ',', '.') }}</th></tr>
-                            <tr><th colspan="8" class="text-end">Pajak</th><th class="text-end">Rp {{ number_format((float) $order->tax_amount, 0, ',', '.') }}</th></tr>
-                            <tr><th colspan="8" class="text-end">Grand Total</th><th class="text-end">Rp {{ number_format((float) $order->grand_total, 0, ',', '.') }}</th></tr>
+                            @if((float)($order->discount_amount ?? 0) > 0)
+                                <tr><th colspan="8" class="text-end text-danger">Diskon Tambahan</th><th class="text-end text-danger">- Rp {{ number_format((float) $order->discount_amount, 0, ',', '.') }}</th></tr>
+                            @endif
+                            <tr><th colspan="8" class="text-end">Pajak (PPN)</th><th class="text-end">Rp {{ number_format((float) $order->tax_amount, 0, ',', '.') }}</th></tr>
+                            <tr><th colspan="8" class="text-end fw-bold fs-6">Grand Total</th><th class="text-end fw-bold text-primary fs-6">Rp {{ number_format((float) $order->grand_total, 0, ',', '.') }}</th></tr>
+                            @if((float)($order->dp_amount ?? 0) > 0 || (float)($order->dp_paid ?? 0) > 0)
+                                @php $dpVal = (float)($order->dp_amount ?: $order->dp_paid); @endphp
+                                <tr><th colspan="8" class="text-end text-muted">Uang Muka (DP)</th><th class="text-end text-muted">Rp {{ number_format($dpVal, 0, ',', '.') }}</th></tr>
+                                <tr><th colspan="8" class="text-end text-danger fw-bold">Sisa Tagihan</th><th class="text-end text-danger fw-bold">Rp {{ number_format(max(0, (float)$order->grand_total - $dpVal), 0, ',', '.') }}</th></tr>
+                            @endif
                         </tfoot>
                     </table>
                 </div>

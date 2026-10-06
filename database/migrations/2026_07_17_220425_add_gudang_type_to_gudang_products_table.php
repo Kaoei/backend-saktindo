@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('gudang_products', function (Blueprint $table) {
-            $table->enum('gudang_type', ['JS', 'SJB'])
+            $table->enum('gudang_type', ['JS', 'SJB', 'RK'])
                   ->default('JS')
                   ->after('rack_id');
         });

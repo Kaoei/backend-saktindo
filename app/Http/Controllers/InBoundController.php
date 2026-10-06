@@ -14,13 +14,37 @@ use Illuminate\Support\Facades\DB;
 
 class InBoundController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $inbounds = InBound::with(['supplier', 'supplierProduct.gudangProducts.rack', 'supplierPo'])
-            ->latest()
-            ->get();
+        $showSaldoAwal = $request->boolean('show_saldo_awal', false);
 
-        return view('inbound.index', compact('inbounds'));
+        $query = InBound::with(['supplier', 'supplierProduct.gudangProducts.rack', 'supplierPo'])
+            ->orderBy('received_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
+
+        if (!$showSaldoAwal) {
+            $query->where(function ($q) {
+                $q->whereNull('notes')
+                    ->orWhere(function ($sub) {
+                        $sub->where('notes', 'not like', '%Saldo Awal%')
+                            ->where('notes', 'not like', '%Auto Reconcile%')
+                            ->where('notes', 'not like', '%Import Excel%')
+                            ->where('notes', 'not like', '%Migrasi%');
+                    });
+            });
+        }
+
+        $inbounds = $query->get();
+
+        $saldoAwalCount = InBound::where(function ($q) {
+            $q->where('notes', 'like', '%Saldo Awal%')
+                ->orWhere('notes', 'like', '%Auto Reconcile%')
+                ->orWhere('notes', 'like', '%Import Excel%')
+                ->orWhere('notes', 'like', '%Migrasi%');
+        })->count();
+
+        return view('inbound.index', compact('inbounds', 'showSaldoAwal', 'saldoAwalCount'));
     }
 
     public function create()

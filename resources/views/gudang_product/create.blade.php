@@ -58,19 +58,25 @@
                                     $existingRacksStr = count($existingRacks) > 0 ? implode(', ', $existingRacks) : 'Belum ada di rak';
                                     $formattedDate = $inbound->received_date ? \Carbon\Carbon::parse($inbound->received_date)->format('d/m/Y') : '-';
                                     $poNum = $inbound->supplierPo->po_number ?? ($inbound->supplier_po_id ?? 'Non-PO');
-                                    $manualNum = $inbound->invoice_number ?? '-';
+                                    $manualNum = $inbound->invoice_number ?? ($inbound->supplierPo->reference_number ?? '-');
+                                    $remainingQty = max(0, (int)$inbound->qty_received - (int)($inbound->qty_allocated ?? 0));
+                                    $qtyLabel = ($inbound->status === 'partial') 
+                                        ? "Sisa: {$remainingQty} dari {$inbound->qty_received} pcs" 
+                                        : "Qty: {$inbound->qty_received} pcs";
                                 @endphp
                                 <option value="{{ $inbound->id }}"
                                     data-item-name="{{ $inbound->supplierProduct->item_name ?? '-' }}"
                                     data-sku="{{ $inbound->supplierProduct->sku ?? '-' }}"
-                                    data-qty="{{ $inbound->qty_received }}"
+                                    data-qty="{{ $remainingQty > 0 ? $remainingQty : $inbound->qty_received }}"
+                                    data-total-received="{{ $inbound->qty_received }}"
+                                    data-allocated="{{ (int)$inbound->qty_allocated }}"
                                     data-supplier="{{ $inbound->supplier->name ?? '-' }}"
                                     data-date="{{ $formattedDate }}"
                                     data-po="{{ $poNum }}"
                                     data-manual="{{ $manualNum }}"
                                     data-existing-racks="{{ $existingRacksStr }}"
                                     {{ old('in_bound_id', $selectedInbound) == $inbound->id ? 'selected' : '' }}>
-                                    {{ $inbound->id }} [Tgl: {{ $formattedDate }} | PO: {{ $poNum }}{{ $manualNum !== '-' ? ' | No: ' . $manualNum : '' }}] - {{ $inbound->supplierProduct->item_name ?? '-' }} (Qty: {{ $inbound->qty_received }} pcs)
+                                    {{ $inbound->id }} [Tgl: {{ $formattedDate }} | PO: {{ $poNum }}{{ $manualNum !== '-' ? ' | No: ' . $manualNum : '' }}] - {{ $inbound->supplierProduct->item_name ?? '-' }} ({{ $qtyLabel }})
                                 </option>
                             @endforeach
                         </select>
@@ -225,6 +231,7 @@ $(document).ready(function() {
                     <select name="allocations[${index}][gudang_type]" class="form-select form-select-sm gudang-select" required>
                         <option value="JS" ${gudangType === 'JS' ? 'selected' : ''}>Gudang JS</option>
                         <option value="SJB" ${gudangType === 'SJB' ? 'selected' : ''}>Gudang SJB</option>
+                        <option value="RK" ${gudangType === 'RK' ? 'selected' : ''}>Gudang RK</option>
                     </select>
                 </td>
                 <td>
@@ -252,7 +259,7 @@ $(document).ready(function() {
         // Auto-match gudang if user selects rack that has explicit gudang
         $tr.find('.rack-select').on('change', function() {
             const rackGudang = $(this).find('option:selected').attr('data-gudang');
-            if (rackGudang && (rackGudang === 'JS' || rackGudang === 'SJB')) {
+            if (rackGudang && (rackGudang === 'JS' || rackGudang === 'SJB' || rackGudang === 'RK')) {
                 $tr.find('.gudang-select').val(rackGudang);
             }
             recalculateAllocations();
@@ -337,7 +344,7 @@ $(document).ready(function() {
         $('#info-po').text('PO: ' + po);
         $('#info-manual').text(manual !== '-' ? 'SJ: ' + manual : '-');
         $infoTotalQty.text(qty + ' pcs');
-        $infoExistingRacks.text(existingRacks);
+        $infoExistingRacks.text($selected.attr('data-existing-racks') || '-');
 
         currentTotalQty = qty;
         $inboundInfoCard.slideDown(200);

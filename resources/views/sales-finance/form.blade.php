@@ -173,9 +173,24 @@
                     </div>
                     <div class="col-md-3 mb-3">
                         <label class="form-label">Status Order</label>
+                        @php
+                            $simplifiedStatuses = [
+                                'draft' => 'Draft',
+                                'stock_check' => 'Stock Check',
+                                'invoice' => 'Invoice',
+                                'cancel' => 'Cancel',
+                            ];
+                            $currStatus = old('order_status', $order->order_status ?: 'draft');
+                            if (in_array($currStatus, ['invoiced', 'ready_to_invoice', 'ready_invoice'])) {
+                                $currStatus = 'invoice';
+                            }
+                            if ($currStatus === 'cancelled') {
+                                $currStatus = 'cancel';
+                            }
+                        @endphp
                         <select name="order_status" class="form-select">
-                            @foreach(['draft', 'stock_check', 'ready_to_invoice', 'pending_stock', 'invoiced', 'partial_delivery', 'delivered', 'completed', 'cancelled'] as $status)
-                                <option value="{{ $status }}" @selected(old('order_status', $order->order_status ?: 'draft') === $status)>{{ str_replace('_', ' ', ucfirst($status)) }}</option>
+                            @foreach($simplifiedStatuses as $val => $lbl)
+                                <option value="{{ $val }}" @selected($currStatus === $val)>{{ $lbl }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -248,13 +263,14 @@
                     <table class="table table-bordered align-middle" id="items-table" style="min-width: 1080px;">
                         <thead class="table-light">
                             <tr>
-                                <th style="width: 28%; min-width: 250px;">Nama Produk <span class="text-danger">*</span></th>
-                                <th style="width: 8%; min-width: 90px;" class="text-center">Unit</th>
-                                <th style="width: 9%; min-width: 100px;" class="text-center">Qty <span class="text-danger">*</span></th>
-                                <th style="width: 15%; min-width: 140px;">Harga Unit (Rp) <span class="text-danger">*</span></th>
-                                <th style="width: 22%; min-width: 230px;">Diskon (%)</th>
-                                <th style="width: 14%; min-width: 140px;">Subtotal (Rp)</th>
-                                <th style="width: 4%; min-width: 45px;"></th>
+                                <th style="width: 25%; min-width: 230px;">Nama Produk <span class="text-danger">*</span></th>
+                                <th style="width: 16%; min-width: 160px;">Ambil Dari Rak</th>
+                                <th style="width: 7%; min-width: 70px;" class="text-center">Unit</th>
+                                <th style="width: 9%; min-width: 95px;" class="text-center">Qty <span class="text-danger">*</span></th>
+                                <th style="width: 13%; min-width: 120px;">Harga Unit (Rp) <span class="text-danger">*</span></th>
+                                <th style="width: 18%; min-width: 200px;">Diskon (%)</th>
+                                <th style="width: 12%; min-width: 120px;">Subtotal (Rp)</th>
+                                <th style="width: 4%; min-width: 40px;"></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -270,6 +286,8 @@
                                     $d4 = (float) ($item['discount_4'] ?? 0);
                                     $netPrice = $price * (1 - $d1/100) * (1 - $d2/100) * (1 - $d3/100) * (1 - $d4/100);
                                     $lineTotal = $qty * $netPrice;
+                                    $itemRackId = $item['rack_id'] ?? '';
+                                    $racksForSelected = $selectedProduct?->racks_list ?? [];
                                 @endphp
                                 <tr class="item-row">
                                     <td>
@@ -291,6 +309,16 @@
                                             @endforeach
                                         </select>
                                         <input type="hidden" name="items[{{ $index }}][product_name]" class="product-name-input" value="{{ $item['product_name'] ?? $selectedProduct?->item_name }}">
+                                    </td>
+                                    <td>
+                                        <select name="items[{{ $index }}][rack_id]" class="form-select form-select-sm rack-select">
+                                            <option value="">-- Auto / Bebas --</option>
+                                            @foreach($racksForSelected as $rk)
+                                                <option value="{{ $rk['rack_id'] }}" @selected($itemRackId === $rk['rack_id'])>
+                                                    {{ $rk['label'] }}
+                                                </option>
+                                            @endforeach
+                                        </select>
                                     </td>
                                     <td>
                                         <input type="text" name="items[{{ $index }}][unit]" class="form-control unit-input text-center px-1" value="{{ $item['unit'] ?? ($selectedProduct->unit ?? 'pcs') }}" required>
@@ -409,6 +437,20 @@
                                     <span class="text-muted">Sub Total</span>
                                     <span id="summary-subtotal" class="fw-semibold">Rp 0</span>
                                 </div>
+
+                                {{-- Diskon Tambahan Manual --}}
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label for="order_discount" class="form-label text-muted small mb-0">Diskon Tambahan (Rp)</label>
+                                        <span id="summary-discount-display" class="small text-danger fw-semibold">- Rp 0</span>
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white">Rp</span>
+                                        <input type="number" step="any" min="0" name="discount_amount" id="order_discount" class="form-control text-end" value="{{ old('discount_amount', (float)($order->discount_amount ?? 0)) }}" placeholder="0">
+                                    </div>
+                                </div>
+
+                                {{-- PPN 11% --}}
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div class="form-check mb-0">
                                         <input class="form-check-input" type="checkbox" id="ppn_toggle" name="apply_ppn" value="1" {{ old('apply_ppn', $order->tax_amount > 0 ? '1' : '') == '1' ? 'checked' : '' }}>
@@ -416,17 +458,26 @@
                                     </div>
                                     <span id="summary-ppn" class="text-muted">Rp 0</span>
                                 </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Uang Muka (DP)</span>
-                                    <span id="summary-dp" class="text-muted">Rp {{ number_format((float)($order->dp_paid ?? 0), 0, ',', '.') }}</span>
+
+                                {{-- Uang Muka (DP) Manual --}}
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label for="order_dp" class="form-label text-muted small mb-0">Uang Muka / DP (Rp)</label>
+                                        <span id="summary-dp" class="small text-muted">Rp {{ number_format((float)($order->dp_amount ?? $order->dp_paid ?? 0), 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white">Rp</span>
+                                        <input type="number" step="any" min="0" name="dp_amount" id="order_dp" class="form-control text-end" value="{{ old('dp_amount', (float)($order->dp_amount ?? $order->dp_paid ?? 0)) }}" placeholder="0">
+                                    </div>
                                 </div>
+
                                 <hr class="my-2">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="fw-bold">Total</span>
                                     <span id="summary-total" class="fw-bold text-primary fs-6">Rp 0</span>
                                 </div>
                                 <div class="d-flex justify-content-between">
-                                    <span class="fw-semibold text-danger">Sisa</span>
+                                    <span class="fw-semibold text-danger">Sisa Tagihan</span>
                                     <span id="summary-sisa" class="fw-semibold text-danger">Rp 0</span>
                                 </div>
                                 <input type="hidden" name="apply_ppn" id="apply_ppn_hidden" value="0">
@@ -523,17 +574,27 @@
                 subtotal += parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
             });
 
+            const discount = parseFloat($('#order_discount').val()) || 0;
+            const taxableBase = Math.max(0, subtotal - discount);
+
             const applyPpn = $('#ppn_toggle').is(':checked');
-            const ppn = applyPpn ? subtotal * 0.11 : 0;
-            const total = subtotal + ppn;
-            const sisa = total - dpPaid;
+            const ppn = applyPpn ? taxableBase * 0.11 : 0;
+            const total = Math.max(0, taxableBase + ppn);
+
+            const dpInput = parseFloat($('#order_dp').val()) || 0;
+            const dp = dpInput > 0 ? dpInput : dpPaid;
+            const sisa = Math.max(0, total - dp);
 
             const fmt = (v) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(v));
             $('#summary-subtotal').text(fmt(subtotal));
+            $('#summary-discount-display').text('- ' + fmt(discount));
             $('#summary-ppn').text(applyPpn ? fmt(ppn) : 'Rp 0');
+            $('#summary-dp').text(fmt(dp));
             $('#summary-total').text(fmt(total));
             $('#summary-sisa').text(fmt(sisa));
         }
+
+        $('#order_discount, #order_dp').on('input change', calculateSummary);
 
         function formatProductOption(data) {
             if (!data.id) {
@@ -705,6 +766,11 @@
                         <input type="hidden" name="items[${itemIndex}][product_name]" class="product-name-input" value="">
                     </td>
                     <td>
+                        <select name="items[${itemIndex}][rack_id]" class="form-select form-select-sm rack-select">
+                            <option value="">-- Auto / Bebas --</option>
+                        </select>
+                    </td>
+                    <td>
                         <input type="text" name="items[${itemIndex}][unit]" class="form-control unit-input text-center px-1" value="pcs" required>
                     </td>
                     <td>
@@ -770,6 +836,17 @@
                 $row.find('.product-name-input').val(name);
                 $row.find('.unit-input').val(unit);
                 $row.find('.price-input').val(price);
+
+                // Populate rack selection
+                const $rackSelect = $row.find('.rack-select');
+                const currRackVal = $rackSelect.val();
+                $rackSelect.empty().append('<option value="">-- Auto / Bebas --</option>');
+                if (prod && prod.racks_list && prod.racks_list.length > 0) {
+                    prod.racks_list.forEach(rk => {
+                        const sel = (currRackVal === rk.rack_id) ? 'selected' : '';
+                        $rackSelect.append(`<option value="${rk.rack_id}" ${sel}>${rk.label}</option>`);
+                    });
+                }
                 
                 const $disc1 = $row.find('.disc1-input');
                 if (disc1 > 0 && (!$disc1.val() || parseFloat($disc1.val()) === 0)) {
@@ -782,6 +859,7 @@
                 $row.find('.product-name-input').val('');
                 $row.find('.unit-input').val('pcs');
                 $row.find('.price-input').val(0);
+                $row.find('.rack-select').empty().append('<option value="">-- Auto / Bebas --</option>');
             }
 
             calculateRowTotal($row);

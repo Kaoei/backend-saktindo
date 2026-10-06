@@ -14,6 +14,7 @@ class SalesOrderItem extends Model
         'sales_order_id',
         'product_code',
         'product_name',
+        'rack_id',
         'unit',
         'quantity',
         'delivered_qty',
@@ -44,6 +45,11 @@ class SalesOrderItem extends Model
     public function salesOrder(): BelongsTo
     {
         return $this->belongsTo(SalesOrder::class);
+    }
+
+    public function rack(): BelongsTo
+    {
+        return $this->belongsTo(Rak::class, 'rack_id', 'rak_kode');
     }
 
     public function deliveryNoteItems()

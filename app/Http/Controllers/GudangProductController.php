@@ -52,12 +52,25 @@ class GudangProductController extends Controller
             ->get();
 
         $totalSJB = GudangProduct::whereHas('rack', function ($q) {
-            $q->where('gudang', 'SJB');
+            $q->where('gudang', 'SJB')->orWhere('gudang', 'sjb');
         })->sum('qty');
 
         $topRakSJB = GudangProduct::select('rack_id', DB::raw('SUM(qty) as total_qty'))
             ->whereHas('rack', function ($q) {
-                $q->where('gudang', 'SJB');
+                $q->where('gudang', 'SJB')->orWhere('gudang', 'sjb');
+            })
+            ->groupBy('rack_id')
+            ->orderByDesc('total_qty')
+            ->take(3)
+            ->get();
+
+        $totalRK = GudangProduct::whereHas('rack', function ($q) {
+            $q->where('gudang', 'RK')->orWhere('gudang', 'rk');
+        })->sum('qty');
+
+        $topRakRK = GudangProduct::select('rack_id', DB::raw('SUM(qty) as total_qty'))
+            ->whereHas('rack', function ($q) {
+                $q->where('gudang', 'RK')->orWhere('gudang', 'rk');
             })
             ->groupBy('rack_id')
             ->orderByDesc('total_qty')
@@ -78,6 +91,8 @@ class GudangProductController extends Controller
             'topRakJS',
             'totalSJB',
             'topRakSJB',
+            'totalRK',
+            'topRakRK',
             'racks',
             'brands',
             'categories',
@@ -107,11 +122,11 @@ class GudangProductController extends Controller
         if ($hasAllocations) {
             $rules['allocations'] = 'required|array|min:1';
             $rules['allocations.*.rack_id'] = 'required|exists:raks,rak_kode';
-            $rules['allocations.*.gudang_type'] = 'nullable|in:JS,SJB';
+            $rules['allocations.*.gudang_type'] = 'nullable|in:JS,SJB,RK';
             $rules['allocations.*.qty'] = 'required|integer|min:1';
         } else {
             $rules['qty'] = 'required|integer|min:1';
-            $rules['gudang_type'] = 'required|in:JS,SJB';
+            $rules['gudang_type'] = 'required|in:JS,SJB,RK';
             $rules['rack_id'] = 'required|exists:raks,rak_kode';
         }
 
@@ -275,11 +290,13 @@ class GudangProductController extends Controller
                 'in_bound_id' => 'required|exists:in_bounds,id',
                 'allocations' => 'required|array|min:1',
                 'allocations.*.rack_id' => 'required|exists:raks,rak_kode',
-                'allocations.*.gudang_type' => 'nullable|in:JS,SJB',
+                'allocations.*.gudang_type' => 'nullable|in:JS,SJB,RK',
                 'allocations.*.qty' => 'required|integer|min:1',
             ]);
 
-            DB::transaction(function () use ($request) {
+            $newStatus = 'stored';
+            $remaining = 0;
+            DB::transaction(function () use ($request, &$newStatus, &$remaining) {
                 $inBound = InBound::with('supplierProduct')
                     ->where('id', $request->in_bound_id)
                     ->whereIn('status', ['pending', 'partial'])
@@ -321,8 +338,13 @@ class GudangProductController extends Controller
                     $totalAllocated += $qty;
                 }
 
+                $newAllocated = (int)$inBound->qty_allocated + $totalAllocated;
+                $newStatus = ($newAllocated >= (int)$inBound->qty_received) ? 'stored' : 'partial';
+                $remaining = max(0, (int)$inBound->qty_received - $newAllocated);
+
                 $inBound->update([
-                    'status' => 'stored',
+                    'qty_allocated' => $newAllocated,
+                    'status' => $newStatus,
                 ]);
 
                 if ($inBound->supplierProduct) {
@@ -330,25 +352,31 @@ class GudangProductController extends Controller
                 }
             });
 
+            $msg = $newStatus === 'partial' 
+                ? "Sebagian barang berhasil dialokasikan ke rak. Sisa {$remaining} pcs masih harus dialokasikan ke rak (Status: Partial)."
+                : 'Barang berhasil disimpan ke rak-rak penyimpanan dan stok disinkronkan.';
+
             return redirect()
                 ->route('gudang-product.index')
-                ->with('success', 'Barang berhasil disimpan ke rak-rak penyimpanan dan stok disinkronkan.');
+                ->with('success', $msg);
         }
 
         // Backward compatibility for single rack submission
         $request->validate([
             'in_bound_id' => 'required|exists:in_bounds,id',
             'rack_id' => 'required|exists:raks,rak_kode',
-            'gudang_type' => 'nullable|in:JS,SJB',
+            'gudang_type' => 'nullable|in:JS,SJB,RK',
             'qty' => 'nullable|integer|min:1',
         ]);
 
-        DB::transaction(function () use ($request) {
+        $newStatus = 'stored';
+        $remaining = 0;
+        DB::transaction(function () use ($request, &$newStatus, &$remaining) {
             $inBound = InBound::with('supplierProduct')->where('id', $request->in_bound_id)
                 ->whereIn('status', ['pending', 'partial'])
                 ->firstOrFail();
 
-            $qtyToStore = $request->filled('qty') ? (int)$request->qty : $inBound->qty_received;
+            $qtyToStore = $request->filled('qty') ? (int)$request->qty : max(1, (int)$inBound->qty_received - (int)$inBound->qty_allocated);
 
             $existingProduct = GudangProduct::where('supplier_product_id', $inBound->supplier_product_id)
                 ->where('rack_id', $request->rack_id)
@@ -377,8 +405,13 @@ class GudangProductController extends Controller
                 ]);
             }
 
+            $newAllocated = (int)$inBound->qty_allocated + $qtyToStore;
+            $newStatus = ($newAllocated >= (int)$inBound->qty_received) ? 'stored' : 'partial';
+            $remaining = max(0, (int)$inBound->qty_received - $newAllocated);
+
             $inBound->update([
-                'status' => 'stored',
+                'qty_allocated' => $newAllocated,
+                'status' => $newStatus,
             ]);
 
             if ($inBound->supplierProduct) {
@@ -386,9 +419,13 @@ class GudangProductController extends Controller
             }
         });
 
+        $msg = $newStatus === 'partial' 
+            ? "Sebagian barang berhasil dialokasikan ke rak. Sisa {$remaining} pcs masih harus dialokasikan ke rak (Status: Partial)."
+            : 'Barang berhasil disimpan ke rak dan stok disinkronkan.';
+
         return redirect()
             ->route('gudang-product.index')
-            ->with('success', 'Barang berhasil disimpan ke rak dan stok disinkronkan.');
+            ->with('success', $msg);
     }
 
     /**
@@ -399,7 +436,7 @@ class GudangProductController extends Controller
         $request->validate([
             'source_id' => 'required|exists:gudang_products,id',
             'target_rack_id' => 'required|exists:raks,rak_kode',
-            'target_gudang_type' => 'nullable|in:JS,SJB',
+            'target_gudang_type' => 'nullable|in:JS,SJB,RK',
             'qty' => 'required|integer|min:1',
         ]);
 

@@ -19,7 +19,7 @@ return new class extends Migration
 
         // 2. Update raks table
         Schema::table('raks', function (Blueprint $table) {
-            $table->enum('gudang', ['js', 'sjb'])->default('js')->after('location');
+            $table->enum('gudang', ['js', 'sjb', 'rk'])->default('js')->after('location');
             $table->boolean('is_temporary')->default(false)->after('gudang');
         });
 

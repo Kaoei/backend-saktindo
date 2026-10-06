@@ -109,7 +109,7 @@ class ProductController extends Controller
             'unit' => 'nullable|string|max:50',
             'initial_qty' => 'nullable|integer|min:0',
             'rack_id' => 'nullable|exists:raks,rak_kode',
-            'gudang_type' => 'nullable|in:JS,SJB',
+            'gudang_type' => 'nullable|in:JS,SJB,RK',
         ]);
 
         DB::transaction(function () use ($request, $itemName) {

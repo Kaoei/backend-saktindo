@@ -40,6 +40,7 @@ class SalesOrder extends Model
         'warehouse_task_reference',
         'notes',
         'subtotal',
+        'discount_amount',
         'tax_amount',
         'grand_total',
     ];
@@ -52,6 +53,7 @@ class SalesOrder extends Model
         'dp_amount' => 'decimal:2',
         'dp_paid' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',
     ];

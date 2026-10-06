@@ -82,6 +82,18 @@
                         @enderror
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Gudang <span class="text-danger">*</span>
+                        </label>
+                        <select name="gudang" class="form-select @error('gudang') is-invalid @enderror" required>
+                            <option value="js" {{ old('gudang', strtolower($rak->gudang ?? 'js')) === 'js' ? 'selected' : '' }}>Gudang JS</option>
+                            <option value="sjb" {{ old('gudang', strtolower($rak->gudang ?? 'js')) === 'sjb' ? 'selected' : '' }}>Gudang SJB</option>
+                            <option value="rk" {{ old('gudang', strtolower($rak->gudang ?? 'js')) === 'rk' ? 'selected' : '' }}>Gudang RK</option>
+                        </select>
+                        @error('gudang') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                    </div>
+
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-primary">
                             Update Rak

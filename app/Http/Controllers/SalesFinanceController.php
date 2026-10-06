@@ -2959,7 +2959,7 @@ private function findActiveMergedInvoice(
             'order_status' =>
                 [
                     'required',
-                    'in:draft,stock_check,ready_to_invoice,ready_invoice,pending_stock,invoiced,partial_delivery,delivered,completed,cancelled',
+                    'in:draft,stock_check,invoice,invoiced,cancel,cancelled,ready_to_invoice,ready_invoice,pending_stock,partial_delivery,delivered,completed',
                 ],
 
             'is_pre_order' =>
@@ -2973,11 +2973,23 @@ private function findActiveMergedInvoice(
                     'date',
                 ],
 
+            'discount_amount' =>
+                [
+                    'nullable',
+                    'numeric',
+                    'min:0',
+                ],
+
             'dp_amount' =>
                 [
                     'nullable',
                     'numeric',
                     'min:0',
+                ],
+
+            'apply_ppn' =>
+                [
+                    'nullable',
                 ],
 
             'pre_order_notes' =>
@@ -3006,6 +3018,13 @@ private function findActiveMergedInvoice(
                 ],
 
             'items.*.product_name' =>
+                [
+                    'nullable',
+                    'string',
+                    'max:255',
+                ],
+
+            'items.*.rack_id' =>
                 [
                     'nullable',
                     'string',
@@ -3083,6 +3102,16 @@ private function findActiveMergedInvoice(
                 ) ?? 0
             );
 
+        $data['discount_amount'] =
+            (float) (
+                $request->input(
+                    'discount_amount'
+                ) ?? 0
+            );
+
+        $data['apply_ppn'] =
+            $request->boolean('apply_ppn') || ($request->input('apply_ppn') == '1');
+
         $data['pre_order_notes'] =
             $request->input(
                 'pre_order_notes'
@@ -3090,6 +3119,14 @@ private function findActiveMergedInvoice(
 
         if (($data['order_status'] ?? '') === 'ready_invoice') {
             $data['order_status'] = 'ready_to_invoice';
+        }
+
+        if (($data['order_status'] ?? '') === 'invoice') {
+            $data['order_status'] = 'invoiced';
+        }
+
+        if (($data['order_status'] ?? '') === 'cancel') {
+            $data['order_status'] = 'cancelled';
         }
 
         return $data;
@@ -3170,24 +3207,32 @@ private function findActiveMergedInvoice(
                     }
                 );
 
+        $discountAmount = (float) ($data['discount_amount'] ?? 0);
+        $taxableBase = max(0, $subtotal - $discountAmount);
+
+        $taxAmount = 0;
+        if (!empty($data['apply_ppn'])) {
+            $taxAmount = round($taxableBase * 0.11, 2);
+        } elseif (!empty($data['tax_amount'])) {
+            $taxAmount = (float) $data['tax_amount'];
+        }
+
+        $grandTotal = max(0, $taxableBase + $taxAmount);
+
         return array_merge(
             $data,
             [
                 'subtotal' =>
                     $subtotal,
 
+                'discount_amount' =>
+                    $discountAmount,
+
                 'tax_amount' =>
-                    $data['tax_amount']
-                    ?? 0,
+                    $taxAmount,
 
                 'grand_total' =>
-                    $subtotal
-                    + (
-                        (float) (
-                            $data['tax_amount']
-                            ?? 0
-                        )
-                    ),
+                    $grandTotal,
             ]
         );
     }
@@ -3270,6 +3315,9 @@ private function findActiveMergedInvoice(
 
                 'product_name' =>
                     $product->item_name,
+
+                'rack_id' =>
+                    $item['rack_id'] ?? null,
 
                 'unit' =>
                     $product->unit
@@ -3451,6 +3499,21 @@ private function findActiveMergedInvoice(
                             ' | ',
                             $locations
                         );
+
+                    $racksList = [];
+                    foreach ($gProducts as $gp) {
+                        $rakKode = $gp->rack->rak_kode ?? $gp->rack_id;
+                        if ($rakKode && $gp->qty > 0) {
+                            $gt = strtoupper($gp->gudang_type ?: ($gp->rack->gudang ?? 'JS'));
+                            $racksList[] = [
+                                'rack_id' => $rakKode,
+                                'gudang_type' => $gt,
+                                'qty' => (float) $gp->qty,
+                                'label' => "Rak {$rakKode} [{$gt}] (Tersedia: {$gp->qty} " . ($product->unit ?: 'pcs') . ")",
+                            ];
+                        }
+                    }
+                    $product->racks_list = $racksList;
 
                     $gProduct =
                         $gProducts
