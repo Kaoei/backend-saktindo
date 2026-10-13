@@ -91,36 +91,70 @@
                             <div class="row">
                                 <div class="col-md-12 mb-3">
                                     <label class="form-label fw-bold">Product Name <span class="text-danger">*</span></label>
-                                    <select name="product_name" id="product_name_select" class="form-select select2-tags" required data-placeholder="-- Cari / Pilih Produk Gudang atau Ketik Nama Produk --">
-                                        <option value="">-- Cari / Pilih Produk Gudang atau Ketik Nama Produk --</option>
-                                        @php
-                                            $currName = old('product_name', $product->product_name);
-                                            $gudangNames = [];
-                                        @endphp
+                                    <div class="input-group">
+                                        <input type="text"
+                                               name="product_name"
+                                               id="product_name_input"
+                                               class="form-control"
+                                               list="gudang_products_list"
+                                               placeholder="Ketik nama produk baru secara bebas atau pilih dari produk gudang..."
+                                               value="{{ old('product_name', $product->product_name) }}"
+                                               autocomplete="off"
+                                               required>
+                                        @if(isset($gudangProducts) && count($gudangProducts) > 0)
+                                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Pilih dari produk gudang">
+                                                <i class="feather icon-list me-1"></i> Pilih dari Gudang
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end shadow" style="max-height: 320px; overflow-y: auto; width: 350px;">
+                                                <li><h6 class="dropdown-header">Produk Gudang Tersedia</h6></li>
+                                                @foreach($gudangProducts as $gProd)
+                                                    @php
+                                                        $itemName = $gProd->supplierProduct?->item_name ?? $gProd->id;
+                                                        $catName = $gProd->supplierProduct?->category ?? '';
+                                                        $subCatName = $gProd->supplierProduct?->sub_category ?? '';
+                                                        $brandName = $gProd->supplierProduct?->brand ?? '';
+                                                        $skuName = $gProd->supplierProduct?->sku ?? $gProd->id;
+                                                        $price = $gProd->supplierProduct?->last_purchase_price ?? $gProd->price ?? 0;
+                                                    @endphp
+                                                    <li>
+                                                        <a class="dropdown-item quick-select-gudang-item py-2" href="javascript:void(0)"
+                                                           data-item-name="{{ $itemName }}"
+                                                           data-category="{{ $catName }}"
+                                                           data-sub-category="{{ $subCatName }}"
+                                                           data-brand="{{ $brandName }}"
+                                                           data-sku="{{ $skuName }}"
+                                                           data-price="{{ $price }}">
+                                                            <div class="fw-semibold text-truncate">{{ $itemName }}</div>
+                                                            <small class="text-muted">SKU: {{ $skuName }} {{ $brandName ? '• ' . $brandName : '' }}</small>
+                                                        </a>
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    </div>
+                                    <datalist id="gudang_products_list">
                                         @if(isset($gudangProducts))
                                             @foreach($gudangProducts as $gProd)
                                                 @php
                                                     $itemName = $gProd->supplierProduct?->item_name ?? $gProd->id;
-                                                    $gudangNames[] = $itemName;
                                                     $catName = $gProd->supplierProduct?->category ?? '';
                                                     $subCatName = $gProd->supplierProduct?->sub_category ?? '';
                                                     $brandName = $gProd->supplierProduct?->brand ?? '';
                                                     $skuName = $gProd->supplierProduct?->sku ?? $gProd->id;
+                                                    $price = $gProd->supplierProduct?->last_purchase_price ?? $gProd->price ?? 0;
                                                 @endphp
-                                                <option value="{{ $itemName }}" 
-                                                    data-category="{{ $catName }}" 
-                                                    data-sub-category="{{ $subCatName }}" 
-                                                    data-brand="{{ $brandName }}"
-                                                    {{ $currName === $itemName ? 'selected' : '' }}>
-                                                    {{ $itemName }} (SKU Gudang: {{ $skuName }})
+                                                <option value="{{ $itemName }}"
+                                                        data-category="{{ $catName }}"
+                                                        data-sub-category="{{ $subCatName }}"
+                                                        data-brand="{{ $brandName }}"
+                                                        data-sku="{{ $skuName }}"
+                                                        data-price="{{ $price }}">
+                                                    {{ $itemName }} (SKU: {{ $skuName }})
                                                 </option>
                                             @endforeach
                                         @endif
-                                        @if($currName && !in_array($currName, $gudangNames))
-                                            <option value="{{ $currName }}" selected>{{ $currName }}</option>
-                                        @endif
-                                    </select>
-                                    <small class="text-muted">Pilih dari Produk Gudang (otomatis mengisi Kategori, Sub Kategori & Brand) atau ketik nama produk baru.</small>
+                                    </datalist>
+                                    <small class="text-muted">Bisa ketik nama produk baru secara bebas (tidak wajib dari daftar), atau pilih dari produk gudang untuk auto-fill kategori & brand.</small>
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Category</label>
@@ -436,12 +470,7 @@
             width: '100%'
         });
 
-        $('#product_name_select').on('change', function() {
-            let selectedOpt = $(this).find(':selected');
-            let cat = selectedOpt.data('category');
-            let subCat = selectedOpt.data('sub-category');
-            let brand = selectedOpt.data('brand');
-
+        function applyGudangData(cat, subCat, brand, sku, price) {
             if (cat && $('#category_select').length) {
                 if ($('#category_select option[value="' + cat + '"]').length === 0) {
                     let newOption = new Option(cat, cat, true, true);
@@ -467,6 +496,50 @@
                 } else {
                     $('#brand_select').val(brand).trigger('change');
                 }
+            }
+
+            if (sku && $('input[name="sku"]').length && !$('input[name="sku"]').val()) {
+                $('input[name="sku"]').val(sku);
+            }
+
+            if (price && $('input[name="price"]').length) {
+                let currentPrice = parseFloat($('input[name="price"]').val()) || 0;
+                if (currentPrice === 0) {
+                    $('input[name="price"]').val(price);
+                }
+            }
+        }
+
+        // Quick select from dropdown menu
+        $('.quick-select-gudang-item').on('click', function(e) {
+            e.preventDefault();
+            let itemName = $(this).data('item-name');
+            let cat = $(this).data('category');
+            let subCat = $(this).data('sub-category');
+            let brand = $(this).data('brand');
+            let sku = $(this).data('sku');
+            let price = $(this).data('price');
+
+            $('#product_name_input').val(itemName);
+            applyGudangData(cat, subCat, brand, sku, price);
+        });
+
+        // Trigger on typing or choosing from datalist
+        $('#product_name_input').on('input change', function() {
+            let val = $(this).val().trim();
+            if (!val) return;
+
+            let matchedOption = $('#gudang_products_list option').filter(function() {
+                return $(this).val() === val;
+            });
+
+            if (matchedOption.length > 0) {
+                let cat = matchedOption.data('category');
+                let subCat = matchedOption.data('sub-category');
+                let brand = matchedOption.data('brand');
+                let sku = matchedOption.data('sku');
+                let price = matchedOption.data('price');
+                applyGudangData(cat, subCat, brand, sku, price);
             }
         });
 

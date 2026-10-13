@@ -133,3 +133,39 @@ test('super admin can access unified master product list', function () {
         ->assertOk()
         ->assertSee('Master Produk (Katalog Terpadu)');
 });
+
+test('super admin can manage master variants', function () {
+    $superAdmin = User::factory()->create([
+        'role' => User::ROLE_SUPER_ADMIN,
+    ]);
+
+    // Index
+    $this->actingAs($superAdmin)
+        ->get(route('variants.index'))
+        ->assertOk();
+
+    // Create
+    $response = $this->actingAs($superAdmin)
+        ->post(route('variants.store'), [
+            'name' => '21W',
+        ]);
+    $response->assertRedirect(route('variants.index'));
+    $this->assertDatabaseHas('variants', ['name' => '21W']);
+
+    $variant = \App\Models\Variant::where('name', '21W')->first();
+
+    // Update
+    $response = $this->actingAs($superAdmin)
+        ->put(route('variants.update', $variant->id), [
+            'name' => '21W Warm White',
+        ]);
+    $response->assertRedirect(route('variants.index'));
+    $this->assertDatabaseHas('variants', ['name' => '21W Warm White']);
+
+    // Delete
+    $response = $this->actingAs($superAdmin)
+        ->delete(route('variants.destroy', $variant->id));
+    $response->assertRedirect(route('variants.index'));
+    $this->assertDatabaseMissing('variants', ['id' => $variant->id]);
+});
+

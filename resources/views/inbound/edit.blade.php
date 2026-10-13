@@ -37,6 +37,22 @@
                     </div>
                 @endif
 
+                @if($inbound->status == 'pending' || $inbound->status == 'partial')
+                    <div class="alert alert-warning border border-warning d-flex flex-wrap align-items-center justify-content-between p-3 mb-4 rounded shadow-sm">
+                        <div class="me-3 mb-2 mb-md-0">
+                            <h6 class="alert-heading mb-1 text-dark fw-bold">
+                                <i class="feather icon-alert-circle me-1 text-warning"></i> Barang Belum Masuk ke Rak Penyimpanan
+                            </h6>
+                            <div class="text-muted small">
+                                Form ini untuk mengedit data dokumen / faktur. Untuk <strong>menempatkan/memasukkan barang ke dalam rak gudang</strong>, klik tombol di samping:
+                            </div>
+                        </div>
+                        <a href="{{ route('gudang-product.create', ['inbound_id' => $inbound->id]) }}" class="btn btn-primary fw-bold text-nowrap shadow-sm">
+                            <i class="feather icon-box me-1"></i> Proses Masuk ke Rak &rarr;
+                        </a>
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('inbound.update', $inbound->id) }}">
                     @csrf
                     @method('PUT')
@@ -134,10 +150,16 @@
                         </div>
                     </div>
 
-                    <div class="d-flex gap-2 mt-4">
+                    <div class="d-flex flex-wrap gap-2 mt-4">
                         <button type="submit" class="btn btn-primary">
                             Update Barang Masuk
                         </button>
+
+                        @if($inbound->status == 'pending' || $inbound->status == 'partial')
+                            <a href="{{ route('gudang-product.create', ['inbound_id' => $inbound->id]) }}" class="btn btn-success fw-semibold">
+                                <i class="feather icon-box me-1"></i> Masukkan ke Rak Gudang
+                            </a>
+                        @endif
 
                         <a href="{{ route('inbound.index') }}" class="btn btn-outline-secondary">
                             Batal

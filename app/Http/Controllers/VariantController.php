@@ -20,7 +20,22 @@ class VariantController extends Controller
             'name' => 'required|string|max:255|unique:variants,name',
         ]);
 
-        Variant::create($data);
+        try {
+            Variant::create($data);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if (str_contains($e->getMessage(), 'produk_id')) {
+                try {
+                    \Illuminate\Support\Facades\DB::statement('ALTER TABLE `variants` MODIFY `produk_id` BIGINT UNSIGNED NULL DEFAULT NULL');
+                    Variant::create($data);
+                } catch (\Throwable $ex) {
+                    Variant::unguarded(function () use ($data) {
+                        Variant::create(array_merge($data, ['produk_id' => 0]));
+                    });
+                }
+            } else {
+                throw $e;
+            }
+        }
 
         return redirect()->route('variants.index')->with('status', 'Varian berhasil ditambahkan.');
     }

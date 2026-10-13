@@ -225,10 +225,10 @@
                                                 <i class="feather icon-download f-18"></i>
                                         </a>
                                         @if($inbound->status == 'pending' || $inbound->status == 'partial')
-                                           <a href="{{ route('gudang-product.create', ['inbound_id' => $inbound->id]) }}"
-                                                class="text-primary me-2"
-                                                title="Process ke Rak">
-                                                    <i class="feather icon-play-circle f-18"></i>
+                                            <a href="{{ route('gudang-product.create', ['inbound_id' => $inbound->id]) }}"
+                                                class="btn btn-sm btn-primary py-0 px-2 me-1 text-white shadow-sm"
+                                                title="Tempatkan barang ke rak gudang">
+                                                    <i class="feather icon-box me-1"></i> Masuk Rak
                                             </a>
                                             <a href="{{ route('inbound.edit', $inbound->id) }}"
                                             class="text-success me-2"
