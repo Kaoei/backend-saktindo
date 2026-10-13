@@ -83,6 +83,12 @@ class GudangProductController extends Controller
         $subCategories = SubCategory::orderBy('name')->get();
         $supplierProducts = SupplierProduct::orderBy('item_name')->get(['id', 'sku', 'item_name', 'brand', 'category', 'sub_category', 'last_purchase_price']);
 
+        $partialInbounds = InBound::with(['supplierProduct', 'supplierPo'])
+            ->where('status', 'partial')
+            ->latest()
+            ->get();
+        $pendingInboundsCount = InBound::where('status', 'pending')->count();
+
         return view('gudang_product.index', compact(
             'products',
             'totalProduk',
@@ -97,7 +103,9 @@ class GudangProductController extends Controller
             'brands',
             'categories',
             'subCategories',
-            'supplierProducts'
+            'supplierProducts',
+            'partialInbounds',
+            'pendingInboundsCount'
         ));
     }
 

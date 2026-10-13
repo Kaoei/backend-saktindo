@@ -201,11 +201,39 @@
                     <a href="{{ route('gudang-product.create') }}" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center" style="width: auto !important; flex: none !important;">
                         <i class="feather icon-download me-1"></i>
                         Dari Inbound
+                        @if(isset($partialInbounds) && $partialInbounds->count() > 0)
+                            <span class="badge bg-warning text-dark ms-1" title="{{ $partialInbounds->count() }} barang baru masuk sebagian">{{ $partialInbounds->count() }} Partial</span>
+                        @endif
                     </a>
                 </div>
             </div>
 
             <div class="card-body">
+
+                @if(isset($partialInbounds) && $partialInbounds->count() > 0)
+                    <div class="alert alert-warning border border-warning d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4 shadow-sm" role="alert">
+                        <div>
+                            <div class="fw-bold text-dark">
+                                <i class="feather icon-alert-circle me-1 text-warning"></i>
+                                Terdapat {{ $partialInbounds->count() }} Dokumen Barang Masuk yang Baru Masuk Setengah / Sebagian (Status: Partial):
+                            </div>
+                            <div class="small text-muted mt-1">
+                                @foreach($partialInbounds->take(4) as $pi)
+                                    @php $sisa = max(0, (int)$pi->qty_received - (int)$pi->qty_allocated); @endphp
+                                    <a href="{{ route('gudang-product.create', ['inbound_id' => $pi->id]) }}" class="badge bg-white text-dark border me-1 text-decoration-none" title="Klik untuk masukkan sisa ke rak">
+                                        {{ $pi->supplierProduct->item_name ?? '-' }} (Sisa: <b>{{ $sisa }}</b> pcs) <i class="feather icon-arrow-right ms-1 text-primary"></i>
+                                    </a>
+                                @endforeach
+                                @if($partialInbounds->count() > 4)
+                                    <span class="text-muted small">+{{ $partialInbounds->count() - 4 }} lainnya</span>
+                                @endif
+                            </div>
+                        </div>
+                        <a href="{{ route('gudang-product.create') }}" class="btn btn-warning btn-sm text-dark fw-bold shadow-sm">
+                            <i class="feather icon-plus-circle me-1"></i> Masukan Sisa ke Rak
+                        </a>
+                    </div>
+                @endif
 
                 @if (session('status'))
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -302,8 +330,28 @@
                                         <span class="badge bg-success">
                                             {{ ucfirst($product->status) }}
                                         </span>
+                                        @php
+                                            $partialInboundItem = $product->supplierProduct?->inbounds?->firstWhere('status', 'partial');
+                                            $remainingInboundQty = $partialInboundItem ? max(0, (int)$partialInboundItem->qty_received - (int)$partialInboundItem->qty_allocated) : 0;
+                                        @endphp
+                                        @if($partialInboundItem && $remainingInboundQty > 0)
+                                            <div class="mt-1">
+                                                <a href="{{ route('gudang-product.create', ['inbound_id' => $partialInboundItem->id]) }}" 
+                                                   class="badge bg-warning text-dark border border-warning text-decoration-none"
+                                                   title="Ada sisa {{ $remainingInboundQty }} pcs yang belum dialokasikan ke rak. Klik untuk alokasikan.">
+                                                    <i class="feather icon-clock me-1"></i>Sisa {{ $remainingInboundQty }} pcs
+                                                </a>
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="text-end text-nowrap">
+                                        @if($partialInboundItem && $remainingInboundQty > 0)
+                                            <a href="{{ route('gudang-product.create', ['inbound_id' => $partialInboundItem->id]) }}"
+                                               class="btn btn-sm btn-warning py-0 px-2 me-2 text-dark shadow-sm"
+                                               title="Masukkan sisa {{ $remainingInboundQty }} pcs ke rak">
+                                                <i class="feather icon-box me-1"></i>+ Sisa
+                                            </a>
+                                        @endif
                                         <button type="button"
                                                 class="btn p-0 border-0 bg-transparent text-primary me-2 btn-split-rack"
                                                 data-id="{{ $product->id }}"
