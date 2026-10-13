@@ -215,7 +215,7 @@
                                         </a>
                                     </li>
                                     <li class="pc-item">
-                                        <a href="{{ route('suppliers.index') }}" class="pc-link">
+                                        <a href="{{ route('suppliers.vendors') }}" class="pc-link">
                                             <span class="pc-micon"><i class="material-icons-two-tone">business</i></span>
                                             <span class="pc-mtext">Data Vendor</span>
                                         </a>

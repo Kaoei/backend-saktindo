@@ -498,6 +498,55 @@ class SystemFeatureHealthCheckTest extends TestCase
         $invoice->refresh();
         $this->assertEquals(0, $invoice->outstanding_amount);
         $this->assertEquals('paid', $invoice->status);
+
+        // 7. Create Product with custom brand-new name (Free text input without select restriction)
+        $customProductResponse = $this->actingAs($this->admin)->post(
+            route('products.store'),
+            [
+                'product_name' => 'Saklar AvatarOn Custom QC Test',
+                'price' => 125000,
+                'unit' => 'pcs',
+                'brand' => 'SCHNEIDER QC',
+                'category' => 'SWITCH QC',
+            ]
+        );
+        $customProductResponse->assertSessionHasNoErrors();
+        $customProductResponse->assertRedirect(route('products.index'));
+        $this->assertDatabaseHas('supplier_products', [
+            'item_name' => 'Saklar AvatarOn Custom QC Test',
+            'brand' => 'SCHNEIDER QC',
+        ]);
+
+        // 8. Inbound update with direct rack assignment
+        $qcSupplier = Supplier::firstOrCreate(['name' => 'Supplier QC Test'], ['status' => 'active']);
+        $qcSupplierProduct = SupplierProduct::firstOrCreate(
+            ['sku' => 'SKU-QC-RACK-01'],
+            ['supplier_id' => $qcSupplier->id, 'item_name' => 'Barang QC Rack', 'status' => 'active']
+        );
+        $inboundToRack = InBound::create([
+            'id' => 'INB-QC-RACK-01',
+            'supplier_id' => $qcSupplier->id,
+            'supplier_product_id' => $qcSupplierProduct->id,
+            'qty_received' => 20,
+            'received_date' => now()->toDateString(),
+            'status' => 'pending',
+        ]);
+        $testRak = Rak::firstOrCreate(['rak_kode' => 'RK-QC-01'], ['location' => 'Lantai 1', 'gudang' => 'js']);
+
+        $inboundUpdateResponse = $this->actingAs($this->admin)->put(
+            route('inbound.update', $inboundToRack),
+            [
+                'supplier_id' => $qcSupplier->id,
+                'supplier_product_id' => $qcSupplierProduct->id,
+                'qty_received' => 20,
+                'received_date' => now()->toDateString(),
+                'direct_rack_id' => $testRak->rak_kode,
+            ]
+        );
+        $inboundUpdateResponse->assertSessionHasNoErrors();
+        $inboundUpdateResponse->assertRedirect(route('inbound.index'));
+        $inboundToRack->refresh();
+        $this->assertEquals('stored', $inboundToRack->status);
     }
 }
 

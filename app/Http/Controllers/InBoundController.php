@@ -168,7 +168,9 @@ class InBoundController extends Controller
             ->orWhere('id', $inbound->supplier_po_id)
             ->get();
 
-        return view('inbound.edit', compact('inbound', 'suppliers', 'supplierProducts', 'supplierPos'));
+        $racks = Rak::orderBy('rak_kode')->get();
+
+        return view('inbound.edit', compact('inbound', 'suppliers', 'supplierProducts', 'supplierPos', 'racks'));
     }
 
     public function update(Request $request, InBound $inbound)
@@ -183,6 +185,7 @@ class InBoundController extends Controller
             'supplier_po_id' => 'nullable|exists:supplier_pos,id',
             'invoice_number' => 'nullable|string|max:255',
             'received_date' => 'required|date',
+            'direct_rack_id' => 'nullable|exists:raks,rak_kode',
             'notes' => 'nullable|string',
         ]);
 
@@ -204,6 +207,10 @@ class InBoundController extends Controller
             ]);
 
             StockSyncService::handleInboundQtyUpdate($inbound, $oldQty, $newQty);
+
+            if (!empty($request->direct_rack_id)) {
+                StockSyncService::storeInboundToRack($inbound, $request->direct_rack_id);
+            }
         });
 
         return redirect()

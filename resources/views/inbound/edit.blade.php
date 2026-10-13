@@ -148,6 +148,23 @@
                                    required>
                             @error('qty_received') <div class="invalid-feedback">{{ $message }}</div> @enderror
                         </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold text-primary">
+                                <i class="feather icon-layers me-1"></i> Simpan Langsung ke Rak (Opsional)
+                            </label>
+                            <select name="direct_rack_id" class="form-select border-primary bg-white">
+                                <option value="">-- Pilih Rak Penyimpanan (Langsung Masuk Rak) --</option>
+                                @if(isset($racks))
+                                    @foreach($racks as $rack)
+                                        <option value="{{ $rack->rak_kode }}" {{ old('direct_rack_id') == $rack->rak_kode ? 'selected' : '' }}>
+                                            {{ $rack->rak_kode }} - {{ $rack->location }} (Gudang {{ strtoupper($rack->gudang ?? 'JS') }})
+                                        </option>
+                                    @endforeach
+                                @endif
+                            </select>
+                            <small class="text-muted">Pilih rak di sini jika ingin barang ini langsung tersimpan ke rak gudang saat diupdate.</small>
+                        </div>
                     </div>
 
                     <div class="d-flex flex-wrap gap-2 mt-4">
