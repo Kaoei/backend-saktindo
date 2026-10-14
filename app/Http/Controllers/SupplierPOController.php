@@ -141,6 +141,13 @@ class SupplierPOController extends Controller
 
     public function update(Request $request, SupplierPO $supplierPo): RedirectResponse
     {
+        if ($supplierPo->status === 'received' && $request->filled('status') && $request->status === 'pending') {
+            return back()->with('error', 'Purchase Order yang sudah Received (Approved) tidak dapat dikirim kembali ke status Pending.');
+        }
+        if ($supplierPo->status === 'cancelled') {
+            return back()->with('error', 'Purchase Order yang sudah dibatalkan tidak dapat diubah.');
+        }
+
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'order_date' => 'required|date',

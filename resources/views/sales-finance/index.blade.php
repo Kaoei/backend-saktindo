@@ -870,7 +870,7 @@
                                     </a>
 
 
-                                    @if(auth()->user()?->hasPermission('sales_finance.edit'))
+                                    @if(auth()->user()?->hasPermission('sales_finance.edit') && !in_array($order->order_status, ['invoiced', 'completed']) && empty($order->invoice_id))
 
                                         <a
                                             href="{{ route('sales-finance.edit', $order) }}"

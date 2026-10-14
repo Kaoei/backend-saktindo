@@ -49,7 +49,7 @@
                     <small class="text-muted">{{ $order->customer_name }} - PI/PO {{ $order->customer_po_number }}</small>
                 </div>
                 <div class="d-flex gap-2">
-                    @if(auth()->user()?->hasPermission('sales_finance.edit'))
+                    @if(auth()->user()?->hasPermission('sales_finance.edit') && !in_array($order->order_status, ['invoiced', 'completed']) && empty($order->invoice_id))
                         <a href="{{ route('sales-finance.edit', $order) }}" class="btn btn-outline-primary btn-sm">Edit</a>
                     @endif
                     @if(auth()->user()?->hasPermission('sales_finance.delete') && $order->order_status !== 'cancelled')
@@ -365,7 +365,7 @@
     </div>
 
     <div class="col-lg-4">
-        @if(auth()->user()?->hasPermission('sales_finance.edit'))
+        @if(auth()->user()?->hasPermission('sales_finance.edit') && !in_array($order->order_status, ['invoiced', 'partial_delivery', 'delivered', 'completed']) && !$invoice)
             <form method="POST" action="{{ route('sales-finance.stock-check', $order) }}" class="card">
                 @csrf
                 <div class="card-header"><h5 class="mb-0">Pengecekan Stok</h5></div>

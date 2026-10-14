@@ -152,4 +152,107 @@ class CustomerAndVariationBugFixesTest extends TestCase
             'name' => 'Warna Hitam'
         ]);
     }
+
+    public function test_approved_or_invoiced_sales_order_cannot_be_rechecked_or_edited(): void
+    {
+        $this->authenticateSuperAdmin();
+
+        $so = \App\Models\SalesOrder::create([
+            'id' => 'SO-20261014-0099',
+            'customer_name' => 'PT Approved Customer',
+            'customer_po_number' => 'PO-CUST-APP-01',
+            'order_date' => now(),
+            'sales_type' => 'js',
+            'order_status' => 'invoiced',
+            'stock_status' => 'available',
+            'subtotal' => 100000,
+            'grand_total' => 100000,
+        ]);
+
+        // Trying to re-check stock should be rejected
+        $response = $this->post(route('sales-finance.stock-check', $so));
+        $response->assertSessionHas('error');
+        $so->refresh();
+        $this->assertEquals('invoiced', $so->order_status);
+
+        $supplier = \App\Models\Supplier::create([
+            'id' => 'SUP-TEST-SO',
+            'name' => 'Supplier SO Test',
+            'phone' => '081111',
+            'email' => 'supso@example.com',
+            'address' => 'Jakarta',
+            'payment_terms' => '30_days',
+            'status' => 'active',
+        ]);
+
+        $sp = \App\Models\SupplierProduct::create([
+            'supplier_id' => $supplier->id,
+            'item_name' => 'Produk A',
+            'sku' => 'SKU-A',
+            'unit' => 'pcs',
+            'last_purchase_price' => 100000,
+            'status' => 'active',
+        ]);
+
+        // Trying to update order status back to draft or stock_check should be rejected
+        $updateResponse = $this->put(route('sales-finance.update', $so), [
+            'customer_name' => 'PT Approved Customer',
+            'customer_po_number' => 'PO-CUST-APP-01',
+            'sales_type' => 'js',
+            'order_status' => 'draft',
+            'order_date' => now()->toDateString(),
+            'items' => [
+                [
+                    'product_code' => $sp->id,
+                    'product_name' => 'Produk A',
+                    'quantity' => 1,
+                    'unit' => 'pcs',
+                    'unit_price' => 100000,
+                ]
+            ]
+        ]);
+        $updateResponse->assertSessionHas('error');
+        $so->refresh();
+        $this->assertEquals('invoiced', $so->order_status);
+    }
+
+    public function test_received_supplier_po_cannot_be_reverted_to_pending(): void
+    {
+        $this->authenticateSuperAdmin();
+
+        $supplier = \App\Models\Supplier::create([
+            'id' => 'SUP-TEST-001',
+            'name' => 'PT Supplier Utama',
+            'phone' => '0812345678',
+            'email' => 'sup@example.com',
+            'address' => 'Jakarta',
+            'payment_terms' => '30_days',
+            'status' => 'active',
+        ]);
+
+        $po = \App\Models\SupplierPO::create([
+            'id' => 'SPO-000099',
+            'supplier_id' => $supplier->id,
+            'po_number' => 'P-26/10/0099',
+            'order_date' => now(),
+            'subtotal' => 50000,
+            'total_amount' => 50000,
+            'status' => 'received',
+        ]);
+
+        // Trying to submit update with pending status should be rejected
+        $updateResponse = $this->put(route('supplier-po.update', $po->id), [
+            'supplier_id' => $supplier->id,
+            'order_date' => now()->toDateString(),
+            'status' => 'pending',
+            'items' => [
+                ['product_id' => 'NON-EXISTENT', 'qty' => 1, 'price' => 50000]
+            ]
+        ]);
+        $updateResponse->assertSessionHas('error');
+
+        $po->refresh();
+        $this->assertEquals('received', $po->status);
+    }
 }
+

@@ -158,9 +158,13 @@
                     <div class="mb-3">
                         <label class="form-label fw-medium text-dark">Status PO <span class="text-danger">*</span></label>
                         <select name="status" class="form-select">
-                            <option value="pending" {{ old('status', $supplierPo->status) === 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="received" {{ old('status', $supplierPo->status) === 'received' ? 'selected' : '' }}>Received</option>
-                            <option value="cancelled" {{ old('status', $supplierPo->status) === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                            @if($supplierPo->status === 'received')
+                                <option value="received" selected>Received</option>
+                                <option value="cancelled" {{ old('status', $supplierPo->status) === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                            @else
+                                <option value="pending" {{ old('status', $supplierPo->status) === 'pending' ? 'selected' : '' }}>Pending</option>
+                                <option value="cancelled" {{ old('status', $supplierPo->status) === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                            @endif
                         </select>
                     </div>
 

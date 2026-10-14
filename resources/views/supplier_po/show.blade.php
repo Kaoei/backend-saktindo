@@ -11,7 +11,7 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
                 <h5 class="card-title mb-0 fw-semibold">Informasi PO</h5>
-                @if($supplierPo->status !== 'cancelled')
+                @if($supplierPo->status === 'pending')
                     <a href="{{ route('supplier-po.edit', $supplierPo->id) }}" class="btn btn-sm btn-outline-warning">
                         <i class="feather icon-edit me-1"></i> Edit PO
                     </a>

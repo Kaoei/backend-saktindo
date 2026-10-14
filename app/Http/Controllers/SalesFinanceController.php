@@ -271,6 +271,10 @@ class SalesFinanceController extends Controller
             $salesOrder
         );
 
+        if (in_array($salesOrder->order_status, ['invoiced', 'completed'], true) && in_array($data['order_status'] ?? '', ['draft', 'stock_check', 'pending_stock', 'ready_to_invoice'], true)) {
+            return back()->with('error', 'Sales Order yang sudah disetujui/di-invoice tidak dapat dikembalikan ke status antrean persetujuan atau pengecekan stok.');
+        }
+
         $customerId = $data['customer_id'] ?? null;
         $customerName = $data['customer_name'] ?? null;
         if ($customerId && empty($customerName)) {
@@ -357,6 +361,10 @@ class SalesFinanceController extends Controller
         Request $request,
         SalesOrder $salesOrder
     ): RedirectResponse {
+        if (in_array($salesOrder->order_status, ['invoiced', 'partial_delivery', 'delivered', 'completed'], true) || !empty($salesOrder->invoice_id)) {
+            return back()->with('error', 'Sales Order sudah diproses/disetujui (Approved) dan tidak dapat dikirim kembali untuk pengecekan stok.');
+        }
+
         DB::transaction(function () use ($salesOrder) {
 
             $salesOrder->load('items');

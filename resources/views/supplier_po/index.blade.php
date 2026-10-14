@@ -69,7 +69,7 @@
                                     </a>
 
                                     {{-- Edit --}}
-                                    @if($po->status !== 'cancelled')
+                                    @if($po->status === 'pending')
                                         <a href="{{ route('supplier-po.edit', $po->id) }}"
                                         class="btn btn-sm btn-outline-warning"
                                         title="Edit Purchase Order">
