@@ -13,6 +13,12 @@ class CustomerAndVariationBugFixesTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+    }
+
     protected function authenticateSuperAdmin(): User
     {
         $user = User::firstOrCreate(
