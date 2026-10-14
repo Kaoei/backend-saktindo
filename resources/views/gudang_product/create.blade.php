@@ -209,7 +209,7 @@ $(document).ready(function() {
     function buildRackOptions(selectedGudang = '', selectedRack = '') {
         let html = '<option value="">-- Pilih Rak --</option>';
         racksData.forEach(r => {
-            const gudangLabel = r.gudang ? r.gudang.toUpperCase() : '';
+            const gudangLabel = r.gudang ? r.gudang.toUpperCase() : (r.location && ['JS', 'SJB', 'RK'].includes(r.location.toUpperCase()) ? r.location.toUpperCase() : '');
             const isSelected = (selectedRack && String(r.rak_kode) === String(selectedRack)) ? 'selected' : '';
             const locationText = r.location ? ` - ${r.location}` : '';
             const gudangBadge = gudangLabel ? ` [${gudangLabel}]` : '';
