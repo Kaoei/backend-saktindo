@@ -12,10 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('supplier_pos', function (Blueprint $table) {
-            $table->decimal('subtotal', 15, 2)->default(0)->after('order_date');
-            $table->decimal('additional_discount', 15, 2)->default(0)->after('subtotal');
-            $table->string('tax_type', 20)->default('non_pajak')->after('additional_discount');
-            $table->decimal('tax_amount', 15, 2)->default(0)->after('tax_type');
+            if (!Schema::hasColumn('supplier_pos', 'subtotal')) {
+                $table->decimal('subtotal', 15, 2)->default(0)->after('order_date');
+            }
+            if (!Schema::hasColumn('supplier_pos', 'additional_discount')) {
+                $table->decimal('additional_discount', 15, 2)->default(0)->after('subtotal');
+            }
+            if (!Schema::hasColumn('supplier_pos', 'tax_type')) {
+                $table->string('tax_type', 20)->default('non_pajak')->after('additional_discount');
+            }
+            if (!Schema::hasColumn('supplier_pos', 'tax_amount')) {
+                $table->decimal('tax_amount', 15, 2)->default(0)->after('tax_type');
+            }
         });
     }
 
