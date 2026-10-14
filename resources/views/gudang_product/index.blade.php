@@ -845,7 +845,7 @@ $(function () {
 
         $tr.find('.manual-rack-select').on('change', function() {
             const rackGudang = $(this).find('option:selected').attr('data-gudang');
-            if (rackGudang && (rackGudang === 'JS' || rackGudang === 'SJB')) {
+            if (rackGudang && (rackGudang === 'JS' || rackGudang === 'SJB' || rackGudang === 'RK')) {
                 $tr.find('.manual-gudang-select').val(rackGudang);
             }
         });
