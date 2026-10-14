@@ -188,6 +188,18 @@ class ProductController extends Controller
                 }
             }
 
+            // Register submitted variants to master variants table if any
+            if ($request->has('variations') && is_array($request->variations)) {
+                foreach ($request->variations as $var) {
+                    $vVal = trim($var['variation_value'] ?? '');
+                    if ($vVal !== '' && strtolower($vVal) !== 'default') {
+                        try {
+                            \App\Models\Variant::firstOrCreate(['name' => $vVal]);
+                        } catch (\Throwable $e) {}
+                    }
+                }
+            }
+
             StockSyncService::syncProductCatalog($product);
         });
 

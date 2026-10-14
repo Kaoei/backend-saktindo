@@ -552,6 +552,8 @@
             });
         }
 
+        let varIndex = $('#variations-container tr').length || 1;
+
         function appendVariationRow(variantValue = '') {
             let html = `
                 <tr>
@@ -579,7 +581,8 @@
             varIndex++;
         }
 
-        $('#add-variation-btn').on('click', function() {
+        $('#add-variation-btn').on('click', function(e) {
+            e.preventDefault();
             appendVariationRow('');
         });
 
