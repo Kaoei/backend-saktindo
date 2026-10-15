@@ -1135,7 +1135,7 @@
 
         // Trigger on load if customer is preselected
         if ($('#customer_select').find('option:selected').data('blocked') == 1) {
-            $('#customer-select').trigger('change');
+            $('#customer_select').trigger('change');
         }
 
         // Initialize summary on page load

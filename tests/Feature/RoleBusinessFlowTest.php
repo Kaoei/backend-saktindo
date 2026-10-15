@@ -24,11 +24,8 @@ class RoleBusinessFlowTest extends TestCase
     {
         parent::setUp();
 
-        // Create standard roles with permissions
-        Role::create(['slug' => User::ROLE_SUPER_ADMIN, 'name' => 'Super Admin', 'permissions' => []]);
-        Role::create(['slug' => User::ROLE_GUDANG, 'name' => 'Gudang', 'permissions' => ['suppliers.view']]);
-        Role::create(['slug' => User::ROLE_SALES, 'name' => 'Sales', 'permissions' => ['sales_finance.view', 'sales_finance.create', 'sales_finance.edit']]);
-        Role::create(['slug' => User::ROLE_FINANCE, 'name' => 'Finance', 'permissions' => ['sales_finance.view', 'suppliers.view']]);
+        // Use standard RoleSeeder
+        (new \Database\Seeders\RoleSeeder())->run();
     }
 
     public function test_gudang_role_complete_inbound_to_outbound_flow(): void
@@ -211,6 +208,201 @@ class RoleBusinessFlowTest extends TestCase
                 'reference_number' => 'TRF-BCA-888',
                 'notes' => 'Lunas via Transfer BCA',
             ])->assertRedirect();
+
+        $invoice->refresh();
+        $this->assertEquals('paid', $invoice->status);
+        $this->assertEquals(0, $invoice->outstanding_amount);
+    }
+
+    public function test_end_to_end_cross_role_workflow_with_approvals_and_tasks(): void
+    {
+        // 1. Create actors
+        $superAdmin = User::factory()->create(['role' => User::ROLE_SUPER_ADMIN]);
+        $gudangUser = User::factory()->create(['role' => User::ROLE_GUDANG]);
+        $salesUser = User::factory()->create(['role' => User::ROLE_SALES]);
+        $financeUser = User::factory()->create(['role' => User::ROLE_FINANCE]);
+
+        // 2. Setup Master Data
+        $supplier = Supplier::create(['name' => 'Supplier Multi Role', 'status' => 'active']);
+        $product = SupplierProduct::create([
+            'supplier_id' => $supplier->id,
+            'sku' => 'SKU-E2E-001',
+            'item_name' => 'Produk Multi Role Flow',
+            'last_purchase_price' => 200000,
+            'status' => 'active',
+        ]);
+        $rak = Rak::create(['rak_kode' => 'RAK-FLOW-01', 'location' => 'JS', 'gudang' => 'js']);
+        $customer = Master_customer::create([
+            'id' => 'CUST-E2E-01',
+            'nama_customer' => 'Customer Multi Role Flow',
+            'nama_pic' => 'Budi Santoso',
+            'nomor_hp' => '08123456789',
+            'email' => 'e2e@example.com',
+            'alamat' => 'Jl. Flow No. 1',
+            'kota' => 'Jakarta',
+        ]);
+
+        // 3. Purchasing Workflow: SuperAdmin creates Supplier PO
+        $poResponse = $this->actingAs($superAdmin)->post(route('supplier-po.store'), [
+            'supplier_id' => $supplier->id,
+            'order_date' => now()->toDateString(),
+            'reference_number' => 'PO-REF-E2E',
+            'notes' => 'PO Pengadaan E2E',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'qty' => 100,
+                    'price' => 200000,
+                    'discount_1' => 0,
+                ],
+            ],
+        ]);
+        $poResponse->assertRedirect();
+        $supplierPo = \App\Models\SupplierPO::latest()->first();
+        $this->assertNotNull($supplierPo);
+        $this->assertEquals('pending', $supplierPo->status);
+
+        // 4. Inbound Workflow: Gudang user processes PO into Inbound & stores to Rak
+        $this->actingAs($gudangUser)
+            ->get(route('inbound.index'))
+            ->assertStatus(200);
+
+        $inboundResponse = $this->actingAs($gudangUser)->post(route('inbound.store'), [
+            'supplier_id' => $supplier->id,
+            'supplier_po_id' => $supplierPo->id,
+            'received_date' => now()->toDateString(),
+            'items' => [
+                [
+                    'supplier_product_id' => $product->id,
+                    'qty_received' => 100,
+                    'rack_id' => $rak->rak_kode,
+                    'hpp' => 200000,
+                ],
+            ],
+        ]);
+        $inboundResponse->assertRedirect(route('inbound.index'));
+
+        $supplierPo->refresh();
+        $this->assertEquals('received', $supplierPo->status);
+
+        $gudangProduct = GudangProduct::where('supplier_product_id', $product->id)
+            ->where('rack_id', $rak->rak_kode)
+            ->first();
+        $this->assertNotNull($gudangProduct);
+        $this->assertEquals(100, $gudangProduct->qty);
+
+        // 5. Sales Workflow: Sales user creates Sales Order & checks stock
+        $soResponse = $this->actingAs($salesUser)->post(route('sales-finance.store'), [
+            'customer_id' => $customer->id,
+            'customer_name' => $customer->nama_customer,
+            'customer_po_number' => 'PO-SO-E2E',
+            'po_date' => now()->toDateString(),
+            'order_date' => now()->toDateString(),
+            'sales_type' => 'js',
+            'order_status' => 'draft',
+            'items' => [
+                [
+                    'product_code' => $product->id,
+                    'product_name' => $product->item_name,
+                    'unit' => 'pcs',
+                    'quantity' => 20,
+                    'unit_price' => 300000,
+                    'rack_id' => $rak->rak_kode,
+                    'discount_1' => 0,
+                    'discount_2' => 0,
+                    'discount_3' => 0,
+                    'discount_4' => 0,
+                ],
+            ],
+        ]);
+        $salesOrder = SalesOrder::latest()->first();
+        $this->assertNotNull($salesOrder);
+        $soResponse->assertRedirect(route('sales-finance.show', $salesOrder));
+
+        // Check stock
+        $this->actingAs($salesUser)
+            ->post(route('sales-finance.stock-check', $salesOrder))
+            ->assertRedirect();
+
+        $salesOrder->refresh();
+        $this->assertEquals('available', $salesOrder->stock_status);
+
+        // Generate Invoice -> creates WarehouseTask
+        $invResponse = $this->actingAs($salesUser)
+            ->post(route('sales-finance.invoice.generate', $salesOrder), [
+                'invoice_date' => now()->toDateString(),
+                'due_date' => now()->addDays(30)->toDateString(),
+                'tax_type' => 'js',
+            ]);
+        $invResponse->assertRedirect(route('sales-finance.show', $salesOrder));
+
+        $salesOrder->refresh();
+        $this->assertEquals('invoiced', $salesOrder->order_status);
+
+        $task = WarehouseTask::where('sales_order_id', $salesOrder->id)->first();
+        $this->assertNotNull($task);
+        $this->assertEquals('waiting', $task->status);
+
+        // 6. Gudang Workflow: Gudang user sees task, changes to process, and executes outbound
+        $this->actingAs($gudangUser)
+            ->get(route('warehouse-task.index'))
+            ->assertStatus(200)
+            ->assertSee($task->id);
+
+        // Process task
+        $this->actingAs($gudangUser)
+            ->patch(route('warehouse-task.process', $task->id))
+            ->assertRedirect();
+
+        $task->refresh();
+        $this->assertEquals('process', $task->status);
+
+        // Access outbound create and submit outbound
+        $this->actingAs($gudangUser)
+            ->get(route('outbound.create', $task->id))
+            ->assertStatus(200);
+
+        $outboundResponse = $this->actingAs($gudangUser)->post(route('outbound.store'), [
+            'warehouse_task_id' => $task->id,
+            'gudang_product_id' => $gudangProduct->id,
+            'qty' => 20,
+            'outbound_date' => now()->toDateString(),
+            'delivery_type' => 'full',
+            'note' => 'Pengiriman barang pesanan E2E',
+        ]);
+        $outboundResponse->assertRedirect(route('outbound.index'));
+
+        // Verify task completed and stock deducted
+        $task->refresh();
+        $this->assertEquals('completed', $task->status);
+
+        $gudangProduct->refresh();
+        $this->assertEquals(80, $gudangProduct->qty);
+
+        $salesOrder->refresh();
+        $this->assertEquals('delivered', $salesOrder->order_status);
+
+        // 7. Finance Workflow: Finance sees invoice, records payment
+        $invoice = Invoice::where('sales_order_id', $salesOrder->id)->first();
+        $this->assertNotNull($invoice);
+
+        $this->actingAs($financeUser)
+            ->get(route('finance.ar'))
+            ->assertStatus(200)
+            ->assertSee($invoice->invoice_number);
+
+        // Record pelunasan payment
+        $payResponse = $this->actingAs($financeUser)->post(route('finance.payment.store', $invoice->id), [
+            'type' => 'ar',
+            'id' => $invoice->id,
+            'payment_date' => now()->toDateString(),
+            'method' => 'transfer_bank',
+            'receiving_account' => 'js',
+            'amount' => $invoice->grand_total,
+            'reference_number' => 'TRF-E2E-SUCCESS',
+            'notes' => 'Pelunasan invoice E2E',
+        ]);
+        $payResponse->assertRedirect();
 
         $invoice->refresh();
         $this->assertEquals('paid', $invoice->status);

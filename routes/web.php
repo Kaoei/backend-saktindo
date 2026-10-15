@@ -205,7 +205,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/products/sync', [App\Http\Controllers\ProductController::class, 'sync'])->name('products.sync');
     Route::resource('/products', App\Http\Controllers\ProductController::class);
 
-    Route::prefix('master-customer')->name('master-customer.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+    Route::prefix('master-customer')->name('master-customer.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_SALES)->group(function () {
         Route::get('/', [masterCustomerController::class, 'index'])->name('index');
         Route::get('/create', [masterCustomerController::class, 'create'])->name('create');
         Route::post('/', [masterCustomerController::class, 'store'])->name('store');
@@ -217,7 +217,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/export', [masterCustomerController::class, 'export'])->name('export');
         Route::get('/tamplate', [masterCustomerController::class, 'tamplate'])->name('tamplate');
     });
-    Route::prefix('rak')->name('rak.')->middleware('role:' . User::ROLE_SUPER_ADMIN)->group(function () {
+    Route::prefix('rak')->name('rak.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
         Route::get('/', [RakController::class, 'index'])->name('index');
         Route::get('/create', [RakController::class, 'create'])->name('create');
         Route::post('/', [RakController::class, 'store'])->name('store');

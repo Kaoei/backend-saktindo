@@ -67,6 +67,14 @@
                                     </a>
                                 </li>
                                 <li class="pc-item">
+                                    <a href="{{ route('warehouse-task.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">assignment</i>
+                                        </span>
+                                        <span class="pc-mtext">Task Gudang (Warehouse Task)</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
                                     <a href="{{ route('rak.index') }}" class="pc-link">
                                         <span class="pc-micon">
                                             <i class="material-icons-two-tone">admin_panel_settings</i>
@@ -78,15 +86,15 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES]))
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES, \App\Models\User::ROLE_GUDANG]))
                          <li class="pc-item">
                                 <a href="{{ route('warehouse-task.index') }}" class="pc-link ">
-                                    <span class="pc-micon"><i class="material-icons-two-tone">computer</i></span>
+                                    <span class="pc-micon"><i class="material-icons-two-tone">assignment</i></span>
                                     <span class="pc-mtext">Warehouse Tasks</span>
                                 </a>
                             </li>
                     @endif
-                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN]))
+                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES]))
                         <li class="pc-item pc-caption">
                             <label>Customer</label>
                         </li>
@@ -114,7 +122,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()?->hasPermission('sales_finance.view'))
+                    @if(auth()->user()?->hasPermission('sales_finance.view') || auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES, \App\Models\User::ROLE_FINANCE]))
                          <li class="pc-item pc-caption">
                              <label>Sales & Finance</label>
                          </li>
