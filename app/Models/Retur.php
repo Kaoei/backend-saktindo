@@ -17,6 +17,7 @@ class Retur extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'sales_order_id',
         'return_date',
         'received_date',

@@ -50,42 +50,50 @@ class OutBoundController extends Controller
             'note' => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($request) {
-            $gudangProduct = GudangProduct::findOrFail($request->gudang_product_id);
+        try {
+            DB::transaction(function () use ($request) {
+                $gudangProduct = GudangProduct::findOrFail($request->gudang_product_id);
 
-            if ($request->qty > $gudangProduct->qty) {
-                throw new \Exception('Qty keluar melebihi stok gudang.');
-            }
+                if ($request->qty > $gudangProduct->qty) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'qty' => "Qty keluar ({$request->qty}) melebihi stok gudang yang tersedia ({$gudangProduct->qty})."
+                    ]);
+                }
 
-            OutBound::create([
-                'id' => OutBound::generateId(),
-                'warehouse_task_id' => $request->warehouse_task_id,
-                'gudang_product_id' => $request->gudang_product_id,
-                'qty' => $request->qty,
-                'outbound_date' => $request->outbound_date,
-                'delivery_type' => $request->delivery_type,
-                'status' => 'completed',
-                'note' => $request->note,
-            ]);
-
-            $gudangProduct->update([
-                'qty' => $gudangProduct->qty - $request->qty,
-            ]);
-
-            WarehouseTask::where('id', $request->warehouse_task_id)
-                ->update([
+                OutBound::create([
+                    'id' => OutBound::generateId(),
+                    'warehouse_task_id' => $request->warehouse_task_id,
+                    'gudang_product_id' => $request->gudang_product_id,
+                    'qty' => $request->qty,
+                    'outbound_date' => $request->outbound_date,
+                    'delivery_type' => $request->delivery_type,
                     'status' => 'completed',
+                    'note' => $request->note,
                 ]);
 
-            $warehouseTask = WarehouseTask::find($request->warehouse_task_id);
-            $warehouseTask?->salesOrder?->update([
-                'order_status' => 'delivered',
-            ]);
-        });
+                $gudangProduct->update([
+                    'qty' => $gudangProduct->qty - $request->qty,
+                ]);
 
-        return redirect()
-            ->route('outbound.index')
-            ->with('success', 'Outbound berhasil dibuat dan stok berhasil dikurangi.');
+                WarehouseTask::where('id', $request->warehouse_task_id)
+                    ->update([
+                        'status' => 'completed',
+                    ]);
+
+                $warehouseTask = WarehouseTask::find($request->warehouse_task_id);
+                $warehouseTask?->salesOrder?->update([
+                    'order_status' => 'delivered',
+                ]);
+            });
+
+            return redirect()
+                ->route('outbound.index')
+                ->with('success', 'Outbound berhasil dibuat dan stok berhasil dikurangi.');
+        } catch (\Illuminate\Validation\ValidationException $ve) {
+            throw $ve;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Gagal membuat Outbound: ' . $e->getMessage());
+        }
     }
 
     public function print(OutBound $outBound)

@@ -16,6 +16,7 @@ class InternalInvoice extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'id',
         'from_store',
         'to_store',
         'invoice_date',
