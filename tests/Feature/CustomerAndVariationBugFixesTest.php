@@ -159,6 +159,33 @@ class CustomerAndVariationBugFixesTest extends TestCase
         ]);
     }
 
+    public function test_product_store_with_new_variation_structure_and_composed_name(): void
+    {
+        $this->authenticateSuperAdmin();
+
+        $response = $this->post(route('products.store'), [
+            'product_name' => 'IPDN 5W 65K IBR',
+            'sku' => 'SKU-IPDN-001',
+            'brand' => 'IPDN Brand',
+            'category' => 'Lampu',
+            'price' => 50000,
+            'variations' => [
+                ['variation_type' => '1', 'variation_value' => '5W'],
+                ['variation_type' => '2', 'variation_value' => '65K'],
+                ['variation_type' => '3', 'variation_value' => 'IBR'],
+            ]
+        ]);
+
+        $response->assertRedirect(route('products.index'));
+
+        $this->assertDatabaseHas('supplier_products', [
+            'item_name' => 'IPDN 5W 65K IBR'
+        ]);
+        $this->assertDatabaseHas('variants', ['name' => '5W']);
+        $this->assertDatabaseHas('variants', ['name' => '65K']);
+        $this->assertDatabaseHas('variants', ['name' => 'IBR']);
+    }
+
     public function test_approved_or_invoiced_sales_order_cannot_be_rechecked_or_edited(): void
     {
         $this->authenticateSuperAdmin();

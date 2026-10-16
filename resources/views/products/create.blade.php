@@ -131,6 +131,11 @@
                                             </ul>
                                         @endif
                                     </div>
+                                    <div class="mt-2 d-flex flex-wrap align-items-center gap-2" id="tab1_name_composition_preview" style="display: none !important;">
+                                        <small class="text-muted"><i class="feather icon-link me-1"></i>Komposisi Nama:</small>
+                                        <span class="badge bg-light text-dark border" id="badge_base_name">Dasar: -</span>
+                                        <span class="badge bg-light-primary text-primary border border-primary border-opacity-25" id="badge_variations_name">+ Variasi: -</span>
+                                    </div>
                                     <datalist id="gudang_products_list">
                                         @if(isset($gudangProducts))
                                             @foreach($gudangProducts as $gProd)
@@ -265,10 +270,41 @@
 
                         <!-- TAB 2: VARIATIONS & PRICING -->
                         <div class="tab-pane fade" id="variation" role="tabpanel" aria-labelledby="variation-tab">
-                            <p class="text-muted small">Configure multiple variants (e.g. colors, sizes, or spec options). Every product must have at least one variation.</p>
-                            
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-1">
+                                        <i class="feather icon-sliders me-1 text-primary"></i> Pengaturan Variasi Produk
+                                    </h6>
+                                    <p class="text-muted small mb-0">Tentukan urutan variasi (Variasi 1, Variasi 2, dst). Nama produk akan otomatis terisi dengan urutan variasi tersebut.</p>
+                                </div>
+                            </div>
+
+                            <!-- Live Preview & Base Name Sync Box -->
+                            <div class="card border border-primary border-opacity-25 bg-light-primary mb-3 shadow-none">
+                                <div class="card-body p-3">
+                                    <div class="row align-items-center g-3">
+                                        <div class="col-md-5">
+                                            <label class="form-label small fw-bold text-dark mb-1">
+                                                <i class="feather icon-tag me-1 text-primary"></i> Nama Dasar Produk (Base Name)
+                                            </label>
+                                            <input type="text" id="base_product_name_input" class="form-control form-control-sm bg-white" placeholder="Misal: IPDN">
+                                            <small class="text-muted" style="font-size: 0.75rem;">Sinkron dua arah dengan Product Name di Tab General Info.</small>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label small fw-bold text-dark mb-1">
+                                                <i class="feather icon-eye me-1 text-primary"></i> Preview Nama Lengkap Produk (Auto-Filled)
+                                            </label>
+                                            <div class="p-2 px-3 rounded bg-white border fw-bold text-primary fs-6 text-truncate" id="preview_full_product_name">
+                                                -
+                                            </div>
+                                            <small class="text-muted" style="font-size: 0.75rem;">Nama ini yang akan otomatis disimpan sebagai nama produk.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             @if(isset($masterVariants) && $masterVariants->count() > 0)
-                                <div class="card bg-light border-0 shadow-sm mb-4">
+                                <div class="card bg-light border-0 shadow-sm mb-3">
                                     <div class="card-body p-3">
                                         <div class="d-flex align-items-center justify-content-between mb-2">
                                             <div class="fw-bold text-dark font-size-sm d-flex align-items-center">
@@ -301,33 +337,32 @@
                                 <table class="table table-bordered align-middle">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Variation Name <span class="text-danger">*</span></th>
-                                            <th>Price (Rp) <span class="text-danger">*</span></th>
-                                            <th>Stock Quantity <span class="text-danger">*</span></th>
-                                            <th>TikTok SKU ID</th>
-                                            <th>Seller SKU</th>
+                                            <th style="width: 220px;">Urutan Variasi</th>
+                                            <th>Nama Variasi (Variation Name) <span class="text-danger">*</span></th>
                                             <th class="text-end" style="width: 80px;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="variations-container">
                                         <tr>
                                             <td>
-                                                <input name="variations[0][variation_value]" type="text" class="form-control" value="Default" list="master-variants-list" placeholder="Pilih/ketik varian">
+                                                <select name="variations[0][variation_type]" class="form-select form-select-sm variation-type-select">
+                                                    <option value="1" selected>Variasi 1</option>
+                                                    <option value="2">Variasi 2</option>
+                                                    <option value="3">Variasi 3</option>
+                                                    <option value="4">Variasi 4</option>
+                                                    <option value="5">Variasi 5</option>
+                                                    <option value="6">Variasi 6</option>
+                                                    <option value="7">Variasi 7</option>
+                                                    <option value="8">Variasi 8</option>
+                                                    <option value="9">Variasi 9</option>
+                                                    <option value="10">Variasi 10</option>
+                                                </select>
                                             </td>
                                             <td>
-                                                <input name="variations[0][price]" type="number" class="form-control" value="0" min="0">
-                                            </td>
-                                            <td>
-                                                <input name="variations[0][quantity]" type="number" class="form-control" value="0" min="0">
-                                            </td>
-                                            <td>
-                                                <input name="variations[0][sku_id]" type="text" class="form-control" placeholder="Auto generated">
-                                            </td>
-                                            <td>
-                                                <input name="variations[0][seller_sku]" type="text" class="form-control" placeholder="Internal code">
+                                                <input name="variations[0][variation_value]" type="text" class="form-control form-control-sm variation-value-input" value="" list="master-variants-list" placeholder="Pilih/ketik varian (misal: 5W, 65K, IBR)">
                                             </td>
                                             <td class="text-end">
-                                                <button type="button" class="btn btn-icon btn-light-danger remove-var-btn"><i class="feather icon-trash-2"></i></button>
+                                                <button type="button" class="btn btn-sm btn-icon btn-light-danger remove-var-btn" title="Hapus variasi"><i class="feather icon-trash-2"></i></button>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -546,6 +581,47 @@
             }
         }
 
+        let isSyncingName = false;
+
+        function getActiveVariants() {
+            let variants = [];
+            $('#variations-container tr').each(function() {
+                let typeNum = parseInt($(this).find('.variation-type-select').val()) || 999;
+                let val = ($(this).find('.variation-value-input').val() || '').trim();
+                if (val !== '' && val.toLowerCase() !== 'default') {
+                    variants.push({ order: typeNum, value: val });
+                }
+            });
+            variants.sort((a, b) => a.order - b.order);
+            return variants;
+        }
+
+        function updateComposedProductName() {
+            if (isSyncingName) return;
+            isSyncingName = true;
+
+            let baseName = ($('#base_product_name_input').val() || '').trim();
+            let variants = getActiveVariants();
+            let variantValues = variants.map(v => v.value);
+
+            let composed = baseName;
+            if (variantValues.length > 0) {
+                let suffix = variantValues.join(' ');
+                composed = baseName ? (baseName + ' ' + suffix) : suffix;
+
+                $('#tab1_name_composition_preview').attr('style', 'display: flex !important;');
+                $('#badge_base_name').text('Dasar: ' + (baseName || '-'));
+                $('#badge_variations_name').text('+ Variasi: ' + suffix);
+            } else {
+                $('#tab1_name_composition_preview').attr('style', 'display: none !important;');
+            }
+
+            $('#product_name_input').val(composed);
+            $('#preview_full_product_name').text(composed || '-');
+
+            isSyncingName = false;
+        }
+
         // Quick select from dropdown menu
         $('.quick-select-gudang-item').on('click', function(e) {
             e.preventDefault();
@@ -556,27 +632,59 @@
             let sku = $(this).data('sku');
             let price = $(this).data('price');
 
-            $('#product_name_input').val(itemName);
+            $('#base_product_name_input').val(itemName);
             applyGudangData(cat, subCat, brand, sku, price);
+            updateComposedProductName();
         });
 
         // Trigger on typing or choosing from datalist
         $('#product_name_input').on('input change', function() {
-            let val = $(this).val().trim();
-            if (!val) return;
+            if (isSyncingName) return;
 
-            let matchedOption = $('#gudang_products_list option').filter(function() {
-                return $(this).val() === val;
-            });
+            let currentInput = $(this).val().trim();
+            let variants = getActiveVariants();
+            let variantValues = variants.map(v => v.value);
 
-            if (matchedOption.length > 0) {
-                let cat = matchedOption.data('category');
-                let subCat = matchedOption.data('sub-category');
-                let brand = matchedOption.data('brand');
-                let sku = matchedOption.data('sku');
-                let price = matchedOption.data('price');
-                applyGudangData(cat, subCat, brand, sku, price);
+            if (variantValues.length > 0) {
+                let suffix = variantValues.join(' ');
+                if (currentInput.endsWith(suffix)) {
+                    let extractedBase = currentInput.substring(0, currentInput.length - suffix.length).trim();
+                    $('#base_product_name_input').val(extractedBase);
+                    $('#preview_full_product_name').text(currentInput);
+                    $('#badge_base_name').text('Dasar: ' + (extractedBase || '-'));
+                } else {
+                    $('#base_product_name_input').val(currentInput);
+                    $('#preview_full_product_name').text(currentInput || '-');
+                    $('#badge_base_name').text('Dasar: ' + (currentInput || '-'));
+                }
+            } else {
+                $('#base_product_name_input').val(currentInput);
+                $('#preview_full_product_name').text(currentInput || '-');
             }
+
+            let val = $(this).val().trim();
+            if (val) {
+                let matchedOption = $('#gudang_products_list option').filter(function() {
+                    return $(this).val() === val;
+                });
+
+                if (matchedOption.length > 0) {
+                    let cat = matchedOption.data('category');
+                    let subCat = matchedOption.data('sub-category');
+                    let brand = matchedOption.data('brand');
+                    let sku = matchedOption.data('sku');
+                    let price = matchedOption.data('price');
+                    applyGudangData(cat, subCat, brand, sku, price);
+                }
+            }
+        });
+
+        $('#base_product_name_input').on('input change', function() {
+            updateComposedProductName();
+        });
+
+        $(document).on('input change', '.variation-value-input, .variation-type-select', function() {
+            updateComposedProductName();
         });
 
         if ($('#quick-master-variant-select').length) {
@@ -590,31 +698,49 @@
 
         let varIndex = $('#variations-container tr').length || 1;
 
-        function appendVariationRow(variantValue = '') {
+        function getNextAvailableVarType() {
+            let usedTypes = [];
+            $('#variations-container .variation-type-select').each(function() {
+                let val = parseInt($(this).val());
+                if (!isNaN(val)) usedTypes.push(val);
+            });
+            for (let i = 1; i <= 20; i++) {
+                if (!usedTypes.includes(i)) {
+                    return i;
+                }
+            }
+            return usedTypes.length + 1;
+        }
+
+        function appendVariationRow(variantValue = '', variationType = null) {
+            if (!variationType) {
+                variationType = getNextAvailableVarType();
+            }
+
+            let optionsHtml = '';
+            for (let i = 1; i <= 10; i++) {
+                let selected = (i === parseInt(variationType)) ? 'selected' : '';
+                optionsHtml += `<option value="${i}" ${selected}>Variasi ${i}</option>`;
+            }
+
             let html = `
                 <tr>
                     <td>
-                        <input name="variations[${varIndex}][variation_value]" type="text" class="form-control" value="${variantValue}" list="master-variants-list" placeholder="Pilih/ketik varian">
+                        <select name="variations[${varIndex}][variation_type]" class="form-select form-select-sm variation-type-select">
+                            ${optionsHtml}
+                        </select>
                     </td>
                     <td>
-                        <input name="variations[${varIndex}][price]" type="number" class="form-control" value="0" min="0">
-                    </td>
-                    <td>
-                        <input name="variations[${varIndex}][quantity]" type="number" class="form-control" value="0" min="0">
-                    </td>
-                    <td>
-                        <input name="variations[${varIndex}][sku_id]" type="text" class="form-control" placeholder="Auto generated">
-                    </td>
-                    <td>
-                        <input name="variations[${varIndex}][seller_sku]" type="text" class="form-control" placeholder="Internal code">
+                        <input name="variations[${varIndex}][variation_value]" type="text" class="form-control form-control-sm variation-value-input" value="${variantValue}" list="master-variants-list" placeholder="Pilih/ketik varian (misal: 5W, 65K, IBR)">
                     </td>
                     <td class="text-end">
-                        <button type="button" class="btn btn-icon btn-light-danger remove-var-btn"><i class="feather icon-trash-2"></i></button>
+                        <button type="button" class="btn btn-sm btn-icon btn-light-danger remove-var-btn" title="Hapus variasi"><i class="feather icon-trash-2"></i></button>
                     </td>
                 </tr>
             `;
             $('#variations-container').append(html);
             varIndex++;
+            updateComposedProductName();
         }
 
         $('#add-variation-btn').on('click', function(e) {
@@ -630,7 +756,8 @@
             }
 
             selectedVariants.forEach(function(variantName) {
-                let firstRowInput = $('#variations-container tr:first-child input[name$="[variation_value]"]');
+                let firstRow = $('#variations-container tr:first-child');
+                let firstRowInput = firstRow.find('.variation-value-input');
                 if ($('#variations-container tr').length === 1 && (firstRowInput.val() === 'Default' || firstRowInput.val() === '')) {
                     firstRowInput.val(variantName);
                 } else {
@@ -639,15 +766,24 @@
             });
 
             $('#quick-master-variant-select').val(null).trigger('change');
+            updateComposedProductName();
         });
 
         $(document).on('click', '.remove-var-btn', function() {
             if ($('#variations-container tr').length > 1) {
                 $(this).closest('tr').remove();
             } else {
-                alert('Product must have at least one variation.');
+                $(this).closest('tr').find('.variation-value-input').val('');
             }
+            updateComposedProductName();
         });
+
+        // Initialize base product name on load
+        let initialProductName = ($('#product_name_input').val() || '').trim();
+        if (initialProductName) {
+            $('#base_product_name_input').val(initialProductName);
+            updateComposedProductName();
+        }
 
         // Switch to the appropriate tab if any input triggers validation error
         document.querySelectorAll('form input, form select, form textarea').forEach(el => {

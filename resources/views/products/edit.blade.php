@@ -552,67 +552,6 @@
             });
         }
 
-        let varIndex = $('#variations-container tr').length || 1;
-
-        function appendVariationRow(variantValue = '') {
-            let html = `
-                <tr>
-                    <td>
-                        <input name="variations[${varIndex}][variation_value]" type="text" class="form-control" value="${variantValue}" list="master-variants-list" placeholder="Pilih/ketik varian">
-                    </td>
-                    <td>
-                        <input name="variations[${varIndex}][price]" type="number" class="form-control" value="0" min="0">
-                    </td>
-                    <td>
-                        <input name="variations[${varIndex}][quantity]" type="number" class="form-control" value="0" min="0">
-                    </td>
-                    <td>
-                        <input name="variations[${varIndex}][sku_id]" type="text" class="form-control" placeholder="Auto generated">
-                    </td>
-                    <td>
-                        <input name="variations[${varIndex}][seller_sku]" type="text" class="form-control" placeholder="Internal code">
-                    </td>
-                    <td class="text-end">
-                        <button type="button" class="btn btn-icon btn-light-danger remove-var-btn"><i class="feather icon-trash-2"></i></button>
-                    </td>
-                </tr>
-            `;
-            $('#variations-container').append(html);
-            varIndex++;
-        }
-
-        $('#add-variation-btn').on('click', function(e) {
-            e.preventDefault();
-            appendVariationRow('');
-        });
-
-        $('#btn-batch-add-variants').on('click', function() {
-            let selectedVariants = $('#quick-master-variant-select').val();
-            if (!selectedVariants || selectedVariants.length === 0) {
-                alert('Silakan pilih setidaknya satu varian master dari dropdown pencarian.');
-                return;
-            }
-
-            selectedVariants.forEach(function(variantName) {
-                let firstRowInput = $('#variations-container tr:first-child input[name$="[variation_value]"]');
-                if ($('#variations-container tr').length === 1 && (firstRowInput.val() === 'Default' || firstRowInput.val() === '')) {
-                    firstRowInput.val(variantName);
-                } else {
-                    appendVariationRow(variantName);
-                }
-            });
-
-            $('#quick-master-variant-select').val(null).trigger('change');
-        });
-
-        $(document).on('click', '.remove-var-btn', function() {
-            if ($('#variations-container tr').length > 1) {
-                $(this).closest('tr').remove();
-            } else {
-                alert('Product must have at least one variation.');
-            }
-        });
-
         // Switch to the appropriate tab if any input triggers validation error
         document.querySelectorAll('form input, form select, form textarea').forEach(el => {
             el.addEventListener('invalid', function() {
