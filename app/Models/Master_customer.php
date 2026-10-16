@@ -13,6 +13,20 @@ class Master_customer extends Model
 
     protected $keyType = 'string';
 
+    public static function generateId(): string
+    {
+        return \App\Http\Controllers\masterCustomerController::generateId();
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function ($customer) {
+            if (empty($customer->id)) {
+                $customer->id = static::generateId();
+            }
+        });
+    }
+
     protected $fillable = [
         'id',
         'nama_customer',
