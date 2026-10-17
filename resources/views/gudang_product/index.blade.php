@@ -363,6 +363,11 @@
                                                 title="Bagi / Pindah Stok ke Rak Lain">
                                             <i class="feather icon-shuffle f-18"></i>
                                         </button>
+                                        <a href="{{ route('stock-cards.index', ['product_id' => $product->supplier_product_id, 'rack_id' => $product->rack_id]) }}"
+                                           class="text-primary me-2"
+                                           title="Lihat Kartu Stok Produk Ini">
+                                            <i class="feather icon-book f-18"></i>
+                                        </a>
                                         <a href="{{ route('gudang-product.edit', $product->id) }}"
                                            class="text-success me-2"
                                            title="Edit Stok & Rak">

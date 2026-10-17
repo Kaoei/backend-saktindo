@@ -26,6 +26,7 @@ use App\Http\Controllers\InternalInvoiceController;
 use App\Http\Controllers\RekeningBankController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\BundlePromoController;
+use App\Http\Controllers\StockCardController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
@@ -273,6 +274,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/', [OutBoundController::class, 'store'])->name('store');
         Route::get('/{outBound}/print', [OutBoundController::class, 'print'])->name('print');
         Route::delete('/{outBound}', [OutBoundController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('kartu-stok')->name('stock-cards.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
+        Route::get('/', [StockCardController::class, 'index'])->name('index');
+        Route::get('/print', [StockCardController::class, 'print'])->name('print');
+        Route::get('/export-excel', [StockCardController::class, 'exportExcel'])->name('export-excel');
+        Route::post('/recalculate', [StockCardController::class, 'recalculate'])->name('recalculate');
     });
 
     Route::resource('/brands', BrandController::class)->only(['index', 'store', 'update', 'destroy']);

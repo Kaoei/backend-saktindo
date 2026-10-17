@@ -103,7 +103,7 @@ class StockSyncService
                     ]);
                 }
 
-                InBound::create([
+                $createdInbound = InBound::create([
                     'id' => InBound::generateId(),
                     'supplier_id' => $supplier->id,
                     'supplier_product_id' => $supplierProduct->id,
@@ -115,6 +115,26 @@ class StockSyncService
                     'status' => 'stored',
                     'notes' => $notes ?: 'Pencatatan Stok Gudang (Auto Sync)',
                 ]);
+
+                try {
+                    StockMutationService::recordMutation([
+                        'supplier_product_id' => $supplierProduct->id,
+                        'gudang_product_id'   => $gudangProduct->id,
+                        'rack_id'             => $gudangProduct->rack_id,
+                        'gudang_type'         => $gudangProduct->gudang_type,
+                        'transaction_date'    => now(),
+                        'mutation_type'       => str_contains(strtolower($notes ?? ''), 'saldo awal') ? 'initial_stock' : 'inbound',
+                        'reference_type'      => 'inbound',
+                        'reference_id'        => $createdInbound->id,
+                        'reference_number'    => $createdInbound->id,
+                        'qty_in'              => (int) $gudangProduct->qty,
+                        'qty_out'             => 0,
+                        'unit_cost'           => (float) $gudangProduct->price,
+                        'notes'               => $notes ?: 'Pencatatan Stok Gudang (Auto Sync)',
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('StockSyncService: Failed to record stock mutation in syncGudangStock: ' . $e->getMessage());
+                }
             }
 
             // Sync with Product catalog
@@ -175,6 +195,28 @@ class StockSyncService
         $inbound->update([
             'status' => 'stored',
         ]);
+
+        if ($qty > 0) {
+            try {
+                StockMutationService::recordMutation([
+                    'supplier_product_id' => $inbound->supplier_product_id,
+                    'gudang_product_id'   => $gudangProduct->id,
+                    'rack_id'             => $rackId,
+                    'gudang_type'         => $gudangType,
+                    'transaction_date'    => $inbound->received_date ? date('Y-m-d H:i:s', strtotime($inbound->received_date)) : now(),
+                    'mutation_type'       => 'inbound',
+                    'reference_type'      => 'inbound',
+                    'reference_id'        => $inbound->id,
+                    'reference_number'    => $inbound->po_number ?: $inbound->id,
+                    'qty_in'              => $qty,
+                    'qty_out'             => 0,
+                    'unit_cost'           => (float) $inbound->hpp > 0 ? (float) $inbound->hpp : (float) $gudangProduct->price,
+                    'notes'               => 'Penerimaan Barang Masuk ke Rak ' . $rackId,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('StockSyncService: Failed to record stock mutation in storeInboundToRack: ' . $e->getMessage());
+            }
+        }
 
         if ($supplierProduct) {
             self::syncProductCatalog($supplierProduct);

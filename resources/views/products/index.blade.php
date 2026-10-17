@@ -177,6 +177,9 @@
                                         @endforelse
                                     </td>
                                     <td class="text-end">
+                                        <a href="{{ route('stock-cards.index', ['product_id' => $product->id]) }}" class="btn btn-icon btn-light-info me-1" title="Lihat Kartu Stok Produk">
+                                            <i class="feather icon-book"></i>
+                                        </a>
                                         <a href="{{ route('products.edit', $product->id) }}" class="btn btn-icon btn-light-primary me-1" title="Edit Master Produk">
                                             <i class="feather icon-edit-2"></i>
                                         </a>

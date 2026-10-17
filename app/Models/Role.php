@@ -61,6 +61,9 @@ class Role extends Model
         'outbound.create'           => 'Tambah Outbound',
         'outbound.print'            => 'Cetak Outbound',
         'outbound.delete'           => 'Hapus Outbound',
+        // Gudang - Kartu Stok
+        'stock_card.view'           => 'Lihat Kartu Stok',
+        'stock_card.export'         => 'Cetak & Export Kartu Stok',
     ];
 
     /**
@@ -99,6 +102,9 @@ class Role extends Model
             'outbound.create',
             'outbound.print',
             'outbound.delete',
+
+            'stock_card.view',
+            'stock_card.export',
         ],
     ];
 

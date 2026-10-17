@@ -67,6 +67,14 @@
                                     </a>
                                 </li>
                                 <li class="pc-item">
+                                    <a href="{{ route('stock-cards.index') }}" class="pc-link">
+                                        <span class="pc-micon">
+                                            <i class="material-icons-two-tone">import_contacts</i>
+                                        </span>
+                                        <span class="pc-mtext">Kartu Stok</span>
+                                    </a>
+                                </li>
+                                <li class="pc-item">
                                     <a href="{{ route('warehouse-task.index') }}" class="pc-link">
                                         <span class="pc-micon">
                                             <i class="material-icons-two-tone">assignment</i>

@@ -60,7 +60,7 @@ class OutBoundController extends Controller
                     ]);
                 }
 
-                OutBound::create([
+                $outBound = OutBound::create([
                     'id' => OutBound::generateId(),
                     'warehouse_task_id' => $request->warehouse_task_id,
                     'gudang_product_id' => $request->gudang_product_id,
@@ -75,12 +75,33 @@ class OutBoundController extends Controller
                     'qty' => $gudangProduct->qty - $request->qty,
                 ]);
 
+                $warehouseTask = WarehouseTask::find($request->warehouse_task_id);
+
+                try {
+                    \App\Services\StockMutationService::recordMutation([
+                        'supplier_product_id' => $gudangProduct->supplier_product_id,
+                        'gudang_product_id'   => $gudangProduct->id,
+                        'rack_id'             => $gudangProduct->rack_id,
+                        'gudang_type'         => $gudangProduct->gudang_type,
+                        'transaction_date'    => $request->outbound_date ? date('Y-m-d H:i:s', strtotime($request->outbound_date)) : now(),
+                        'mutation_type'       => 'outbound',
+                        'reference_type'      => 'outbound',
+                        'reference_id'        => $outBound->id,
+                        'reference_number'    => $warehouseTask?->task_number ?: ($warehouseTask?->sales_order_id ?: $outBound->id),
+                        'qty_in'              => 0,
+                        'qty_out'             => (int)$request->qty,
+                        'unit_cost'           => (float)$gudangProduct->price,
+                        'notes'               => $request->note ?: 'Pengeluaran Barang (Outbound)',
+                    ]);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Failed to record stock mutation for outbound: ' . $e->getMessage());
+                }
+
                 WarehouseTask::where('id', $request->warehouse_task_id)
                     ->update([
                         'status' => 'completed',
                     ]);
 
-                $warehouseTask = WarehouseTask::find($request->warehouse_task_id);
                 $warehouseTask?->salesOrder?->update([
                     'order_status' => 'delivered',
                 ]);

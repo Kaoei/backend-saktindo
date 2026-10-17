@@ -499,6 +499,42 @@ class GudangProductController extends Controller
                 'qty' => $remainingSourceQty,
             ]);
 
+            try {
+                // Record transfer out from source rack
+                \App\Services\StockMutationService::recordMutation([
+                    'supplier_product_id' => $sourceProduct->supplier_product_id,
+                    'gudang_product_id'   => $sourceProduct->id,
+                    'rack_id'             => $sourceProduct->rack_id,
+                    'gudang_type'         => $sourceProduct->gudang_type,
+                    'transaction_date'    => now(),
+                    'mutation_type'       => 'transfer',
+                    'reference_type'      => 'transfer',
+                    'reference_number'    => 'TRF-' . $sourceProduct->rack_id . '-TO-' . $request->target_rack_id,
+                    'qty_in'              => 0,
+                    'qty_out'             => (int)$request->qty,
+                    'unit_cost'           => (float)$sourceProduct->price,
+                    'notes'               => 'Pindah Rak ke ' . $request->target_rack_id,
+                ]);
+
+                // Record transfer in to target rack
+                \App\Services\StockMutationService::recordMutation([
+                    'supplier_product_id' => $sourceProduct->supplier_product_id,
+                    'gudang_product_id'   => $targetProduct ? $targetProduct->id : null,
+                    'rack_id'             => $request->target_rack_id,
+                    'gudang_type'         => $targetGudangType,
+                    'transaction_date'    => now(),
+                    'mutation_type'       => 'transfer',
+                    'reference_type'      => 'transfer',
+                    'reference_number'    => 'TRF-' . $sourceProduct->rack_id . '-TO-' . $request->target_rack_id,
+                    'qty_in'              => (int)$request->qty,
+                    'qty_out'             => 0,
+                    'unit_cost'           => (float)$sourceProduct->price,
+                    'notes'               => 'Pindah Rak dari ' . $sourceProduct->rack_id,
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to record stock mutation for rack transfer: ' . $e->getMessage());
+            }
+
             if ($sourceProduct->supplierProduct) {
                 StockSyncService::syncProductCatalog($sourceProduct->supplierProduct);
             }
@@ -530,12 +566,37 @@ class GudangProductController extends Controller
             'sub_category' => 'nullable|string|max:255',
         ]);
 
+        $oldQty = (int)$gudangProduct->qty;
+        $newQty = (int)$request->qty;
+
         $gudangProduct->update([
             'rack_id' => $request->rack_id,
             'qty' => $request->qty,
             'price' => $request->price,
             'discount' => $request->discount,
         ]);
+
+        if ($oldQty !== $newQty) {
+            $diff = $newQty - $oldQty;
+            try {
+                \App\Services\StockMutationService::recordMutation([
+                    'supplier_product_id' => $gudangProduct->supplier_product_id,
+                    'gudang_product_id'   => $gudangProduct->id,
+                    'rack_id'             => $request->rack_id,
+                    'gudang_type'         => $gudangProduct->gudang_type,
+                    'transaction_date'    => now(),
+                    'mutation_type'       => 'adjustment',
+                    'reference_type'      => 'adjustment',
+                    'reference_number'    => 'ADJ-MANUAL',
+                    'qty_in'              => $diff > 0 ? $diff : 0,
+                    'qty_out'             => $diff < 0 ? abs($diff) : 0,
+                    'unit_cost'           => (float)$request->price,
+                    'notes'               => 'Penyesuaian Manual Stok di Rak ' . $request->rack_id . ' (' . ($diff > 0 ? "+$diff" : "$diff") . ')',
+                ]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to record stock mutation for manual adjustment: ' . $e->getMessage());
+            }
+        }
 
         if ($gudangProduct->supplierProduct) {
             $gudangProduct->supplierProduct->update([
