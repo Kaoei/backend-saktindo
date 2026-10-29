@@ -164,6 +164,17 @@ class MOMFakturPdfTest extends TestCase
         $responseDownload->assertStatus(200);
         $this->assertEquals('application/pdf', $responseDownload->headers->get('Content-Type'));
         $this->assertStringContainsString('attachment', $responseDownload->headers->get('Content-Disposition'));
+
+        // 3. Test POST with action=print_html (Direct Browser Print for Epson LX-310)
+        $customPayload['action'] = 'print_html';
+        $customPayload['paper_size'] = 'continuous_half';
+        $customPayload['font_mode'] = 'dotmatrix';
+        $responseHtml = $this->actingAs($user)->post(route('sales-finance.invoices.pdf', $invoice), $customPayload);
+        $responseHtml->assertStatus(200);
+        $responseHtml->assertSee('Mode Cetak Epson LX-310');
+        $responseHtml->assertSee('size: 8.5in 5.5in', false);
+        $responseHtml->assertSee('Courier New', false);
+        $responseHtml->assertSee('window.print()', false);
     }
 }
 

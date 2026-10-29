@@ -6,6 +6,7 @@ use App\Models\Supplier;
 use App\Models\SupplierPO;
 use App\Models\SupplierPOItem;
 use App\Models\SupplierProduct;
+use App\Models\Product;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -19,10 +20,24 @@ class SupplierPOController extends Controller
         return view('supplier_po.index', compact('supplierPos'));
     }
 
+    private function getProductsWithVariations()
+    {
+        return SupplierProduct::orderBy('item_name')->get()->map(function ($p) {
+            $cat = Product::where('seller_sku', $p->sku)->first();
+            if ($cat && !empty($cat->variation_value)) {
+                $vVal = trim($cat->variation_value);
+                if ($vVal !== '' && !str_contains(strtolower($p->item_name), strtolower($vVal))) {
+                    $p->item_name .= " [Variasi: {$vVal}]";
+                }
+            }
+            return $p;
+        });
+    }
+
     public function create()
     {
         $suppliers = Supplier::all();
-        $products = SupplierProduct::all();
+        $products = $this->getProductsWithVariations();
         return view('supplier_po.create', compact('suppliers', 'products'));
     }
 
@@ -134,7 +149,7 @@ class SupplierPOController extends Controller
     {
         $supplierPo->load(['supplier', 'items.supplierProduct']);
         $suppliers = Supplier::orderBy('name')->get();
-        $products = SupplierProduct::orderBy('item_name')->get();
+        $products = $this->getProductsWithVariations();
 
         return view('supplier_po.edit', compact('supplierPo', 'suppliers', 'products'));
     }
@@ -296,7 +311,7 @@ class SupplierPOController extends Controller
             ];
         });
 
-        $products = SupplierProduct::all();
+        $products = $this->getProductsWithVariations();
 
         return view('supplier_po.create', compact('suppliers', 'products', 'prefillItems'));
     }

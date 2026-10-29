@@ -33,3 +33,6 @@ archives/
 *.gz
 *.rar
 *.7z
+Workflow_*.docx
+*.py
+workflow_diagram.png

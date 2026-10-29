@@ -4,6 +4,57 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('supplier-po.index').'">Supplier PO</a></li><li class="breadcrumb-item">Edit</li>',
 ])
 
+@push('styles')
+<style>
+    .qty-stepper-group {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: stretch !important;
+        min-width: 115px;
+        max-width: 130px;
+        margin: 0 auto;
+    }
+    .qty-stepper-group .btn-qty-minus {
+        border-top-right-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+        width: 32px !important;
+        flex-shrink: 0 !important;
+        font-weight: bold !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .qty-stepper-group .qty-input {
+        width: 52px !important;
+        min-width: 45px !important;
+        text-align: center !important;
+        font-weight: bold !important;
+        font-size: 14px !important;
+        border-radius: 0 !important;
+        -moz-appearance: textfield;
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+    }
+    .qty-stepper-group .qty-input::-webkit-outer-spin-button,
+    .qty-stepper-group .qty-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    .qty-stepper-group .btn-qty-plus {
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+        width: 32px !important;
+        flex-shrink: 0 !important;
+        font-weight: bold !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+</style>
+@endpush
+
 @section('content')
 @if(session('error'))
     <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
@@ -37,7 +88,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th style="min-width: 200px;" class="fw-semibold">NAMA BARANG</th>
-                                    <th style="width: 120px;" class="text-center fw-semibold">QTY</th>
+                                    <th style="width: 135px; min-width: 130px;" class="text-center fw-semibold">QTY</th>
                                     <th style="width: 130px;" class="text-center fw-semibold">HARGA UNIT</th>
                                     <th style="min-width: 260px;" class="text-center fw-semibold">DISKON BERTINGKAT (%)</th>
                                     <th style="width: 130px;" class="text-end fw-semibold">SUBTOTAL</th>
@@ -59,10 +110,10 @@
                                         </select>
                                     </td>
                                     <td>
-                                        <div class="input-group input-group-sm">
-                                            <button type="button" class="btn btn-outline-secondary btn-qty-minus px-2">-</button>
-                                            <input type="number" name="items[{{ $idx }}][qty]" class="form-control qty-input text-center px-1" min="1" value="{{ $it->qty }}" required>
-                                            <button type="button" class="btn btn-outline-secondary btn-qty-plus px-2">+</button>
+                                        <div class="input-group input-group-sm qty-stepper-group">
+                                            <button type="button" class="btn btn-outline-secondary btn-qty-minus">-</button>
+                                            <input type="number" name="items[{{ $idx }}][qty]" class="form-control qty-input text-center" min="1" value="{{ $it->qty }}" required>
+                                            <button type="button" class="btn btn-outline-secondary btn-qty-plus">+</button>
                                         </div>
                                     </td>
                                     <td>
@@ -101,10 +152,10 @@
                                         </select>
                                     </td>
                                     <td>
-                                        <div class="input-group input-group-sm">
-                                            <button type="button" class="btn btn-outline-secondary btn-qty-minus px-2">-</button>
-                                            <input type="number" name="items[0][qty]" class="form-control qty-input text-center px-1" min="1" value="1" required>
-                                            <button type="button" class="btn btn-outline-secondary btn-qty-plus px-2">+</button>
+                                        <div class="input-group input-group-sm qty-stepper-group">
+                                            <button type="button" class="btn btn-outline-secondary btn-qty-minus">-</button>
+                                            <input type="number" name="items[0][qty]" class="form-control qty-input text-center" min="1" value="1" required>
+                                            <button type="button" class="btn btn-outline-secondary btn-qty-plus">+</button>
                                         </div>
                                     </td>
                                     <td>
@@ -435,10 +486,10 @@
                         </select>
                     </td>
                     <td>
-                        <div class="input-group input-group-sm">
-                            <button type="button" class="btn btn-outline-secondary btn-qty-minus px-2">-</button>
-                            <input type="number" name="items[${rowCount}][qty]" class="form-control qty-input text-center px-1" min="1" value="1" required>
-                            <button type="button" class="btn btn-outline-secondary btn-qty-plus px-2">+</button>
+                        <div class="input-group input-group-sm qty-stepper-group">
+                            <button type="button" class="btn btn-outline-secondary btn-qty-minus">-</button>
+                            <input type="number" name="items[${rowCount}][qty]" class="form-control qty-input text-center" min="1" value="1" required>
+                            <button type="button" class="btn btn-outline-secondary btn-qty-plus">+</button>
                         </div>
                     </td>
                     <td>
@@ -612,10 +663,10 @@
                             <small class="text-success d-block mt-1"><i class="feather icon-gift me-1"></i>Paket: ${bundle.name}</small>
                         </td>
                         <td>
-                            <div class="input-group input-group-sm">
-                                <button type="button" class="btn btn-outline-secondary btn-qty-minus px-2">-</button>
-                                <input type="number" name="items[${rowCount}][qty]" class="form-control qty-input text-center px-1" min="1" value="${itemQty}" required>
-                                <button type="button" class="btn btn-outline-secondary btn-qty-plus px-2">+</button>
+                            <div class="input-group input-group-sm qty-stepper-group">
+                                <button type="button" class="btn btn-outline-secondary btn-qty-minus">-</button>
+                                <input type="number" name="items[${rowCount}][qty]" class="form-control qty-input text-center" min="1" value="${itemQty}" required>
+                                <button type="button" class="btn btn-outline-secondary btn-qty-plus">+</button>
                             </div>
                         </td>
                         <td>

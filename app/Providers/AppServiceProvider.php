@@ -30,37 +30,48 @@ class AppServiceProvider extends ServiceProvider
         $defaultSidebarLogo = 'src/img/gapuraWhite.png';
         $defaultLoginLogo = 'src/img/gapuraIcon.png';
 
-        $customization = Cache::remember('backend_web_customization', 86400, function () use ($defaultPrimaryColor, $defaultSidebarLogo, $defaultLoginLogo) {
-            $settings = [
-                'primaryColor' => $defaultPrimaryColor,
-                'sidebarLogoPath' => $defaultSidebarLogo,
-                'loginLogoPath' => $defaultLoginLogo,
-            ];
+        $customization = [
+            'primaryColor' => $defaultPrimaryColor,
+            'primaryRgb' => $this->hexToRgb($defaultPrimaryColor),
+            'primaryDark' => $this->adjustHexBrightness($defaultPrimaryColor, -20),
+            'sidebarLogoUrl' => $this->toAssetUrl($defaultSidebarLogo, $defaultSidebarLogo),
+            'loginLogoUrl' => $this->toAssetUrl($defaultLoginLogo, $defaultLoginLogo),
+        ];
 
-            try {
-                if (Schema::hasTable('web_settings')) {
-                    $items = WebSetting::allCached();
+        try {
+            $customization = Cache::remember('backend_web_customization', 86400, function () use ($defaultPrimaryColor, $defaultSidebarLogo, $defaultLoginLogo) {
+                $settings = [
+                    'primaryColor' => $defaultPrimaryColor,
+                    'sidebarLogoPath' => $defaultSidebarLogo,
+                    'loginLogoPath' => $defaultLoginLogo,
+                ];
 
-                    $settings['primaryColor'] = $this->isValidHexColor($items['primary_color'] ?? null)
-                        ? strtoupper($items['primary_color'])
-                        : $defaultPrimaryColor;
+                try {
+                    if (Schema::hasTable('web_settings')) {
+                        $items = WebSetting::allCached();
 
-                    $settings['sidebarLogoPath'] = $items['sidebar_logo_path'] ?? $defaultSidebarLogo;
-                    $settings['loginLogoPath'] = $items['login_logo_path'] ?? $defaultLoginLogo;
+                        $settings['primaryColor'] = $this->isValidHexColor($items['primary_color'] ?? null)
+                            ? strtoupper($items['primary_color'])
+                            : $defaultPrimaryColor;
+
+                        $settings['sidebarLogoPath'] = $items['sidebar_logo_path'] ?? $defaultSidebarLogo;
+                        $settings['loginLogoPath'] = $items['login_logo_path'] ?? $defaultLoginLogo;
+                    }
+                } catch (Throwable) {
                 }
-            } catch (Throwable) {
-            }
 
-            $primaryRgb = $this->hexToRgb($settings['primaryColor']);
+                $primaryRgb = $this->hexToRgb($settings['primaryColor']);
 
-            return [
-                'primaryColor' => $settings['primaryColor'],
-                'primaryRgb' => $primaryRgb,
-                'primaryDark' => $this->adjustHexBrightness($settings['primaryColor'], -20),
-                'sidebarLogoUrl' => $this->toAssetUrl($settings['sidebarLogoPath'], $defaultSidebarLogo),
-                'loginLogoUrl' => $this->toAssetUrl($settings['loginLogoPath'], $defaultLoginLogo),
-            ];
-        });
+                return [
+                    'primaryColor' => $settings['primaryColor'],
+                    'primaryRgb' => $primaryRgb,
+                    'primaryDark' => $this->adjustHexBrightness($settings['primaryColor'], -20),
+                    'sidebarLogoUrl' => $this->toAssetUrl($settings['sidebarLogoPath'], $defaultSidebarLogo),
+                    'loginLogoUrl' => $this->toAssetUrl($settings['loginLogoPath'], $defaultLoginLogo),
+                ];
+            });
+        } catch (Throwable) {
+        }
 
         View::share('webCustomization', $customization);
     }

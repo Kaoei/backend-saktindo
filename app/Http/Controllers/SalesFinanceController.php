@@ -13,6 +13,8 @@ use App\Models\SalesOrderItem;
 use App\Models\SalesReturn;
 use App\Models\SupplierProduct;
 use App\Models\WarehouseTask;
+use App\Models\Product;
+use App\Models\ActivityLog;
 use App\Support\ActivityLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -138,6 +140,27 @@ class SalesFinanceController extends Controller
 
             $this->syncItems($order, $items);
 
+            // Auto-check live stock saat SO dibuat agar stok gudang langsung tercatat dan tidak 0
+            $order->load('items');
+            $hasPending = false;
+            foreach ($order->items as $item) {
+                $avail = $this->resolveAvailableStock($item->product_code, $item->product_name, $item->rack_id);
+                $stkStatus = $avail >= (float) $item->quantity ? 'available' : 'pending';
+                if ($stkStatus === 'pending') {
+                    $hasPending = true;
+                }
+                $item->update([
+                    'available_stock' => $avail,
+                    'stock_status' => $stkStatus,
+                ]);
+            }
+
+            if (!$hasPending && $order->items->isNotEmpty()) {
+                $order->update([
+                    'stock_status' => 'available',
+                ]);
+            }
+
             return $order;
         });
 
@@ -228,6 +251,14 @@ class SalesFinanceController extends Controller
             $activeMergeInvoice &&
             $activeMergeInvoice->id !== $invoice->id;
 
+        $fakturHistories = $invoice
+            ? ActivityLog::where('subject_type', Invoice::class)
+                ->where('subject_id', $invoice->id)
+                ->where('action', 'update_faktur_pajak')
+                ->latest()
+                ->get()
+            : collect();
+
         return view('sales-finance.show', [
             'order' => $salesOrder,
 
@@ -242,6 +273,8 @@ class SalesFinanceController extends Controller
             'activeMergeInvoice' => $activeMergeInvoice,
 
             'isHistoricalInvoice' => $isHistoricalInvoice,
+
+            'fakturHistories' => $fakturHistories,
         ]);
     }
 
@@ -353,9 +386,82 @@ class SalesFinanceController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | STOCK CHECK
+    | STOCK CHECK & RESOLUTION
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Resolusi stok gudang secara multi-layer:
+     * 1. Berdasarkan supplier_product_id di gudang_products
+     * 2. Berdasarkan SupplierProduct (id, sku, part_number, atau item_name)
+     * 3. Berdasarkan Master Product (products table: quantity)
+     */
+    public function resolveAvailableStock(?string $productCode, ?string $productName = null, ?string $rackId = null): float
+    {
+        $stock = 0;
+
+        // 1. Direct GudangProduct matching supplier_product_id
+        if (!empty($productCode)) {
+            $gpQuery = GudangProduct::where('supplier_product_id', $productCode)->where('qty', '>', 0);
+            if (!empty($rackId)) {
+                $rackStock = (float) (clone $gpQuery)->where('rack_id', $rackId)->sum('qty');
+                if ($rackStock > 0) {
+                    return $rackStock;
+                }
+            }
+            $stock = (float) $gpQuery->sum('qty');
+            if ($stock > 0) {
+                return $stock;
+            }
+        }
+
+        // 2. Lookup via SupplierProduct by id, sku, part_number, or item_name
+        $sp = null;
+        if (!empty($productCode)) {
+            $sp = SupplierProduct::where('id', $productCode)
+                ->orWhere('sku', $productCode)
+                ->orWhere('part_number', $productCode)
+                ->first();
+        }
+        if (!$sp && !empty($productName)) {
+            $sp = SupplierProduct::where('item_name', $productName)->first();
+        }
+
+        if ($sp) {
+            $gpQuery = GudangProduct::where('supplier_product_id', $sp->id)->where('qty', '>', 0);
+            if (!empty($rackId)) {
+                $rackStock = (float) (clone $gpQuery)->where('rack_id', $rackId)->sum('qty');
+                if ($rackStock > 0) {
+                    return $rackStock;
+                }
+            }
+            $stock = (float) $gpQuery->sum('qty');
+            if ($stock > 0) {
+                return $stock;
+            }
+        }
+
+        // 3. Fallback to Master Product (products table)
+        if (!empty($productCode) || !empty($productName)) {
+            $pQuery = Product::query();
+            if (!empty($productCode)) {
+                $pQuery->where(function ($q) use ($productCode) {
+                    $q->where('product_id', $productCode)
+                      ->orWhere('sku_id', $productCode)
+                      ->orWhere('seller_sku', $productCode);
+                });
+            }
+            if (!empty($productName)) {
+                $pQuery->orWhere('product_name', $productName);
+            }
+            $pStock = (float) $pQuery->sum('quantity');
+            if ($pStock > 0) {
+                return $pStock;
+            }
+        }
+
+        return 0;
+    }
 
     public function checkStock(
         Request $request,
@@ -365,48 +471,27 @@ class SalesFinanceController extends Controller
             return back()->with('error', 'Sales Order sudah diproses/disetujui (Approved) dan tidak dapat dikirim kembali untuk pengecekan stok.');
         }
 
-        DB::transaction(function () use ($salesOrder) {
+        $pendingItems = [];
 
+        DB::transaction(function () use ($salesOrder, &$pendingItems) {
             $salesOrder->load('items');
-
-            $stockByProduct = GudangProduct::query()
-                ->select(
-                    'supplier_product_id',
-                    DB::raw('SUM(qty) as total_qty')
-                )
-                ->whereIn(
-                    'supplier_product_id',
-                    $salesOrder
-                        ->items
-                        ->pluck('product_code')
-                        ->filter()
-                        ->values()
-                )
-                ->where('qty', '>', 0)
-                ->groupBy('supplier_product_id')
-                ->pluck(
-                    'total_qty',
-                    'supplier_product_id'
-                );
 
             $hasPendingStock = false;
 
             foreach ($salesOrder->items as $item) {
-
-                $availableStock = (float) (
-                    $stockByProduct[
-                        $item->product_code
-                    ] ?? 0
+                $availableStock = $this->resolveAvailableStock(
+                    $item->product_code,
+                    $item->product_name,
+                    $item->rack_id
                 );
 
-                $stockStatus =
-                    $availableStock >=
-                    (float) $item->quantity
-                        ? 'available'
-                        : 'pending';
+                $stockStatus = $availableStock >= (float) $item->quantity
+                    ? 'available'
+                    : 'pending';
 
                 if ($stockStatus === 'pending') {
                     $hasPendingStock = true;
+                    $pendingItems[] = "{$item->product_name} (butuh " . number_format((float) $item->quantity, 0, ',', '.') . ", tersedia " . number_format($availableStock, 0, ',', '.') . ")";
                 }
 
                 $item->update([
@@ -416,15 +501,8 @@ class SalesFinanceController extends Controller
             }
 
             $salesOrder->update([
-                'stock_status' =>
-                    $hasPendingStock
-                        ? 'pending'
-                        : 'available',
-
-                'order_status' =>
-                    $hasPendingStock
-                        ? 'pending_stock'
-                        : 'ready_to_invoice',
+                'stock_status' => $hasPendingStock ? 'pending' : 'available',
+                'order_status' => $hasPendingStock ? 'pending_stock' : 'ready_to_invoice',
             ]);
         });
 
@@ -434,10 +512,87 @@ class SalesFinanceController extends Controller
             $salesOrder
         );
 
+        if (empty($pendingItems)) {
+            return back()->with(
+                'status',
+                'Pengecekan stok berhasil: Seluruh stok barang tersedia di gudang! Sales Order siap dibuatkan Faktur/Invoice.'
+            );
+        }
+
         return back()->with(
-            'status',
-            'Pengecekan stok berhasil disimpan.'
+            'warning',
+            'Pengecekan stok selesai: Terdapat item yang stoknya belum mencukupi: ' . implode(', ', $pendingItems) . '. Jika stok fisik sudah siap di toko/gudang, Anda dapat menekan tombol "Konfirmasi Manual Stok Tersedia".'
         );
+    }
+
+    /**
+     * Konfirmasi manual ketersediaan stok fisik (Bypass jika barang nyata sudah tersedia di toko/gudang)
+     */
+    public function approveStock(
+        Request $request,
+        SalesOrder $salesOrder
+    ): RedirectResponse {
+        if (in_array($salesOrder->order_status, ['invoiced', 'partial_delivery', 'delivered', 'completed'], true) || !empty($salesOrder->invoice_id)) {
+            return back()->with('error', 'Sales Order sudah diproses/disetujui.');
+        }
+
+        DB::transaction(function () use ($salesOrder, $request) {
+            $salesOrder->load('items');
+            foreach ($salesOrder->items as $item) {
+                $item->update([
+                    'stock_status' => 'available',
+                    'available_stock' => max((float) $item->available_stock, (float) $item->quantity),
+                ]);
+            }
+
+            $salesOrder->update([
+                'stock_status' => 'available',
+                'order_status' => 'ready_to_invoice',
+            ]);
+
+            ActivityLogger::log('manual_approve_stock', 'sales_order', $salesOrder, [
+                'user' => $request->user()?->name ?? 'Admin',
+                'reason' => $request->input('reason', 'Konfirmasi stok fisik barang tersedia oleh user'),
+                'confirmed_at' => now()->toDateTimeString(),
+            ]);
+        });
+
+        return back()->with('status', 'Stok fisik berhasil dikonfirmasi tersedia! Tombol Generate Invoice sekarang aktif.');
+    }
+
+    /**
+     * Update / Revisi Nomor Faktur Pajak dengan pencatatan audit trail (Riwayat perubahan)
+     */
+    public function updateFakturPajak(
+        Request $request,
+        Invoice $invoice
+    ): RedirectResponse {
+        $request->validate([
+            'faktur_number' => 'required|string|max:100',
+            'revision_reason' => 'nullable|string|max:255',
+        ]);
+
+        $oldNumber = $invoice->faktur_number;
+        $newNumber = trim($request->input('faktur_number'));
+        $reason = $request->input('revision_reason', 'Revisi nomor faktur pajak');
+
+        if ($oldNumber !== $newNumber) {
+            $invoice->update([
+                'faktur_number' => $newNumber,
+            ]);
+
+            ActivityLogger::log('update_faktur_pajak', 'invoice', $invoice, [
+                'old_faktur_number' => $oldNumber ?: '-',
+                'new_faktur_number' => $newNumber,
+                'revision_reason' => $reason,
+                'user' => auth()->user()?->name ?? 'Admin',
+                'updated_at' => now()->toDateTimeString(),
+            ]);
+
+            return back()->with('status', "Nomor Faktur Pajak berhasil diperbarui menjadi '{$newNumber}' dan riwayat perubahan tercatat dalam audit trail sistem.");
+        }
+
+        return back()->with('status', 'Nomor Faktur Pajak tidak mengalami perubahan.');
     }
 
     /*
@@ -3421,6 +3576,14 @@ private function findActiveMergedInvoice(
             ->map(
                 function ($product) {
 
+                    $cat = Product::where('seller_sku', $product->sku)->first();
+                    if ($cat && !empty($cat->variation_value)) {
+                        $vVal = trim($cat->variation_value);
+                        if ($vVal !== '' && !str_contains(strtolower($product->item_name), strtolower($vVal))) {
+                            $product->item_name .= " [Variasi: {$vVal}]";
+                        }
+                    }
+
                     $gProducts =
                         $product
                             ->gudangProducts;
@@ -3732,14 +3895,44 @@ private function findActiveMergedInvoice(
             'signer_title' => $request->input('signer_title', 'DIREKTUR'),
             'user_name' => $request->input('user_name', auth()->user()?->name ?? 'SALSA'),
             'computer_name' => $request->input('computer_name', 'JAYA'),
+            'paper_size' => $request->input('paper_size', 'continuous_half'),
+            'font_mode' => $request->input('font_mode', 'dotmatrix'),
+            'show_logo' => $request->has('show_logo') ? $request->boolean('show_logo') : true,
         ];
+
+        // Mode Cetak Langsung Browser (Direct HTML Print dengan window.print)
+        if ($request->input('action') === 'print_html' || $request->input('mode') === 'html') {
+            return view('sales-finance.pdf.invoice', [
+                'invoice' => $invoice,
+                'custom' => $custom,
+                'isHtmlPrint' => true,
+            ]);
+        }
 
         $pdf = Pdf::loadView('sales-finance.pdf.invoice', [
             'invoice' => $invoice,
             'custom' => $custom,
+            'isHtmlPrint' => false,
         ]);
 
-        $pdf->setPaper('a4', 'landscape');
+        $paperSize = $custom['paper_size'] ?? 'continuous_half';
+        switch ($paperSize) {
+            case 'continuous_full':
+                // Continuous form 1 lembar penuh (8.5" x 11" / 9.5" x 11")
+                $pdf->setPaper([0, 0, 612, 792], 'portrait');
+                break;
+            case 'a4_landscape':
+                $pdf->setPaper('a4', 'landscape');
+                break;
+            case 'a4_portrait':
+                $pdf->setPaper('a4', 'portrait');
+                break;
+            case 'continuous_half':
+            default:
+                // Continuous Form Bagi 2 (8.5" x 5.5" / 9.5" x 5.5" Wartel) - Epson LX-310
+                $pdf->setPaper([0, 0, 612, 396], 'portrait');
+                break;
+        }
 
         $displayNumber = !empty($custom['invoice_number'])
             ? $custom['invoice_number']

@@ -200,8 +200,11 @@
                             <option value="" disabled @selected(!old('sales_type', $order->sales_type))>-- Pilih Tipe --</option>
                             <option value="js" @selected(old('sales_type', $order->sales_type) === 'js')>JS</option>
                             <option value="sjb" @selected(old('sales_type', $order->sales_type) === 'sjb')>SJB</option>
-                            <option value="nearby_store" @selected(old('sales_type', $order->sales_type) === 'nearby_store')>Nearby Store</option>
+                            <option value="nearby_store" @selected(old('sales_type', $order->sales_type) === 'nearby_store')>Nearby Store (Cabang/Toko Terdekat)</option>
                         </select>
+                        <div class="form-text text-muted" style="font-size: 11px;">
+                            Pilih <strong>Nearby Store</strong> jika pemenuhan/pengiriman barang bersumber dari stok cabang fisik terdekat dari lokasi pelanggan.
+                        </div>
                     </div>
 
                     <!-- Pre-Order (Indent) Configuration -->

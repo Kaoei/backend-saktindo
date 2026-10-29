@@ -64,7 +64,13 @@
             <div class="card-body">
                 <div class="row mb-3">
                     <div class="col-md-3"><div class="text-muted small">Status Order</div><span class="badge bg-light-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span></div>
-                    <div class="col-md-3"><div class="text-muted small">Status Stok</div><span class="badge bg-light-secondary">{{ ucfirst($order->stock_status) }}</span></div>
+                    <div class="col-md-3">
+                        <div class="text-muted small">Status Stok</div>
+                        <span class="badge {{ $order->stock_status === 'available' ? 'bg-light-success text-success' : 'bg-light-warning text-dark' }}">{{ ucfirst($order->stock_status) }}</span>
+                        @if($order->sales_type === 'nearby_store')
+                            <div class="mt-1"><span class="badge bg-info text-white" title="Pemenuhan pesanan dari toko/cabang fisik terdekat"><i class="feather icon-map-pin me-1"></i>Nearby Store</span></div>
+                        @endif
+                    </div>
                     <div class="col-md-3"><div class="text-muted small">Tanggal Order</div>{{ optional($order->order_date)->format('d M Y') }}</div>
                     <div class="col-md-3">
                         <div class="text-muted small">Task Gudang</div>
@@ -266,8 +272,8 @@
                         <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editFakturModal" data-toggle="modal" data-target="#editFakturModal">
                             <i class="feather icon-printer me-1"></i> Cetak / Sesuaikan Faktur
                         </button>
-                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}" class="btn btn-outline-secondary btn-sm" target="_blank" title="Download Faktur Default">
-                            <i class="feather icon-download me-1"></i> PDF Cepat
+                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}?action=stream" class="btn btn-outline-secondary btn-sm" target="_blank" title="Preview / Cetak Faktur Epson LX-310">
+                            <i class="feather icon-printer me-1"></i> Cetak Cepat (LX-310)
                         </a>
                     </div>
 
@@ -294,11 +300,38 @@
                 @endif
                 <div class="card-body">
                     <div class="row mb-3">
-                        <div class="col-md-3"><div class="text-muted small">Status</div><span class="badge bg-light-info">{{ ucfirst($invoice->status) }}</span></div>
-                        <div class="col-md-3"><div class="text-muted small">Tanggal</div>{{ optional($invoice->invoice_date)->format('d M Y') }}</div>
-                        <div class="col-md-3"><div class="text-muted small">Terbayar</div>Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}</div>
-                        <div class="col-md-3"><div class="text-muted small">Outstanding</div>Rp {{ number_format((float) $invoice->outstanding_amount, 0, ',', '.') }}</div>
+                        <div class="col-md-2"><div class="text-muted small">Status</div><span class="badge bg-light-info">{{ ucfirst($invoice->status) }}</span></div>
+                        <div class="col-md-2"><div class="text-muted small">Tanggal</div>{{ optional($invoice->invoice_date)->format('d M Y') }}</div>
+                        <div class="col-md-2"><div class="text-muted small">Terbayar</div>Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}</div>
+                        <div class="col-md-2"><div class="text-muted small">Outstanding</div>Rp {{ number_format((float) $invoice->outstanding_amount, 0, ',', '.') }}</div>
+                        <div class="col-md-4">
+                            <div class="text-muted small">No. Faktur Pajak</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <strong class="text-dark">{{ $invoice->faktur_number ?: '-' }}</strong>
+                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" data-bs-toggle="modal" data-bs-target="#editFakturPajakModal" data-toggle="modal" data-target="#editFakturPajakModal" title="Ubah / Revisi No Faktur Pajak">
+                                    <i class="feather icon-edit-2"></i> Revisi
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
+                    @if(!empty($fakturHistories) && $fakturHistories->isNotEmpty())
+                        <div class="alert alert-light border py-2 px-3 mb-3 small">
+                            <div class="fw-bold text-primary mb-1 d-flex align-items-center gap-1">
+                                <i class="feather icon-clock"></i> Riwayat Perubahan Faktur Pajak (Audit Trail)
+                            </div>
+                            <ul class="mb-0 ps-3">
+                                @foreach($fakturHistories as $fHist)
+                                    @php $prop = $fHist->properties ?? []; @endphp
+                                    <li>
+                                        <strong>{{ optional($fHist->created_at)->format('d M Y H:i:s') }}</strong> oleh <em>{{ $prop['user'] ?? 'User' }}</em>:
+                                        Nomor diubah dari <code class="text-muted">{{ $prop['old_faktur_number'] ?? '-' }}</code> menjadi <code class="text-success">{{ $prop['new_faktur_number'] ?? '-' }}</code>
+                                        @if(!empty($prop['revision_reason'])) &bull; Alasan: {{ $prop['revision_reason'] }} @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
                     <h6>Riwayat Pembayaran</h6>
                     <div class="table-responsive">
@@ -366,58 +399,100 @@
 
     <div class="col-lg-4">
         @if(auth()->user()?->hasPermission('sales_finance.edit') && !in_array($order->order_status, ['invoiced', 'partial_delivery', 'delivered', 'completed']) && !$invoice)
-            <form method="POST" action="{{ route('sales-finance.stock-check', $order) }}" class="card">
-                @csrf
-                <div class="card-header"><h5 class="mb-0">Pengecekan Stok</h5></div>
-                <div class="card-body">
+            <div class="card shadow-sm border mb-3">
+                <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 text-primary fs-6"><i class="feather icon-package me-1"></i> Pengecekan Stok</h5>
+                    <span class="badge {{ $order->stock_status === 'available' ? 'bg-success' : 'bg-warning text-dark' }}">
+                        {{ $order->stock_status === 'available' ? 'Stok Ready' : 'Pending' }}
+                    </span>
+                </div>
+                <div class="card-body p-3">
                     <div class="table-responsive mb-3">
-                        <table class="table table-sm mb-0">
-                            <thead><tr><th>Produk</th><th class="text-end">Order</th><th class="text-end">Stok Gudang</th></tr></thead>
+                        <table class="table table-sm align-middle mb-0">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th>Produk</th>
+                                    <th class="text-end">Order</th>
+                                    <th class="text-end">Stok Gudang</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 @foreach($order->items as $item)
+                                    @php $isItemOk = (float) $item->available_stock >= (float) $item->quantity; @endphp
                                     <tr>
-                                        <td>{{ $item->product_name }}</td>
-                                        <td class="text-end">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
-                                        <td class="text-end">{{ number_format((float) $item->available_stock, 2, ',', '.') }}</td>
+                                        <td>
+                                            <div class="fw-semibold small">{{ $item->product_name }}</div>
+                                            <small class="text-muted">{{ $item->product_code }}</small>
+                                        </td>
+                                        <td class="text-end small">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
+                                        <td class="text-end small {{ $isItemOk ? 'text-success fw-bold' : 'text-danger fw-bold' }}">
+                                            {{ number_format((float) $item->available_stock, 2, ',', '.') }}
+                                        </td>
+                                        <td class="text-center">
+                                            @if($isItemOk)
+                                                <span class="badge bg-light-success text-success"><i class="feather icon-check"></i> Ready</span>
+                                            @else
+                                                <span class="badge bg-light-danger text-danger"><i class="feather icon-alert-circle"></i> Kurang</span>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Cek Stok dari Gudang</button>
+
+                    <form method="POST" action="{{ route('sales-finance.stock-check', $order) }}" class="mb-2">
+                        @csrf
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="feather icon-refresh-cw me-1"></i> Cek Stok dari Gudang
+                        </button>
+                    </form>
+
+                    <form method="POST" action="{{ route('sales-finance.stock-approve', $order) }}" onsubmit="return confirm('Konfirmasi bahwa stok fisik barang telah tersedia secara riil di toko/gudang? Tindakan ini akan mengaktifkan tombol Generate Invoice.');">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-success btn-sm w-100" title="Bypass jika barang nyata sudah tersedia di toko/gudang">
+                            <i class="feather icon-check-circle me-1"></i> Konfirmasi Manual Stok Tersedia
+                        </button>
+                    </form>
                 </div>
-            </form>
+            </div>
         @endif
 
         @if(!$invoice && auth()->user()?->hasPermission('sales_finance.create'))
-            <form method="POST" action="{{ route('sales-finance.invoice.generate', $order) }}" class="card">
+            <form method="POST" action="{{ route('sales-finance.invoice.generate', $order) }}" class="card shadow-sm border">
                 @csrf
                 <input type="hidden" name="invoice_type" value="normal">
 
-                <div class="card-header">
-                    <h5 class="mb-0">Generate Invoice</h5>
+                <div class="card-header bg-white py-2">
+                    <h5 class="mb-0 text-success fs-6"><i class="feather icon-file-plus me-1"></i> Generate Invoice</h5>
                     <small class="text-muted">Invoice akan menjadi bagian dari pengumpulan periode 1 bulan sebelum digabung melalui proses SJS.</small>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-3">
                     <div class="mb-3">
-                        <label class="form-label">Jenis Faktur</label>
-                        <select name="tax_type" class="form-select" required>
+                        <label class="form-label small fw-semibold">Jenis Faktur</label>
+                        <select name="tax_type" class="form-select form-select-sm" required>
                             <option value="js">JS</option>
                             <option value="sjb_non_pajak">SJB Non Pajak</option>
                             <option value="sjb_pajak">SJB Pajak</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Tanggal Invoice</label>
-                        <input type="date" name="invoice_date" class="form-control" value="{{ now()->toDateString() }}" required>
+                        <label class="form-label small fw-semibold">Tanggal Invoice</label>
+                        <input type="date" name="invoice_date" class="form-control form-control-sm" value="{{ now()->toDateString() }}" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Jatuh Tempo</label>
-                        <input type="date" name="due_date" class="form-control">
+                        <label class="form-label small fw-semibold">Jatuh Tempo</label>
+                        <input type="date" name="due_date" class="form-control form-control-sm">
                     </div>
-                    <button type="submit" class="btn btn-success w-100" @disabled($order->stock_status !== 'available')>Generate Invoice Sales</button>
+                    @php $canGenerate = ($order->stock_status === 'available' || (auth()->user()?->hasRole('super-admin'))); @endphp
+                    <button type="submit" class="btn btn-success w-100" @disabled(!$canGenerate)>
+                        <i class="feather icon-check-circle me-1"></i> Generate Invoice Sales
+                    </button>
                     @if($order->stock_status !== 'available')
-                        <small class="text-muted d-block mt-2">Invoice aktif setelah stok available.</small>
+                        <div class="alert alert-warning py-1 px-2 mt-2 mb-0 small">
+                            <i class="feather icon-info me-1"></i>Stok belum tercatat available. Tekan <strong>"Cek Stok dari Gudang"</strong> atau gunakan <strong>"Konfirmasi Manual Stok Tersedia"</strong> di atas.
+                        </div>
                     @endif
                 </div>
             </form>
@@ -882,6 +957,52 @@
                         </div>
                     </div>
 
+                    <!-- Konfigurasi Printer & Kertas (Epson LX-310) -->
+                    <div class="card shadow-sm border mb-3">
+                        <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+                            <span class="fw-bold text-primary small">
+                                <i class="feather icon-printer me-1"></i> Pengaturan Cetak & Kertas (Epson LX-310 / Dot Matrix)
+                            </span>
+                            <span class="badge bg-success small"><i class="feather icon-check me-1"></i>Anti Terpotong</span>
+                        </div>
+                        <div class="card-body p-3 bg-white">
+                            <div class="row g-3">
+                                <div class="col-md-5">
+                                    <label class="form-label small fw-semibold text-dark">Ukuran Kertas</label>
+                                    <select name="paper_size" id="fakturPaperSize" class="form-select form-select-sm">
+                                        <option value="continuous_half" selected>Continuous Form Bagi 2 (9.5" x 5.5" / Wartel - Epson LX-310)</option>
+                                        <option value="continuous_full">Continuous Form 1 Lembar Penuh (9.5" x 11" - Epson LX-310)</option>
+                                        <option value="a4_landscape">Kertas A4 Landscape (Laserjet / Inkjet)</option>
+                                        <option value="a4_portrait">Kertas A4 Portrait (Laserjet / Inkjet)</option>
+                                    </select>
+                                    <div class="form-text text-muted" style="font-size: 11px;">
+                                        Untuk kertas continuous form rangkap di printer LX-310, gunakan <strong>Continuous Form Bagi 2</strong> agar tidak melompat halaman.
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold text-dark">Format Font / Ketajaman</label>
+                                    <select name="font_mode" id="fakturFontMode" class="form-select form-select-sm">
+                                        <option value="dotmatrix" selected>Mode Dot Matrix (Monospace Tajam & Hitam Pekat untuk Pita LX-310)</option>
+                                        <option value="standard">Mode Standar Grafis (Arial / Helvetica)</option>
+                                    </select>
+                                    <div class="form-text text-muted" style="font-size: 11px;">
+                                        Font monospaced pekat membuat ketukan jarum printer LX-310 tidak buram dan tembus jelas hingga rangkap belakang.
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-semibold text-dark">Opsi Cetak Logo</label>
+                                    <div class="form-check form-switch mt-2">
+                                        <input class="form-check-input" type="checkbox" name="show_logo" id="fakturShowLogo" value="1" checked>
+                                        <label class="form-check-label small" for="fakturShowLogo">Sertakan Logo Perusahaan</label>
+                                    </div>
+                                    <div class="form-text text-muted" style="font-size: 11px;">
+                                        Nonaktifkan jika ingin proses cetak lebih instan tanpa gambar bitmap.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Dokumen & Pelanggan Info -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
@@ -1110,13 +1231,57 @@
                     </div>
 
                 </div>
-                <div class="modal-footer bg-white">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Tutup</button>
-                    <button type="submit" class="btn btn-outline-primary" onclick="$('#faktur-action').val('stream');">
-                        <i class="feather icon-eye me-1"></i> Preview & Cetak Langsung
-                    </button>
-                    <button type="submit" class="btn btn-primary" onclick="$('#faktur-action').val('download');">
-                        <i class="feather icon-download me-1"></i> Download PDF
+                <div class="modal-footer bg-white d-flex justify-content-between">
+                    <div>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Tutup</button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-sm" onclick="$('#faktur-action').val('print_html');" title="Buka jendela print browser langsung ke printer LX-310">
+                            <i class="feather icon-printer me-1"></i> Cetak Langsung (Browser Print)
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm" onclick="$('#faktur-action').val('stream');" title="Preview faktur PDF dengan ukuran continuous form">
+                            <i class="feather icon-eye me-1"></i> Preview / Cetak PDF
+                        </button>
+                        <button type="submit" class="btn btn-outline-secondary btn-sm" onclick="$('#faktur-action').val('download');">
+                            <i class="feather icon-download me-1"></i> Download PDF
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endif
+
+@if($invoice)
+<div class="modal fade" id="editFakturPajakModal" tabindex="-1" aria-labelledby="editFakturPajakModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('sales-finance.invoices.update-faktur', $invoice) }}">
+                @csrf
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title text-white fw-bold" id="editFakturPajakModalLabel">
+                        <i class="feather icon-file-text me-2"></i> Revisi Nomor Faktur Pajak
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 px-3 small mb-3">
+                        <i class="feather icon-info me-1"></i> Perubahan nomor faktur pajak akan tercatat secara transparan di dalam audit trail sistem (mencatat user, waktu revisi, nomor lama & baru, serta alasan perubahan).
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Nomor Faktur Pajak Baru <span class="text-danger">*</span></label>
+                        <input type="text" name="faktur_number" class="form-control" value="{{ $invoice->faktur_number }}" placeholder="Contoh: 010.000-26.00000001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Alasan / Keterangan Revisi <span class="text-muted">(Opsional)</span></label>
+                        <input type="text" name="revision_reason" class="form-control" placeholder="Contoh: Pembetulan nomor seri dari DJP / Salah input awal">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="feather icon-save me-1"></i> Simpan Revisi Faktur Pajak
                     </button>
                 </div>
             </form>

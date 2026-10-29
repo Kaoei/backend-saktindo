@@ -50,13 +50,16 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Group</label>
-                        <input name="group" type="text" class="form-control" value="{{ old('group', $user->group) }}" list="groups-list">
+                        <label class="form-label">Group / Divisi / Departemen <span class="text-muted small">(Opsional)</span></label>
+                        <input name="group" type="text" class="form-control" value="{{ old('group', $user->group) }}" list="groups-list" placeholder="Contoh: Sales Lapangan, Gudang Kenari, Finance Pusat">
                         <datalist id="groups-list">
                             @foreach($groups as $group)
                                 <option value="{{ $group }}"></option>
                             @endforeach
                         </datalist>
+                        <div class="form-text text-muted" style="font-size: 11px;">
+                            Field opsional untuk mengelompokkan staf berdasarkan divisi kerja atau cabang penugasan (misal: Sales Jakarta, Gudang Utama, dsb). Dapat dikosongkan bila tidak digunakan.
+                        </div>
                     </div>
 
                     <div class="mb-3">
