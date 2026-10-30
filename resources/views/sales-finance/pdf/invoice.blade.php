@@ -1,36 +1,39 @@
 @php
-    // Helper terbilang (angka ke kata dalam Bahasa Indonesia)
-    if (!function_exists('terbilang')) {
-        function terbilang($angka)
+    if (!function_exists('terbilangRupiah') && file_exists(app_path('Helpers/terbilang.php'))) {
+        require_once app_path('Helpers/terbilang.php');
+    }
+
+    // Fallback jika helper belum tersedia
+    if (!function_exists('terbilangWords')) {
+        function terbilangWords($angka): string
         {
             $angka = (int) $angka;
-            $huruf = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh',
-                'Sebelas'];
-
-            if ($angka < 0) {
-                return 'Minus ' . terbilang(abs($angka));
-            } elseif ($angka < 12) {
-                return $huruf[$angka];
-            } elseif ($angka < 20) {
-                return trim(terbilang($angka - 10) . ' Belas');
-            } elseif ($angka < 100) {
-                return trim(terbilang(intval($angka / 10)) . ' Puluh ' . terbilang($angka % 10));
-            } elseif ($angka < 200) {
-                return trim('Seratus ' . terbilang($angka - 100));
-            } elseif ($angka < 1000) {
-                return trim(terbilang(intval($angka / 100)) . ' Ratus ' . terbilang($angka % 100));
-            } elseif ($angka < 2000) {
-                return trim('Seribu ' . terbilang($angka - 1000));
-            } elseif ($angka < 1000000) {
-                return trim(terbilang(intval($angka / 1000)) . ' Ribu ' . terbilang($angka % 1000));
-            } elseif ($angka < 1000000000) {
-                return trim(terbilang(intval($angka / 1000000)) . ' Juta ' . terbilang($angka % 1000000));
-            } elseif ($angka < 1000000000000) {
-                return trim(terbilang(intval($angka / 1000000000)) . ' Milyar ' . terbilang($angka % 1000000000));
-            }
-
+            $huruf = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
+            if ($angka < 0) return 'Minus ' . terbilangWords(abs($angka));
+            if ($angka < 12) return $huruf[$angka];
+            if ($angka < 20) return trim(terbilangWords($angka - 10) . ' Belas');
+            if ($angka < 100) return trim(terbilangWords(intval($angka / 10)) . ' Puluh ' . terbilangWords($angka % 10));
+            if ($angka < 200) return trim('Seratus ' . terbilangWords($angka - 100));
+            if ($angka < 1000) return trim(terbilangWords(intval($angka / 100)) . ' Ratus ' . terbilangWords($angka % 100));
+            if ($angka < 2000) return trim('Seribu ' . terbilangWords($angka - 1000));
+            if ($angka < 1000000) return trim(terbilangWords(intval($angka / 1000)) . ' Ribu ' . terbilangWords($angka % 1000));
+            if ($angka < 1000000000) return trim(terbilangWords(intval($angka / 1000000)) . ' Juta ' . terbilangWords($angka % 1000000));
+            if ($angka < 1000000000000) return trim(terbilangWords(intval($angka / 1000000000)) . ' Milyar ' . terbilangWords($angka % 1000000000));
+            if ($angka < 1000000000000000) return trim(terbilangWords(intval($angka / 1000000000000)) . ' Triliun ' . terbilangWords($angka % 1000000000000));
             return '';
         }
+    }
+    if (!function_exists('terbilangRupiah')) {
+        function terbilangRupiah($angka): string
+        {
+            $nominal = (int) round((float) $angka);
+            if ($nominal === 0) return 'Nol Rupiah';
+            $hasil = trim(preg_replace('/\s+/', ' ', terbilangWords($nominal)));
+            return $hasil ? $hasil . ' Rupiah' : 'Nol Rupiah';
+        }
+    }
+    if (!function_exists('terbilang')) {
+        function terbilang($angka) { return terbilangWords($angka); }
     }
 
     $order = $invoice->salesOrder;
@@ -81,22 +84,24 @@
     $customItemsList = !empty($c['items']) && is_array($c['items']) ? collect($c['items']) : null;
 
     $subtotal = isset($c['subtotal']) && $c['subtotal'] !== ''
-        ? (float) str_replace(['.', ','], ['', '.'], (string) $c['subtotal'])
+        ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($c['subtotal']) : (float) $c['subtotal'])
         : (float) ($invoice->subtotal ?? 0);
 
     $taxAmount = isset($c['tax_amount']) && $c['tax_amount'] !== ''
-        ? (float) str_replace(['.', ','], ['', '.'], (string) $c['tax_amount'])
+        ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($c['tax_amount']) : (float) $c['tax_amount'])
         : (float) ($invoice->tax_amount ?? 0);
 
     $grandTotal = isset($c['grand_total']) && $c['grand_total'] !== ''
-        ? (float) str_replace(['.', ','], ['', '.'], (string) $c['grand_total'])
+        ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($c['grand_total']) : (float) $c['grand_total'])
         : (float) ($invoice->grand_total ?? 0);
 
     if ($grandTotal <= 0 && $subtotal > 0) {
         $grandTotal = $subtotal + $taxAmount;
     }
 
-    $terbilangText = !empty($c['terbilang']) ? $c['terbilang'] : (trim(terbilang($grandTotal)) . ' Rupiah');
+    $terbilangText = !empty($c['terbilang']) && trim((string) $c['terbilang']) !== ''
+        ? trim((string) $c['terbilang'])
+        : (function_exists('terbilangRupiah') ? terbilangRupiah($grandTotal) : (trim(terbilang($grandTotal)) . ' Rupiah'));
 
     $signerName = !empty($c['signer_name']) ? $c['signer_name'] : 'FENIKI';
     $signerTitle = !empty($c['signer_title']) ? $c['signer_title'] : 'DIREKTUR';
@@ -454,7 +459,7 @@
                         $pQty = (float) (is_array($item) ? ($item['qty'] ?? $item['quantity'] ?? 0) : ($item->quantity ?? 0));
                         $pUnit = is_array($item) ? ($item['unit'] ?? 'PCS') : ($item->unit ?? 'PCS');
                         $rawPrice = is_array($item) ? ($item['price'] ?? $item['unit_price'] ?? 0) : ($item->unit_price ?? 0);
-                        $pPrice = (float) str_replace(['.', ','], ['', '.'], (string) $rawPrice);
+                        $pPrice = function_exists('parseFlexibleMoney') ? parseFlexibleMoney($rawPrice) : (float) $rawPrice;
 
                         $d1 = (float) (is_array($item) ? ($item['discount_1'] ?? $item['discount1'] ?? 0) : ($item->discount_1 ?? $item->discount ?? 0));
                         $d2 = (float) (is_array($item) ? ($item['discount_2'] ?? $item['discount2'] ?? 0) : ($item->discount_2 ?? 0));
@@ -465,9 +470,9 @@
                         $discDisplay = !empty($discs) ? implode('+ ', $discs) : '0+ 0';
 
                         $pTotal = is_array($item) && isset($item['subtotal']) && $item['subtotal'] !== ''
-                            ? (float) str_replace(['.', ','], ['', '.'], (string) $item['subtotal'])
+                            ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($item['subtotal']) : (float) $item['subtotal'])
                             : (is_array($item) && isset($item['line_total']) && $item['line_total'] !== ''
-                                ? (float) str_replace(['.', ','], ['', '.'], (string) $item['line_total'])
+                                ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($item['line_total']) : (float) $item['line_total'])
                                 : ($pPrice * (1 - $d1/100) * (1 - $d2/100) * $pQty));
                         if ($pTotal <= 0 && !is_array($item)) {
                             $pTotal = (float) ($item->line_total ?? ($pPrice * $pQty));

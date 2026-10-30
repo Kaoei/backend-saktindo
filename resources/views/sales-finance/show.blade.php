@@ -1168,7 +1168,7 @@
                                     <hr class="my-2">
                                     <div class="mb-2">
                                         <label class="form-label small fw-semibold text-dark">Terbilang</label>
-                                        <input type="text" name="terbilang" id="fakturTerbilangInput" class="form-control form-control-sm" value="" placeholder="Otomatis terisi...">
+                                        <input type="text" name="terbilang" id="fakturTerbilangInput" class="form-control form-control-sm" value="{{ function_exists('terbilangRupiah') ? terbilangRupiah($invoice->grand_total > 0 ? $invoice->grand_total : ($invoice->subtotal ?? 0)) : '' }}" placeholder="Otomatis terisi...">
                                     </div>
                                 </div>
                             </div>
@@ -1425,9 +1425,9 @@ $(function() {
         }
     });
 
-    // Hitung awal saat modal dibuka
-    $('#editFakturModal').on('shown.bs.modal', function() {
-        if (!$('#fakturTerbilangInput').val()) {
+    // Hitung awal saat modal dibuka (dukung show.bs.modal dan shown.bs.modal)
+    $('#editFakturModal').on('show.bs.modal shown.bs.modal', function() {
+        if (!$('#fakturTerbilangInput').val() || $('#fakturTerbilangInput').val() === 'Nol Rupiah') {
             recalculateFakturTotals();
         }
     });

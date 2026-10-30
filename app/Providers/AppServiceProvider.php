@@ -16,7 +16,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        if (file_exists(app_path('Helpers/terbilang.php'))) {
+            require_once app_path('Helpers/terbilang.php');
+        }
     }
 
     /**

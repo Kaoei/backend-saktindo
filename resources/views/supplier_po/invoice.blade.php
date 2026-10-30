@@ -1,32 +1,6 @@
 @php
-    if (!function_exists('terbilang')) {
-        function terbilang($angka)
-        {
-            $angka = (int) $angka;
-            $huruf = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh', 'Sebelas'];
-            if ($angka < 0) {
-                return 'Minus ' . terbilang(abs($angka));
-            } elseif ($angka < 12) {
-                return $huruf[$angka];
-            } elseif ($angka < 20) {
-                return trim(terbilang($angka - 10) . ' Belas');
-            } elseif ($angka < 100) {
-                return trim(terbilang(intval($angka / 10)) . ' Puluh ' . terbilang($angka % 10));
-            } elseif ($angka < 200) {
-                return trim('Seratus ' . terbilang($angka - 100));
-            } elseif ($angka < 1000) {
-                return trim(terbilang(intval($angka / 100)) . ' Ratus ' . terbilang($angka % 100));
-            } elseif ($angka < 2000) {
-                return trim('Seribu ' . terbilang($angka - 1000));
-            } elseif ($angka < 1000000) {
-                return trim(terbilang(intval($angka / 1000)) . ' Ribu ' . terbilang($angka % 1000));
-            } elseif ($angka < 1000000000) {
-                return trim(terbilang(intval($angka / 1000000)) . ' Juta ' . terbilang($angka % 1000000));
-            } elseif ($angka < 1000000000000) {
-                return trim(terbilang(intval($angka / 1000000000)) . ' Milyar ' . terbilang($angka % 1000000000));
-            }
-            return '';
-        }
+    if (!function_exists('terbilangRupiah') && file_exists(app_path('Helpers/terbilang.php'))) {
+        require_once app_path('Helpers/terbilang.php');
     }
 
     // Hitung akumulasi subtotal
@@ -911,7 +885,7 @@
                     Terbilang :
                 </span>
 
-                {{ trim(terbilang($finalTotal)) }} Rupiah
+                {{ function_exists('terbilangRupiah') ? terbilangRupiah($finalTotal) : (trim(terbilang($finalTotal)) . ' Rupiah') }}
 
             </div>
 
