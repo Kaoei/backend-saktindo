@@ -210,3 +210,4 @@ class TransactionTransferJsSjbTest extends TestCase
         $response->assertSessionHasErrors('reason');
     }
 }
+
