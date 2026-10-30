@@ -124,3 +124,4 @@ class InvoiceTerbilangTest extends TestCase
         $response->assertSee('Seratus Lima Puluh Ribu Rupiah');
     }
 }
+

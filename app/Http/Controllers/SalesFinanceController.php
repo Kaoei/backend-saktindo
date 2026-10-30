@@ -259,6 +259,29 @@ class SalesFinanceController extends Controller
                 ->get()
             : collect();
 
+        $transferHistories = ActivityLog::where(function ($q) use ($salesOrder, $invoice) {
+                $q->where(function ($sq) use ($salesOrder) {
+                    $sq->where('subject_type', SalesOrder::class)
+                       ->where('subject_id', $salesOrder->id);
+                });
+                if ($invoice) {
+                    $sqTargetIds = array_filter([
+                        $invoice->id,
+                        $invoice->transferred_from_invoice_id,
+                        $invoice->transferred_to_invoice_id,
+                    ]);
+                    if (!empty($sqTargetIds)) {
+                        $q->orWhere(function ($iq) use ($sqTargetIds) {
+                            $iq->where('subject_type', Invoice::class)
+                               ->whereIn('subject_id', $sqTargetIds);
+                        });
+                    }
+                }
+            })
+            ->whereIn('action', ['transfer_transaction', 'transfer_transaction_in', 'transfer_transaction_out'])
+            ->latest('created_at')
+            ->get();
+
         return view('sales-finance.show', [
             'order' => $salesOrder,
 
@@ -275,6 +298,8 @@ class SalesFinanceController extends Controller
             'isHistoricalInvoice' => $isHistoricalInvoice,
 
             'fakturHistories' => $fakturHistories,
+
+            'transferHistories' => $transferHistories,
         ]);
     }
 
@@ -593,6 +618,214 @@ class SalesFinanceController extends Controller
         }
 
         return back()->with('status', 'Nomor Faktur Pajak tidak mengalami perubahan.');
+    }
+
+    /**
+     * Pemindahan transaksi antara JS dan SJB (atau sebaliknya) dengan pencatatan audit trail lengkap
+     */
+    public function transferTransaction(
+        Request $request,
+        SalesOrder $salesOrder
+    ): RedirectResponse {
+        $data = $request->validate([
+            'target_type' => ['required', 'in:js,sjb_non_pajak,sjb_pajak'],
+            'reason' => ['required', 'string', 'min:5', 'max:500'],
+            'faktur_number' => ['nullable', 'string', 'max:100'],
+            'invoice_date' => ['nullable', 'date'],
+        ], [
+            'target_type.required' => 'Pilih entitas tujuan pemindahan transaksi (JS atau SJB).',
+            'reason.required' => 'Alasan pemindahan transaksi wajib diisi.',
+            'reason.min' => 'Alasan pemindahan minimal 5 karakter.',
+        ]);
+
+        $salesOrder->load([
+            'invoice.payments',
+            'invoice.deliveryNotes',
+            'invoice.warehouseTask',
+            'items',
+        ]);
+
+        $oldInvoice = $salesOrder->invoice;
+        $currentTaxType = $oldInvoice ? $oldInvoice->tax_type : ($salesOrder->sales_type ?? 'js');
+        $targetTaxType = $data['target_type'];
+
+        if ($currentTaxType === $targetTaxType) {
+            return back()->with('error', 'Entitas tujuan sama dengan jenis transaksi saat ini (' . strtoupper($currentTaxType) . '). Silakan pilih entitas yang berbeda.');
+        }
+
+        $userName = auth()->user()?->name ?? 'Admin';
+        $now = now();
+        $reason = trim($data['reason']);
+        $newSalesType = str_starts_with($targetTaxType, 'sjb') ? 'sjb' : 'js';
+        $newToko = $newSalesType;
+
+        try {
+            DB::transaction(function () use (
+                $salesOrder,
+                $oldInvoice,
+                $currentTaxType,
+                $targetTaxType,
+                $newSalesType,
+                $newToko,
+                $userName,
+                $now,
+                $reason,
+                $data
+            ) {
+                // Subtotal dasar
+                $subtotal = (float) ($oldInvoice ? $oldInvoice->subtotal : $salesOrder->subtotal);
+
+                // Perhitungan Pajak & Grand Total baru
+                $newTaxAmount = $targetTaxType === 'sjb_pajak' ? round($subtotal * 0.11, 2) : 0.0;
+                $newGrandTotal = $subtotal + $newTaxAmount;
+
+                // Jika sudah ada invoice lama yang diterbitkan
+                if ($oldInvoice) {
+                    // Tentukan nomor faktur pajak baru
+                    if ($targetTaxType === 'sjb_pajak') {
+                        $newFakturNumber = !empty($data['faktur_number'])
+                            ? trim($data['faktur_number'])
+                            : $this->nextFakturNumber('sjb_pajak');
+                    } else {
+                        $newFakturNumber = $this->nextFakturNumber($targetTaxType);
+                    }
+
+                    // Buat Invoice Baru
+                    $newInvoice = Invoice::create([
+                        'sales_order_id' => $salesOrder->id,
+                        'invoice_number' => $this->nextDocumentNumber('INV'),
+                        'invoice_type' => $oldInvoice->invoice_type ?: 'normal',
+                        'tax_type' => $targetTaxType,
+                        'faktur_number' => $newFakturNumber,
+                        'invoice_date' => $data['invoice_date'] ?? $now->toDateString(),
+                        'due_date' => $oldInvoice->due_date,
+                        'status' => $oldInvoice->status === 'paid' ? 'paid' : 'outstanding',
+                        'subtotal' => $subtotal,
+                        'tax_amount' => $newTaxAmount,
+                        'grand_total' => $newGrandTotal,
+                        'paid_amount' => (float) ($oldInvoice->paid_amount ?? 0),
+                        'outstanding_amount' => max(0, $newGrandTotal - (float) ($oldInvoice->paid_amount ?? 0)),
+                        'transferred_from_invoice_id' => $oldInvoice->id,
+                        'transferred_from_invoice_number' => $oldInvoice->invoice_number,
+                        'transfer_reason' => $reason,
+                        'transferred_at' => $now,
+                        'transferred_by' => $userName,
+                    ]);
+
+                    // Pindahkan riwayat pembayaran jika ada
+                    if ($oldInvoice->payments && $oldInvoice->payments->isNotEmpty()) {
+                        foreach ($oldInvoice->payments as $payment) {
+                            $payment->update([
+                                'invoice_id' => $newInvoice->id,
+                            ]);
+                        }
+                    }
+
+                    // Sinkronisasi status akhir Invoice Baru
+                    if ($newInvoice->outstanding_amount <= 0) {
+                        $newInvoice->update(['status' => 'paid']);
+                    }
+
+                    // Relasikan Surat Jalan (Delivery Notes) jika ada
+                    DeliveryNote::where('invoice_id', $oldInvoice->id)->update([
+                        'invoice_id' => $newInvoice->id,
+                    ]);
+
+                    // Relasikan Warehouse Tasks jika ada
+                    WarehouseTask::where('invoice_id', $oldInvoice->id)->update([
+                        'invoice_id' => $newInvoice->id,
+                        'toko' => $newToko,
+                    ]);
+
+                    // Tandai Invoice Lama sebagai dialihkan/transferred
+                    $oldInvoice->update([
+                        'status' => 'cancelled',
+                        'transferred_to_invoice_id' => $newInvoice->id,
+                        'transferred_to_invoice_number' => $newInvoice->invoice_number,
+                        'transfer_reason' => $reason,
+                        'transferred_at' => $now,
+                        'transferred_by' => $userName,
+                    ]);
+
+                    // Hubungkan Sales Order ke Invoice Baru
+                    $salesOrder->update([
+                        'invoice_id' => $newInvoice->id,
+                        'sales_type' => $newSalesType,
+                        'toko' => $newToko,
+                        'tax_amount' => $newTaxAmount,
+                        'grand_total' => $newGrandTotal,
+                        'transfer_reason' => $reason,
+                        'transferred_at' => $now,
+                        'transferred_by' => $userName,
+                    ]);
+
+                    $newInvoice->salesOrders()->syncWithoutDetaching([$salesOrder->id]);
+
+                    // Audit Log Invoice Baru (Penerima Transfer)
+                    ActivityLogger::log('transfer_transaction_in', 'sales_finance', $newInvoice, [
+                        'action_label' => 'Pemindahan Transaksi Masuk',
+                        'from_invoice_id' => $oldInvoice->id,
+                        'from_invoice_number' => $oldInvoice->invoice_number,
+                        'to_invoice_id' => $newInvoice->id,
+                        'to_invoice_number' => $newInvoice->invoice_number,
+                        'from_tax_type' => $currentTaxType,
+                        'to_tax_type' => $targetTaxType,
+                        'old_grand_total' => (float) $oldInvoice->grand_total,
+                        'new_grand_total' => (float) $newGrandTotal,
+                        'reason' => $reason,
+                        'user' => $userName,
+                        'transferred_at' => $now->toDateTimeString(),
+                    ]);
+
+                    // Audit Log Invoice Lama (Sumber Transfer)
+                    ActivityLogger::log('transfer_transaction_out', 'sales_finance', $oldInvoice, [
+                        'action_label' => 'Pemindahan Transaksi Keluar',
+                        'to_invoice_id' => $newInvoice->id,
+                        'to_invoice_number' => $newInvoice->invoice_number,
+                        'to_tax_type' => $targetTaxType,
+                        'reason' => $reason,
+                        'user' => $userName,
+                        'transferred_at' => $now->toDateTimeString(),
+                    ]);
+                } else {
+                    // Jika SO belum memiliki invoice, update langsung entitas Sales Order
+                    $salesOrder->update([
+                        'sales_type' => $newSalesType,
+                        'toko' => $newToko,
+                        'tax_amount' => $newTaxAmount,
+                        'grand_total' => $newGrandTotal,
+                        'transfer_reason' => $reason,
+                        'transferred_at' => $now,
+                        'transferred_by' => $userName,
+                    ]);
+                }
+
+                // Audit Log pada Sales Order
+                ActivityLogger::log('transfer_transaction', 'sales_finance', $salesOrder, [
+                    'action_label' => 'Pemindahan Transaksi Sales Order',
+                    'from_sales_type' => $salesOrder->sales_type,
+                    'to_sales_type' => $newSalesType,
+                    'from_tax_type' => $currentTaxType,
+                    'to_tax_type' => $targetTaxType,
+                    'from_invoice_number' => $oldInvoice?->invoice_number ?? '-',
+                    'to_invoice_number' => isset($newInvoice) ? $newInvoice->invoice_number : '-',
+                    'reason' => $reason,
+                    'user' => $userName,
+                    'transferred_at' => $now->toDateTimeString(),
+                ]);
+            });
+
+            $targetLabel = match ($targetTaxType) {
+                'js' => 'JS (Jaya Sakti)',
+                'sjb_pajak' => 'SJB Pajak (PPN 11%)',
+                'sjb_non_pajak' => 'SJB Non Pajak',
+                default => strtoupper($targetTaxType),
+            };
+
+            return back()->with('status', "Transaksi berhasil dipindahkan ke entitas {$targetLabel}. Seluruh riwayat dan nomor invoice asal telah tercatat pada audit trail.");
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal memproses pemindahan transaksi: ' . $e->getMessage());
+        }
     }
 
     /*

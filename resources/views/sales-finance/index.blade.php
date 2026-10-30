@@ -778,12 +778,27 @@
 
                                         {{-- INVOICE NORMAL --}}
 
-                                        <a
-                                            href="{{ route('sales-finance.show', $order) }}"
-                                            class="fw-semibold text-primary"
-                                        >
-                                            {{ $normalInvoice->invoice_number }}
-                                        </a>
+                                        @if(!empty($normalInvoice->transferred_from_invoice_number))
+                                            <span class="badge bg-light-warning text-dark mb-1" style="font-size: 10px;" title="Hasil pemindahan dari {{ $normalInvoice->transferred_from_invoice_number }}">
+                                                <i class="feather icon-repeat me-1"></i>Pindahan dari {{ $normalInvoice->transferred_from_invoice_number }}
+                                            </span>
+                                        @elseif(!empty($normalInvoice->transferred_to_invoice_number))
+                                            <span class="badge bg-light-secondary text-muted mb-1" style="font-size: 10px;" title="Telah dipindahkan ke {{ $normalInvoice->transferred_to_invoice_number }}">
+                                                <i class="feather icon-arrow-right me-1"></i>Dialihkan ke {{ $normalInvoice->transferred_to_invoice_number }}
+                                            </span>
+                                        @endif
+
+                                        <div class="d-flex align-items-center gap-1">
+                                            <a
+                                                href="{{ route('sales-finance.show', $order) }}"
+                                                class="fw-semibold text-primary"
+                                            >
+                                                {{ $normalInvoice->invoice_number }}
+                                            </a>
+                                            <span class="badge {{ str_starts_with($normalInvoice->tax_type, 'sjb') ? 'bg-primary' : 'bg-info text-dark' }}" style="font-size: 9px;">
+                                                {{ strtoupper(str_replace('_', ' ', $normalInvoice->tax_type)) }}
+                                            </span>
+                                        </div>
 
 
                                         <div class="small text-muted">

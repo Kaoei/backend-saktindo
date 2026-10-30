@@ -126,6 +126,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{salesOrder}', [SalesFinanceController::class, 'destroy'])->middleware('permission:sales_finance.delete')->name('destroy');
         Route::post('/{salesOrder}/stock-check', [SalesFinanceController::class, 'checkStock'])->middleware('permission:sales_finance.edit')->name('stock-check');
         Route::post('/{salesOrder}/stock-approve', [SalesFinanceController::class, 'approveStock'])->middleware('permission:sales_finance.edit')->name('stock-approve');
+        Route::post('/{salesOrder}/transfer-transaction', [SalesFinanceController::class, 'transferTransaction'])->middleware('permission:sales_finance.edit')->name('transfer-transaction');
         Route::post('/invoices/{invoice}/faktur-pajak', [SalesFinanceController::class, 'updateFakturPajak'])->middleware('permission:sales_finance.edit')->name('invoices.update-faktur');
         Route::post('/{salesOrder}/invoice', [SalesFinanceController::class, 'generateInvoice'])->middleware('permission:sales_finance.create')->name('invoice.generate');
         Route::post('/{salesOrder}/proforma-invoice', [SalesFinanceController::class, 'generateProformaInvoice'])->middleware('permission:sales_finance.create')->name('proforma.generate');

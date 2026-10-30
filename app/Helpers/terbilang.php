@@ -112,3 +112,4 @@ if (!function_exists('parseFlexibleMoney')) {
         return (float) $val;
     }
 }
+

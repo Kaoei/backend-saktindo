@@ -269,6 +269,11 @@
                                 <i class="feather icon-mail me-1"></i> Kirim Tagihan Email
                             </button>
                         @endif
+                        @if(auth()->user()?->hasPermission('sales_finance.edit'))
+                            <button type="button" class="btn btn-warning btn-sm text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#transferTransactionModal" data-toggle="modal" data-target="#transferTransactionModal" title="Pindahkan transaksi antara JS dan SJB">
+                                <i class="feather icon-repeat me-1"></i> Pindahkan Transaksi (JS ⇄ SJB)
+                            </button>
+                        @endif
                         <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editFakturModal" data-toggle="modal" data-target="#editFakturModal">
                             <i class="feather icon-printer me-1"></i> Cetak / Sesuaikan Faktur
                         </button>
@@ -299,8 +304,46 @@
                 </div>
                 @endif
                 <div class="card-body">
+                    {{-- Alert Pemindahan Transaksi (JS ⇄ SJB) --}}
+                    @if(!empty($invoice->transferred_from_invoice_number))
+                        <div class="alert alert-warning border border-warning-subtle shadow-sm py-2 px-3 mb-3 d-flex align-items-center gap-2">
+                            <i class="feather icon-repeat fs-4 text-warning"></i>
+                            <div class="small">
+                                <strong>Transaksi Hasil Pemindahan:</strong> Faktur ini diterbitkan dari pemindahan
+                                <strong>Invoice {{ $invoice->transferred_from_invoice_number }}</strong>
+                                ({{ strtoupper(str_replace('_', ' ', $invoice->transferredFromInvoice?->tax_type ?? 'JS')) }})
+                                pada <strong>{{ optional($invoice->transferred_at)->format('d M Y H:i:s') }}</strong> oleh <em>{{ $invoice->transferred_by ?: 'User' }}</em>.
+                                @if(!empty($invoice->transfer_reason))
+                                    <div class="text-dark mt-1"><strong>Alasan:</strong> {{ $invoice->transfer_reason }}</div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(!empty($invoice->transferred_to_invoice_number))
+                        <div class="alert alert-secondary border shadow-sm py-2 px-3 mb-3 d-flex align-items-center gap-2">
+                            <i class="feather icon-arrow-right-circle fs-4 text-secondary"></i>
+                            <div class="small">
+                                <strong>Invoice Ini Telah Dipindahkan:</strong> Seluruh transaksi pada invoice ini telah dialihkan ke
+                                <strong>Invoice {{ $invoice->transferred_to_invoice_number }}</strong>
+                                pada <strong>{{ optional($invoice->transferred_at)->format('d M Y H:i:s') }}</strong> oleh <em>{{ $invoice->transferred_by ?: 'User' }}</em>.
+                                @if(!empty($invoice->transfer_reason))
+                                    <div class="text-dark mt-1"><strong>Alasan:</strong> {{ $invoice->transfer_reason }}</div>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="row mb-3">
-                        <div class="col-md-2"><div class="text-muted small">Status</div><span class="badge bg-light-info">{{ ucfirst($invoice->status) }}</span></div>
+                        <div class="col-md-2">
+                            <div class="text-muted small">Status</div>
+                            <span class="badge bg-light-info">{{ ucfirst($invoice->status) }}</span>
+                            <div class="mt-1">
+                                <span class="badge {{ str_starts_with($invoice->tax_type, 'sjb') ? 'bg-primary' : 'bg-info text-dark' }}">
+                                    {{ strtoupper(str_replace('_', ' ', $invoice->tax_type)) }}
+                                </span>
+                            </div>
+                        </div>
                         <div class="col-md-2"><div class="text-muted small">Tanggal</div>{{ optional($invoice->invoice_date)->format('d M Y') }}</div>
                         <div class="col-md-2"><div class="text-muted small">Terbayar</div>Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}</div>
                         <div class="col-md-2"><div class="text-muted small">Outstanding</div>Rp {{ number_format((float) $invoice->outstanding_amount, 0, ',', '.') }}</div>
@@ -314,6 +357,32 @@
                             </div>
                         </div>
                     </div>
+
+                    {{-- Riwayat Pemindahan Transaksi (Audit Trail) --}}
+                    @if(!empty($transferHistories) && $transferHistories->isNotEmpty())
+                        <div class="alert alert-light border py-2 px-3 mb-3 small">
+                            <div class="fw-bold text-warning-emphasis mb-1 d-flex align-items-center gap-1">
+                                <i class="feather icon-repeat"></i> Riwayat Pemindahan Transaksi (JS ⇄ SJB)
+                            </div>
+                            <ul class="mb-0 ps-3">
+                                @foreach($transferHistories as $tHist)
+                                    @php $tProp = $tHist->properties ?? []; @endphp
+                                    <li class="mb-1">
+                                        <strong>{{ optional($tHist->created_at)->format('d M Y H:i:s') }}</strong> oleh <em>{{ $tProp['user'] ?? 'User' }}</em>:
+                                        {{ $tProp['action_label'] ?? 'Pemindahan transaksi' }}
+                                        @if(!empty($tProp['from_invoice_number']) && !empty($tProp['to_invoice_number']))
+                                            dari Invoice <code class="text-muted">{{ $tProp['from_invoice_number'] }}</code> ({{ strtoupper(str_replace('_', ' ', $tProp['from_tax_type'] ?? '')) }})
+                                            ke Invoice <code class="text-success">{{ $tProp['to_invoice_number'] }}</code> ({{ strtoupper(str_replace('_', ' ', $tProp['to_tax_type'] ?? '')) }})
+                                        @elseif(!empty($tProp['from_sales_type']) && !empty($tProp['to_sales_type']))
+                                            dari tipe <code class="text-muted">{{ strtoupper($tProp['from_sales_type']) }}</code>
+                                            menjadi <code class="text-success">{{ strtoupper($tProp['to_sales_type']) }}</code>
+                                        @endif
+                                        @if(!empty($tProp['reason'])) &bull; <em>Alasan: {{ $tProp['reason'] }}</em> @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
                     @if(!empty($fakturHistories) && $fakturHistories->isNotEmpty())
                         <div class="alert alert-light border py-2 px-3 mb-3 small">
@@ -1289,6 +1358,96 @@
     </div>
 </div>
 @endif
+
+<!-- Modal Pemindahan Transaksi (JS ⇄ SJB) -->
+<div class="modal fade" id="transferTransactionModal" tabindex="-1" aria-labelledby="transferTransactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{{ route('sales-finance.transfer-transaction', $order) }}">
+                @csrf
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title text-white fw-bold" id="transferTransactionModalLabel">
+                        <i class="feather icon-repeat me-2 text-warning"></i> Pemindahan Transaksi (JS ⇄ SJB)
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning py-2 px-3 small mb-3">
+                        <i class="feather icon-info me-1"></i>
+                        Fitur ini memindahkan entitas transaksi antara <strong>JS (Jaya Sakti)</strong> dan <strong>SJB (Saktindo Jaya Bersama)</strong>.
+                        Nomor invoice asal dan histori perpindahan akan otomatis tercatat dan tersimpan dalam audit trail sistem.
+                    </div>
+
+                    @php
+                        $curTax = $invoice ? $invoice->tax_type : ($order->sales_type ?? 'js');
+                        $curSubtotal = (float) ($invoice ? $invoice->subtotal : $order->subtotal);
+                    @endphp
+
+                    <div class="card bg-light border mb-3">
+                        <div class="card-body p-3 small">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-muted">Status Entitas Saat Ini:</span>
+                                <span class="badge {{ str_starts_with($curTax, 'sjb') ? 'bg-primary' : 'bg-info text-dark' }}">
+                                    {{ strtoupper(str_replace('_', ' ', $curTax)) }}
+                                </span>
+                            </div>
+                            @if($invoice)
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted">No. Invoice Asal:</span>
+                                    <strong>{{ $invoice->invoice_number }}</strong>
+                                </div>
+                            @endif
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Subtotal Transaksi:</span>
+                                <strong>Rp {{ number_format($curSubtotal, 0, ',', '.') }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Pindahkan ke Entitas Tujuan <span class="text-danger">*</span></label>
+                        <select name="target_type" id="transferTargetTypeSelect" class="form-select form-select-sm" required>
+                            <option value="" disabled selected>-- Pilih Entitas Tujuan --</option>
+                            @if($curTax !== 'js')
+                                <option value="js">JS (Jaya Sakti - Non PPN)</option>
+                            @endif
+                            @if($curTax !== 'sjb_pajak')
+                                <option value="sjb_pajak">SJB Pajak (PT Saktindo Jaya Bersama - PPN 11%)</option>
+                            @endif
+                            @if($curTax !== 'sjb_non_pajak')
+                                <option value="sjb_non_pajak">SJB Non Pajak (PT Saktindo Jaya Bersama - Non PPN)</option>
+                            @endif
+                        </select>
+                        <div id="transferTaxNotice" class="form-text small mt-1 text-primary"></div>
+                    </div>
+
+                    <div class="mb-3" id="transferFakturNumberGroup" style="display: none;">
+                        <label class="form-label small fw-semibold">Nomor Faktur Pajak Baru (Opsional)</label>
+                        <input type="text" name="faktur_number" class="form-control form-control-sm" placeholder="Kosongkan jika ingin digenerate otomatis...">
+                        <div class="form-text small text-muted">Jika dikosongkan, sistem akan otomatis mengalokasikan nomor faktur pajak baru.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Tanggal Invoice Baru</label>
+                        <input type="date" name="invoice_date" class="form-control form-control-sm" value="{{ now()->toDateString() }}" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Alasan Pemindahan Transaksi <span class="text-danger">*</span></label>
+                        <textarea name="reason" class="form-control form-control-sm" rows="3" placeholder="Contoh: Permintaan pembeli membutuhkan faktur pajak resmi PT SJB / Salah pemilihan entitas saat input SO" required minlength="5"></textarea>
+                        <div class="form-text small text-muted">Wajib diisi sebagai catatan audit trail resmi sistem.</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning btn-sm text-dark fw-bold" onclick="return confirm('Konfirmasi pemindahan transaksi ini? Invoice baru akan diterbitkan dan nomor invoice lama akan tercatat pada histori.')">
+                        <i class="feather icon-check-circle me-1"></i> Proses Pemindahan Transaksi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
@@ -1422,6 +1581,24 @@ $(function() {
             recalculateFakturTotals();
         } else {
             alert('Minimal satu baris barang harus ada.');
+        }
+    });
+
+    // Handler pilihan target type pada Modal Pemindahan Transaksi (JS ⇄ SJB)
+    $(document).on('change', '#transferTargetTypeSelect', function() {
+        var val = $(this).val();
+        if (val === 'sjb_pajak') {
+            $('#transferFakturNumberGroup').slideDown(150);
+            $('#transferTaxNotice').html('<i class="feather icon-info me-1"></i> Transaksi akan dikenakan <strong>PPN 11%</strong> dan dialokasikan nomor Faktur Pajak resmi.');
+        } else if (val === 'sjb_non_pajak') {
+            $('#transferFakturNumberGroup').slideUp(150);
+            $('#transferTaxNotice').html('<i class="feather icon-info me-1"></i> Transaksi akan dipindahkan ke <strong>SJB Non Pajak</strong> (tanpa PPN).');
+        } else if (val === 'js') {
+            $('#transferFakturNumberGroup').slideUp(150);
+            $('#transferTaxNotice').html('<i class="feather icon-info me-1"></i> Transaksi akan dipindahkan ke <strong>JS (Jaya Sakti)</strong> (tanpa PPN).');
+        } else {
+            $('#transferFakturNumberGroup').slideUp(150);
+            $('#transferTaxNotice').text('');
         }
     });
 

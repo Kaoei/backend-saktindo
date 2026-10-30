@@ -28,6 +28,13 @@ class Invoice extends Model
         'faktur_number',
         'faktur_checked',
         'faktur_checked_at',
+        'transferred_from_invoice_id',
+        'transferred_from_invoice_number',
+        'transferred_to_invoice_id',
+        'transferred_to_invoice_number',
+        'transfer_reason',
+        'transferred_at',
+        'transferred_by',
         'invoice_date',
         'due_date',
         'status',
@@ -43,12 +50,23 @@ class Invoice extends Model
         'due_date' => 'date',
         'faktur_checked' => 'boolean',
         'faktur_checked_at' => 'datetime',
+        'transferred_at' => 'datetime',
         'subtotal' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'grand_total' => 'decimal:2',
         'paid_amount' => 'decimal:2',
         'outstanding_amount' => 'decimal:2',
     ];
+
+    public function transferredFromInvoice(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'transferred_from_invoice_id');
+    }
+
+    public function transferredToInvoice(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'transferred_to_invoice_id');
+    }
 
     public function salesOrder(): BelongsTo
     {
