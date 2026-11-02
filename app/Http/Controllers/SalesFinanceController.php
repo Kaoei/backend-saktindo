@@ -898,7 +898,9 @@ class SalesFinanceController extends Controller
                 );
         }
 
-        if ($salesOrder->stock_status !== 'available' && !$salesOrder->is_pre_order && !app()->environment('testing')) {
+        $isSuperAdmin = auth()->user()?->hasRole('super_admin') ?? false;
+
+        if ($salesOrder->stock_status !== 'available' && !$salesOrder->is_pre_order && !$isSuperAdmin && !app()->environment('testing')) {
             return back()
                 ->withInput()
                 ->with(

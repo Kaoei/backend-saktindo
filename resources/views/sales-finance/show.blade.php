@@ -554,7 +554,7 @@
                         <label class="form-label small fw-semibold">Jatuh Tempo</label>
                         <input type="date" name="due_date" class="form-control form-control-sm">
                     </div>
-                    @php $canGenerate = ($order->stock_status === 'available' || (auth()->user()?->hasRole('super-admin'))); @endphp
+                    @php $canGenerate = ($order->stock_status === 'available' || (auth()->user()?->hasRole('super_admin'))); @endphp
                     <button type="submit" class="btn btn-success w-100" @disabled(!$canGenerate)>
                         <i class="feather icon-check-circle me-1"></i> Generate Invoice Sales
                     </button>

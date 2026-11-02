@@ -87,6 +87,17 @@ class User extends Authenticatable
         return in_array($this->role, $roles, true);
     }
 
+    public function hasRole(string|array $role): bool
+    {
+        if (is_array($role)) {
+            return $this->hasAnyRole($role);
+        }
+
+        $normalized = str_replace('-', '_', $role);
+
+        return $this->role === $role || $this->role === $normalized;
+    }
+
     /**
      * Relationship to the roles table (via slug).
      */
