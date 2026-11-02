@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\GudangProduct;
+use App\Models\OutBound;
 use App\Models\Product;
 use App\Models\Rak;
 use App\Models\SubCategory;
@@ -343,14 +344,44 @@ class ProductController extends Controller
      */
     public function destroy($id)
     {
-        DB::transaction(function () use ($id) {
-            $product = SupplierProduct::findOrFail($id);
-            Product::where('seller_sku', $product->sku)->orWhere('product_name', $product->item_name)->delete();
-            $product->gudangProducts()->delete();
-            $product->delete();
-        });
+        $product = SupplierProduct::findOrFail($id);
 
-        return redirect()->route('products.index')->with('success', 'Master Produk dan stoknya berhasil dihapus.');
+        if ($product->inbounds()->exists()) {
+            return redirect()->route('products.index')
+                ->with('error', 'Produk tidak dapat dihapus karena sudah memiliki riwayat penerimaan barang (Inbound).')
+                ->withErrors(['Produk tidak dapat dihapus karena sudah memiliki riwayat penerimaan barang (Inbound).']);
+        }
+
+        $gudangProductIds = $product->gudangProducts()->withTrashed()->pluck('id');
+        if (OutBound::whereIn('gudang_product_id', $gudangProductIds)->exists()) {
+            return redirect()->route('products.index')
+                ->with('error', 'Produk tidak dapat dihapus karena sudah memiliki riwayat pengeluaran barang (Outbound).')
+                ->withErrors(['Produk tidak dapat dihapus karena sudah memiliki riwayat pengeluaran barang (Outbound).']);
+        }
+
+        if (DB::table('supplier_po_items')->where('supplier_product_id', $product->id)->exists()) {
+            return redirect()->route('products.index')
+                ->with('error', 'Produk tidak dapat dihapus karena tercatat dalam Purchase Order (PO).')
+                ->withErrors(['Produk tidak dapat dihapus karena tercatat dalam Purchase Order (PO).']);
+        }
+
+        try {
+            DB::transaction(function () use ($product) {
+                Product::where('seller_sku', $product->sku)->orWhere('product_name', $product->item_name)->delete();
+                $product->gudangProducts()->withTrashed()->forceDelete();
+                DB::table('stock_mutations')->where('supplier_product_id', $product->id)->delete();
+                DB::table('bundle_promo_items')->where('supplier_product_id', $product->id)->delete();
+                $product->delete();
+            });
+
+            return redirect()->route('products.index')->with('success', 'Master Produk dan stoknya berhasil dihapus.');
+        } catch (\Throwable $e) {
+            Log::error('Gagal hapus master produk: ' . $e->getMessage());
+
+            return redirect()->route('products.index')
+                ->with('error', 'Gagal menghapus produk: data masih terhubung dengan transaksi lain.')
+                ->withErrors(['Gagal menghapus produk: data masih terhubung dengan transaksi lain.']);
+        }
     }
 
     /**

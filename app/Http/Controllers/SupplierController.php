@@ -9,10 +9,14 @@ use App\Models\SupplierProduct;
 use App\Models\SupplierPurchaseHistory;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\OutBound;
+use App\Models\Product;
 use App\Models\SubCategory;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class SupplierController extends Controller
@@ -229,10 +233,44 @@ class SupplierController extends Controller
     public function destroyProduct(SupplierProduct $product): RedirectResponse
     {
         $supplierId = $product->supplier_id;
-        ActivityLogger::log('delete', 'supplier_product', $product, ['item_name' => $product->item_name]);
-        $product->delete();
 
-        return $this->backToSupplier($supplierId, 'Barang supplier berhasil dihapus.');
+        if ($product->inbounds()->exists()) {
+            return redirect()->route('suppliers.show', $supplierId)
+                ->with('error', 'Barang supplier tidak dapat dihapus karena sudah memiliki riwayat penerimaan barang (Inbound).')
+                ->withErrors(['Barang supplier tidak dapat dihapus karena sudah memiliki riwayat penerimaan barang (Inbound).']);
+        }
+
+        $gudangProductIds = $product->gudangProducts()->withTrashed()->pluck('id');
+        if (OutBound::whereIn('gudang_product_id', $gudangProductIds)->exists()) {
+            return redirect()->route('suppliers.show', $supplierId)
+                ->with('error', 'Barang supplier tidak dapat dihapus karena sudah memiliki riwayat pengeluaran barang (Outbound).')
+                ->withErrors(['Barang supplier tidak dapat dihapus karena sudah memiliki riwayat pengeluaran barang (Outbound).']);
+        }
+
+        if (DB::table('supplier_po_items')->where('supplier_product_id', $product->id)->exists()) {
+            return redirect()->route('suppliers.show', $supplierId)
+                ->with('error', 'Barang supplier tidak dapat dihapus karena tercatat dalam Purchase Order (PO).')
+                ->withErrors(['Barang supplier tidak dapat dihapus karena tercatat dalam Purchase Order (PO).']);
+        }
+
+        try {
+            DB::transaction(function () use ($product) {
+                ActivityLogger::log('delete', 'supplier_product', $product, ['item_name' => $product->item_name]);
+                Product::where('seller_sku', $product->sku)->orWhere('product_name', $product->item_name)->delete();
+                $product->gudangProducts()->withTrashed()->forceDelete();
+                DB::table('stock_mutations')->where('supplier_product_id', $product->id)->delete();
+                DB::table('bundle_promo_items')->where('supplier_product_id', $product->id)->delete();
+                $product->delete();
+            });
+
+            return $this->backToSupplier($supplierId, 'Barang supplier berhasil dihapus.');
+        } catch (\Throwable $e) {
+            Log::error('Gagal hapus barang supplier: ' . $e->getMessage());
+
+            return redirect()->route('suppliers.show', $supplierId)
+                ->with('error', 'Gagal menghapus barang: data masih terhubung dengan transaksi lain.')
+                ->withErrors(['Gagal menghapus barang: data masih terhubung dengan transaksi lain.']);
+        }
     }
 
     public function purchases()
