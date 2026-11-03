@@ -54,123 +54,143 @@
 @endpush
 
 @section('content')
+<!-- Ringkasan Total Produk & Qty Fisik (2 Kolom Seimbang) -->
+<div class="row mb-3">
+    <div class="col-md-6 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center justify-content-between p-3 p-md-4">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="letter-spacing: 0.5px; font-size: 0.8rem;">Total Produk di Gudang</span>
+                    <h2 class="mb-0 fw-bold mt-1 text-dark">{{ number_format($totalProduk ?? 0, 0, ',', '.') }}</h2>
+                </div>
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 52px; height: 52px; background-color: rgba(114, 103, 239, 0.12); color: #7267ef;">
+                    <i class="feather icon-package" style="font-size: 26px;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-sm-6 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center justify-content-between p-3 p-md-4">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="letter-spacing: 0.5px; font-size: 0.8rem;">Total Qty Fisik Keseluruhan</span>
+                    <h2 class="mb-0 fw-bold mt-1 text-success">{{ number_format($totalQty ?? 0, 0, ',', '.') }}</h2>
+                </div>
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 52px; height: 52px; background-color: rgba(23, 198, 102, 0.12); color: #17c666;">
+                    <i class="feather icon-boxes" style="font-size: 26px;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ringkasan Per Lokasi Gudang: JS, SJB, RK (3 Kolom Seimbang) -->
 <div class="row mb-4">
-
-    <div class="col-md-3 col-sm-6 mb-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="text-muted mb-1">Total Produk</p>
-                        <h3 class="mb-0">{{ $totalProduk ?? 0 }}</h3>
-                    </div>
-                    <i class="feather icon-package text-primary" style="font-size:32px"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3 col-sm-6 mb-3">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="text-muted mb-1">Total Qty</p>
-                        <h3 class="mb-0">{{ $totalQty ?? 0 }}</h3>
-                    </div>
-                    <i class="feather icon-boxes text-success" style="font-size:32px"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3 col-sm-6 mb-3">
+    <!-- Gudang JS -->
+    <div class="col-lg-4 col-md-4 col-sm-12 mb-3">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="card-body p-3 p-md-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <p class="text-muted mb-1">Gudang JS</p>
-                        <h3 class="mb-0">{{ $totalJS ?? 0 }}</h3>
+                        <span class="text-muted text-uppercase fw-semibold" style="letter-spacing: 0.5px; font-size: 0.8rem;">Gudang JS</span>
+                        <h3 class="mb-0 fw-bold mt-1 text-dark">{{ number_format($totalJS ?? 0, 0, ',', '.') }}</h3>
                     </div>
-                    <i class="feather icon-building text-warning" style="font-size:32px"></i>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background-color: rgba(255, 162, 29, 0.12); color: #ffa21d;">
+                        <i class="feather icon-building" style="font-size: 24px;"></i>
+                    </div>
                 </div>
 
-                <hr>
+                <hr class="my-2" style="border-top: 1px dashed #e2e8f0;">
 
-                <small class="text-muted fw-bold">Top 3 Rak</small>
+                <div class="d-flex justify-content-between align-items-center my-2">
+                    <span class="text-muted fw-bold" style="font-size: 0.75rem; text-transform: uppercase;">Top 3 Rak</span>
+                    <span class="text-muted fw-bold" style="font-size: 0.75rem; text-transform: uppercase;">Qty</span>
+                </div>
 
-                @forelse($topRakJS ?? [] as $rak)
-                    <div class="d-flex justify-content-between mt-2">
-                        <span>{{ $rak->rack_id }}</span>
-                        <span class="fw-bold">{{ $rak->total_qty }}</span>
-                    </div>
-                @empty
-                    <div class="text-muted mt-2">Belum ada data</div>
-                @endforelse
-
+                <div class="flex-grow-1">
+                    @forelse($topRakJS ?? [] as $rak)
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-secondary fw-semibold">{{ $rak->rack_id }}</span>
+                            <span class="badge bg-light text-dark fw-bold border">{{ number_format($rak->total_qty ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                    @empty
+                        <div class="text-muted small py-2 text-center">Belum ada data</div>
+                    @endforelse
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3 col-sm-6 mb-3">
+    <!-- Gudang SJB -->
+    <div class="col-lg-4 col-md-4 col-sm-12 mb-3">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="card-body p-3 p-md-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <p class="text-muted mb-1">Gudang SJB</p>
-                        <h3 class="mb-0">{{ $totalSJB ?? 0 }}</h3>
+                        <span class="text-muted text-uppercase fw-semibold" style="letter-spacing: 0.5px; font-size: 0.8rem;">Gudang SJB</span>
+                        <h3 class="mb-0 fw-bold mt-1 text-dark">{{ number_format($totalSJB ?? 0, 0, ',', '.') }}</h3>
                     </div>
-                    <i class="feather icon-home text-danger" style="font-size:32px"></i>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background-color: rgba(234, 77, 77, 0.12); color: #ea4d4d;">
+                        <i class="feather icon-home" style="font-size: 24px;"></i>
+                    </div>
                 </div>
 
-                <hr>
+                <hr class="my-2" style="border-top: 1px dashed #e2e8f0;">
 
-                <small class="text-muted fw-bold">Top 3 Rak</small>
+                <div class="d-flex justify-content-between align-items-center my-2">
+                    <span class="text-muted fw-bold" style="font-size: 0.75rem; text-transform: uppercase;">Top 3 Rak</span>
+                    <span class="text-muted fw-bold" style="font-size: 0.75rem; text-transform: uppercase;">Qty</span>
+                </div>
 
-                @forelse($topRakSJB ?? [] as $rak)
-                    <div class="d-flex justify-content-between mt-2">
-                        <span>{{ $rak->rack_id }}</span>
-                        <span class="fw-bold">{{ $rak->total_qty }}</span>
-                    </div>
-                @empty
-                    <div class="text-muted mt-2">Belum ada data</div>
-                @endforelse
-
+                <div class="flex-grow-1">
+                    @forelse($topRakSJB ?? [] as $rak)
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-secondary fw-semibold">{{ $rak->rack_id }}</span>
+                            <span class="badge bg-light text-dark fw-bold border">{{ number_format($rak->total_qty ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                    @empty
+                        <div class="text-muted small py-2 text-center">Belum ada data</div>
+                    @endforelse
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3 col-sm-6 mb-3">
+    <!-- Gudang RK -->
+    <div class="col-lg-4 col-md-4 col-sm-12 mb-3">
         <div class="card border-0 shadow-sm h-100">
-            <div class="card-body">
-
-                <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="card-body p-3 p-md-4 d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <p class="text-muted mb-1">Gudang RK</p>
-                        <h3 class="mb-0">{{ $totalRK ?? 0 }}</h3>
+                        <span class="text-muted text-uppercase fw-semibold" style="letter-spacing: 0.5px; font-size: 0.8rem;">Gudang RK</span>
+                        <h3 class="mb-0 fw-bold mt-1 text-dark">{{ number_format($totalRK ?? 0, 0, ',', '.') }}</h3>
                     </div>
-                    <i class="feather icon-layers text-info" style="font-size:32px"></i>
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 48px; height: 48px; background-color: rgba(62, 201, 214, 0.15); color: #17a2b8;">
+                        <i class="feather icon-layers" style="font-size: 24px;"></i>
+                    </div>
                 </div>
 
-                <hr>
+                <hr class="my-2" style="border-top: 1px dashed #e2e8f0;">
 
-                <small class="text-muted fw-bold">Top 3 Rak</small>
+                <div class="d-flex justify-content-between align-items-center my-2">
+                    <span class="text-muted fw-bold" style="font-size: 0.75rem; text-transform: uppercase;">Top 3 Rak</span>
+                    <span class="text-muted fw-bold" style="font-size: 0.75rem; text-transform: uppercase;">Qty</span>
+                </div>
 
-                @forelse($topRakRK ?? [] as $rak)
-                    <div class="d-flex justify-content-between mt-2">
-                        <span>{{ $rak->rack_id }}</span>
-                        <span class="fw-bold">{{ $rak->total_qty }}</span>
-                    </div>
-                @empty
-                    <div class="text-muted mt-2">Belum ada data</div>
-                @endforelse
-
+                <div class="flex-grow-1">
+                    @forelse($topRakRK ?? [] as $rak)
+                        <div class="d-flex justify-content-between align-items-center py-1">
+                            <span class="text-secondary fw-semibold">{{ $rak->rack_id }}</span>
+                            <span class="badge bg-light text-dark fw-bold border">{{ number_format($rak->total_qty ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                    @empty
+                        <div class="text-muted small py-2 text-center">Belum ada data</div>
+                    @endforelse
+                </div>
             </div>
         </div>
     </div>
-
 </div>
 <div class="row">
     <div class="col-12">

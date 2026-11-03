@@ -263,3 +263,4 @@ test('finance overview dashboard includes supplier PO in totalAP calculation', f
     $response->assertOk();
     $response->assertViewHas('totalAP', 3000000.0);
 });
+
