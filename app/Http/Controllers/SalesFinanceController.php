@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeliveryNote;
+use App\Models\DeliveryNoteItem;
 use App\Models\Invoice;
 use App\Models\InvoicePayment;
 use App\Models\GudangProduct;
@@ -2336,6 +2337,21 @@ class SalesFinanceController extends Controller
                 'nullable',
                 'string',
             ],
+
+            'items' => [
+                'nullable',
+                'array',
+            ],
+
+            'items.*.sales_order_item_id' => [
+                'nullable',
+            ],
+
+            'items.*.qty_sent' => [
+                'nullable',
+                'numeric',
+                'min:0',
+            ],
         ]);
 
         $deliveryNote =
@@ -2346,7 +2362,13 @@ class SalesFinanceController extends Controller
                             $invoice->id,
                     ],
                     array_merge(
-                        $data,
+                        [
+                            'delivery_date' => $data['delivery_date'],
+                            'status' => $data['status'],
+                            'pic_sales' => $data['pic_sales'] ?? null,
+                            'pic_gudang' => $data['pic_gudang'] ?? null,
+                            'notes' => $data['notes'] ?? null,
+                        ],
                         [
                             'delivery_note_number' =>
                                 $invoice
@@ -2358,6 +2380,27 @@ class SalesFinanceController extends Controller
                         ]
                     )
                 );
+
+        // Simpan / update item Surat Jalan jika dikirimkan
+        if ($request->has('items') && is_array($request->input('items'))) {
+            $deliveryNote->items()->delete();
+            foreach ($request->input('items') as $itemInput) {
+                $qty = (float) ($itemInput['qty_sent'] ?? 0);
+                $soItemId = $itemInput['sales_order_item_id'] ?? null;
+                if ($qty > 0 && !empty($soItemId)) {
+                    $deliveryNote->items()->create([
+                        'sales_order_item_id' => $soItemId,
+                        'qty_sent' => $qty,
+                    ]);
+
+                    $soItem = SalesOrderItem::find($soItemId);
+                    if ($soItem) {
+                        $totalDelivered = DeliveryNoteItem::where('sales_order_item_id', $soItem->id)->sum('qty_sent');
+                        $soItem->update(['delivered_qty' => $totalDelivered]);
+                    }
+                }
+            }
+        }
 
         if (
             $data['status'] ===
@@ -4190,11 +4233,13 @@ private function findActiveMergedInvoice(
     public function printDeliveryNote(
         DeliveryNote $deliveryNote
     ) {
+        $deliveryNote->increment('print_count');
 
         $deliveryNote->load([
             'invoice.salesOrder.customer',
             'invoice.salesOrder.items',
             'invoice',
+            'items.salesOrderItem',
         ]);
 
         $pdf =

@@ -92,7 +92,7 @@
 @endif
 
 <div class="row mt-3">
-    <div class="col-12 col-xl-8">
+    <div class="col-12 col-lg-8">
         <div class="card">
             <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div>
@@ -315,6 +315,16 @@
                         </small>
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2">
+                        @if(auth()->user()?->hasPermission('sales_finance.edit'))
+                            <button type="button" class="btn btn-outline-primary btn-sm fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#createDeliveryNoteModal" data-toggle="modal" data-target="#createDeliveryNoteModal" title="Buat Surat Jalan Pengiriman">
+                                <i class="feather icon-truck me-1"></i> Buat Surat Jalan
+                            </button>
+                        @endif
+                        @if($deliveryNotes->isNotEmpty())
+                            <a href="{{ route('sales-finance.delivery-notes.print', $deliveryNotes->first()) }}" class="btn btn-outline-dark btn-sm fw-semibold shadow-sm" target="_blank" title="Cetak Surat Jalan">
+                                <i class="feather icon-printer me-1"></i> Cetak Surat Jalan
+                            </a>
+                        @endif
                         @if($invoice->status !== 'paid' && $invoice->outstanding_amount > 0)
                             <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#sendInvoiceEmailModal" data-toggle="modal" data-target="#sendInvoiceEmailModal">
                                 <i class="feather icon-mail me-1"></i> Kirim Tagihan Email
@@ -495,23 +505,54 @@
                         </table>
                     </div>
 
-                    <h6 class="mt-4">Surat Jalan</h6>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-4 mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <h6 class="mb-0 fw-bold"><i class="feather icon-truck me-1 text-primary"></i> Surat Jalan Pengiriman</h6>
+                            <span class="badge bg-light-primary text-primary">{{ $deliveryNotes->count() }} Surat Jalan</span>
+                        </div>
+                        @if(auth()->user()?->hasPermission('sales_finance.edit'))
+                            <button type="button" class="btn btn-primary btn-sm shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#createDeliveryNoteModal" data-toggle="modal" data-target="#createDeliveryNoteModal">
+                                <i class="feather icon-plus me-1"></i> Buat Surat Jalan Baru
+                            </button>
+                        @endif
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead><tr><th>No. Surat Jalan</th><th>Tanggal</th><th>Status</th><th>Print</th><th class="text-end">Action</th></tr></thead>
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light small">
+                                <tr>
+                                    <th>No. Surat Jalan</th>
+                                    <th>Tanggal Kirim</th>
+                                    <th>Status</th>
+                                    <th>Pencetakan</th>
+                                    <th class="text-end">Aksi</th>
+                                </tr>
+                            </thead>
                             <tbody>
                                 @forelse($deliveryNotes as $note)
                                     <tr>
-                                        <td>{{ $note->delivery_note_number }}</td>
+                                        <td class="fw-bold">{{ $note->delivery_note_number }}</td>
                                         <td>{{ optional($note->delivery_date)->format('d M Y') }}</td>
                                         <td><span class="badge bg-light-primary">{{ ucfirst($note->status) }}</span></td>
-                                        <td>{{ $note->print_count }}x</td>
+                                        <td><span class="badge bg-secondary">{{ $note->print_count }}x dicetak</span></td>
                                         <td class="text-end">
-                                            <a href="{{ route('sales-finance.delivery-notes.print', $note) }}" class="btn btn-sm btn-light" target="_blank">Print</a>
+                                            <a href="{{ route('sales-finance.delivery-notes.print', $note) }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Cetak Surat Jalan ini">
+                                                <i class="feather icon-printer me-1"></i> Cetak
+                                            </a>
                                         </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-muted">Belum ada Surat Jalan.</td></tr>
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">
+                                            <div class="mb-2"><i class="feather icon-truck fs-3 text-muted"></i></div>
+                                            <div class="fw-semibold">Belum ada Surat Jalan untuk invoice ini.</div>
+                                            <div class="small text-muted mb-3">Surat jalan dapat diterbitkan untuk pengiriman barang kepada customer.</div>
+                                            @if(auth()->user()?->hasPermission('sales_finance.edit'))
+                                                <button type="button" class="btn btn-primary btn-sm shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#createDeliveryNoteModal" data-toggle="modal" data-target="#createDeliveryNoteModal">
+                                                    <i class="feather icon-plus me-1"></i> Buat Surat Jalan Sekarang
+                                                </button>
+                                            @endif
+                                        </td>
+                                    </tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -521,7 +562,7 @@
         @endif
     </div>
 
-    <div class="col-12 col-xl-4 mt-4 mt-xl-0">
+    <div class="col-12 col-lg-4 mt-4 mt-lg-0">
         @if(auth()->user()?->hasPermission('sales_finance.edit') && !in_array($order->order_status, ['invoiced', 'partial_delivery', 'delivered', 'completed']) && !$invoice)
             <div class="card shadow-sm border mb-3">
                 <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
@@ -623,11 +664,18 @@
         @endif
 
         @if($invoice)
-            <form method="POST" action="{{ route('invoices.delivery-note.store', $invoice) }}" class="card">
+            <form method="POST" action="{{ route('invoices.delivery-note.store', $invoice) }}" class="card shadow-sm border mb-3" id="card-surat-jalan">
                 @csrf
                 <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
 
-                <div class="card-header"><h5 class="mb-0">Surat Jalan</h5></div>
+                <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 text-primary fs-6"><i class="feather icon-truck me-1"></i> Form Surat Jalan</h5>
+                    @if($deliveryNotes->isNotEmpty())
+                        <span class="badge bg-success small"><i class="feather icon-check me-1"></i>Tersimpan ({{ $deliveryNotes->first()->delivery_note_number }})</span>
+                    @else
+                        <span class="badge bg-warning text-dark small">Baru</span>
+                    @endif
+                </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
@@ -638,7 +686,7 @@
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select" required>
                                 <option value="draft">Draft</option>
-                                <option value="process">Process</option>
+                                <option value="process" selected>Process</option>
                                 <option value="delivered">Delivered</option>
                                 <option value="cancelled">Cancelled</option>
                             </select>
@@ -661,7 +709,7 @@
                                         <td class="text-end">{{ number_format($remainingQty, 2, ',', '.') }} {{ $item->unit }}</td>
                                         <td class="text-end" style="width: 130px;">
                                             <input type="hidden" name="items[{{ $index }}][sales_order_item_id]" value="{{ $item->id }}">
-                                            <input type="number" step="0.01" min="0" max="{{ $remainingQty }}" name="items[{{ $index }}][qty_sent]" class="form-control text-end" value="{{ $remainingQty }}">
+                                            <input type="number" step="0.01" min="0" max="{{ $remainingQty > 0 ? $remainingQty : (float)$item->quantity }}" name="items[{{ $index }}][qty_sent]" class="form-control text-end" value="{{ $remainingQty > 0 ? $remainingQty : (float)$item->quantity }}">
                                         </td>
                                     </tr>
                                 @endforeach
@@ -672,7 +720,9 @@
                         <label class="form-label">Catatan (Notes)</label>
                         <textarea name="notes" class="form-control" rows="2">{{ old('notes') }}</textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Simpan Surat Jalan</button>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="feather icon-check me-1"></i> Simpan Surat Jalan
+                    </button>
                 </div>
             </form>
 
@@ -1039,6 +1089,113 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="feather icon-send me-1"></i> Kirim Tagihan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Buat Surat Jalan Baru -->
+<div class="modal fade" id="createDeliveryNoteModal" tabindex="-1" aria-labelledby="createDeliveryNoteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <form method="POST" action="{{ route('invoices.delivery-note.store', $invoice) }}">
+                @csrf
+                <input type="hidden" name="invoice_id" value="{{ $invoice->id }}">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title text-white fw-bold mb-0" id="createDeliveryNoteModalLabel">
+                        <i class="feather icon-truck me-2"></i> Buat Surat Jalan Pengiriman
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">No. Invoice</label>
+                            <input type="text" class="form-control form-control-sm bg-light" value="{{ $invoice->invoice_number }}" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer</label>
+                            <input type="text" class="form-control form-control-sm bg-light" value="{{ $order->customer_name ?? '-' }}" readonly>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Tanggal Kirim <span class="text-danger">*</span></label>
+                            <input type="date" name="delivery_date" class="form-control form-control-sm" value="{{ now()->toDateString() }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Status Pengiriman <span class="text-danger">*</span></label>
+                            <select name="status" class="form-select form-select-sm" required>
+                                <option value="draft">Draft (Draf)</option>
+                                <option value="process" selected>Process (Sedang Dikirim)</option>
+                                <option value="delivered">Delivered (Telah Diterima)</option>
+                                <option value="cancelled">Cancelled (Dibatalkan)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">PIC Sales</label>
+                            <input type="text" name="pic_sales" class="form-control form-control-sm" value="{{ auth()->user()?->name }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">PIC Gudang / Ekspedisi</label>
+                            <input type="text" name="pic_gudang" class="form-control form-control-sm" placeholder="Nama staf gudang / kurir pengirim">
+                        </div>
+                    </div>
+
+                    <div class="card border mb-3">
+                        <div class="card-header bg-light py-2">
+                            <span class="fw-semibold small"><i class="feather icon-box me-1"></i> Rincian Barang yang Dikirim</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light small">
+                                        <tr>
+                                            <th>Item Pesanan</th>
+                                            <th class="text-end">Sisa Qty Kirim</th>
+                                            <th class="text-end" style="width: 140px;">Qty Dikirim Ini</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($invoiceItems as $index => $item)
+                                            @php
+                                                $remainingQty = max(0, (float) $item->quantity - (float) $item->delivered_qty);
+                                            @endphp
+                                            <tr>
+                                                <td>
+                                                    <div class="fw-semibold">{{ $item->product_name }}</div>
+                                                    <div class="small text-muted">{{ $item->product_code }} {{ $item->salesOrder?->id ? '('.$item->salesOrder->id.')' : '' }}</div>
+                                                </td>
+                                                <td class="text-end">
+                                                    <span class="badge bg-light text-dark border">{{ number_format($remainingQty, 2, ',', '.') }} {{ $item->unit }}</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <input type="hidden" name="items[{{ $index }}][sales_order_item_id]" value="{{ $item->id }}">
+                                                    <input type="number" step="0.01" min="0" max="{{ $remainingQty > 0 ? $remainingQty : (float)$item->quantity }}" name="items[{{ $index }}][qty_sent]" class="form-control form-control-sm text-end" value="{{ $remainingQty > 0 ? $remainingQty : (float)$item->quantity }}">
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Catatan Pengiriman (Notes)</label>
+                        <textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Catatan untuk bagian pengiriman, nomor kendaraan, atau instruksi serah terima...">{{ old('notes') }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light py-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal" data-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary btn-sm fw-semibold shadow-sm">
+                        <i class="feather icon-check me-1"></i> Simpan & Terbitkan Surat Jalan
                     </button>
                 </div>
             </form>

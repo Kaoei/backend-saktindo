@@ -37,8 +37,12 @@
 </head>
 <body>
     @php($invoice = $deliveryNote->invoice)
-    @php($customer = $invoice?->salesOrders?->first())
-    @php($totalQty = $deliveryNote->items->sum(fn ($item) => (float) $item->qty_sent))
+    @php($customer = $invoice?->salesOrders?->first() ?? $order)
+    @php($noteItems = $deliveryNote->items)
+    @php($hasNoteItems = $noteItems && $noteItems->isNotEmpty())
+    @php($fallbackItems = $order?->items ?? ($invoice?->salesOrders?->flatMap->items ?? collect()))
+    @php($totalQty = $hasNoteItems ? $noteItems->sum(fn ($item) => (float) $item->qty_sent) : $fallbackItems->sum(fn ($item) => (float) $item->quantity))
+    @php($itemsCount = $hasNoteItems ? $noteItems->count() : $fallbackItems->count())
 
     <div class="doc">
         <table class="header">
@@ -82,22 +86,36 @@
                 <tr><th style="width: 10%;" class="center">No</th><th>Barang</th><th style="width: 18%;" class="right">Qty</th><th style="width: 14%;">Unit</th></tr>
             </thead>
             <tbody>
-                @foreach($deliveryNote->items as $item)
-                    <tr>
-                        <td class="center">{{ $loop->iteration }}</td>
-                        <td>
-                            <div class="product-name">{{ $item->salesOrderItem?->product_name }}</div>
-                            <div class="muted">{{ $item->salesOrderItem?->product_code }}</div>
-                        </td>
-                        <td class="right">{{ number_format((float) $item->qty_sent, 2, ',', '.') }}</td>
-                        <td>{{ $item->salesOrderItem?->unit }}</td>
-                    </tr>
-                @endforeach
+                @if($hasNoteItems)
+                    @foreach($noteItems as $item)
+                        <tr>
+                            <td class="center">{{ $loop->iteration }}</td>
+                            <td>
+                                <div class="product-name">{{ $item->salesOrderItem?->product_name ?? '-' }}</div>
+                                <div class="muted">{{ $item->salesOrderItem?->product_code }}</div>
+                            </td>
+                            <td class="right">{{ number_format((float) $item->qty_sent, 2, ',', '.') }}</td>
+                            <td>{{ $item->salesOrderItem?->unit }}</td>
+                        </tr>
+                    @endforeach
+                @else
+                    @foreach($fallbackItems as $item)
+                        <tr>
+                            <td class="center">{{ $loop->iteration }}</td>
+                            <td>
+                                <div class="product-name">{{ $item->product_name ?? '-' }}</div>
+                                <div class="muted">{{ $item->product_code }}</div>
+                            </td>
+                            <td class="right">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
+                            <td>{{ $item->unit }}</td>
+                        </tr>
+                    @endforeach
+                @endif
             </tbody>
         </table>
 
         <table class="summary">
-            <tr><td class="muted">Total item</td><td class="right">{{ $deliveryNote->items->count() }} baris</td></tr>
+            <tr><td class="muted">Total item</td><td class="right">{{ $itemsCount }} baris</td></tr>
             <tr><td class="muted">Total qty</td><td class="right">{{ number_format($totalQty, 2, ',', '.') }}</td></tr>
         </table>
 
