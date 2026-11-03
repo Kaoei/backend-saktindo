@@ -81,41 +81,53 @@
         </div>
 
         <div class="section-title">Detail Barang</div>
+        @php
+            $consolidatedDeliveryItems = collect();
+            $rawDeliveryItems = $hasNoteItems ? $noteItems : $fallbackItems;
+            foreach ($rawDeliveryItems as $it) {
+                $pName = $hasNoteItems ? ($it->salesOrderItem?->product_name ?? '-') : ($it->product_name ?? '-');
+                $pCode = $hasNoteItems ? ($it->salesOrderItem?->product_code ?? '') : ($it->product_code ?? '');
+                $pUnit = $hasNoteItems ? ($it->salesOrderItem?->unit ?? 'pcs') : ($it->unit ?? 'pcs');
+                $pQty = (float) ($hasNoteItems ? $it->qty_sent : $it->quantity);
+
+                $key = trim(strtolower($pName)) . '|' . trim(strtolower($pCode)) . '|' . strtoupper(trim($pUnit));
+                if ($consolidatedDeliveryItems->has($key)) {
+                    $existing = $consolidatedDeliveryItems->get($key);
+                    $existing['qty'] += $pQty;
+                    $consolidatedDeliveryItems->put($key, $existing);
+                } else {
+                    $consolidatedDeliveryItems->put($key, [
+                        'product_name' => $pName,
+                        'product_code' => $pCode,
+                        'unit' => $pUnit,
+                        'qty' => $pQty,
+                    ]);
+                }
+            }
+        @endphp
         <table class="items">
             <thead>
                 <tr><th style="width: 10%;" class="center">No</th><th>Barang</th><th style="width: 18%;" class="right">Qty</th><th style="width: 14%;">Unit</th></tr>
             </thead>
             <tbody>
-                @if($hasNoteItems)
-                    @foreach($noteItems as $item)
-                        <tr>
-                            <td class="center">{{ $loop->iteration }}</td>
-                            <td>
-                                <div class="product-name">{{ $item->salesOrderItem?->product_name ?? '-' }}</div>
-                                <div class="muted">{{ $item->salesOrderItem?->product_code }}</div>
-                            </td>
-                            <td class="right">{{ number_format((float) $item->qty_sent, 2, ',', '.') }}</td>
-                            <td>{{ $item->salesOrderItem?->unit }}</td>
-                        </tr>
-                    @endforeach
-                @else
-                    @foreach($fallbackItems as $item)
-                        <tr>
-                            <td class="center">{{ $loop->iteration }}</td>
-                            <td>
-                                <div class="product-name">{{ $item->product_name ?? '-' }}</div>
-                                <div class="muted">{{ $item->product_code }}</div>
-                            </td>
-                            <td class="right">{{ number_format((float) $item->quantity, 2, ',', '.') }}</td>
-                            <td>{{ $item->unit }}</td>
-                        </tr>
-                    @endforeach
-                @endif
+                @foreach($consolidatedDeliveryItems as $item)
+                    <tr>
+                        <td class="center">{{ $loop->iteration }}</td>
+                        <td>
+                            <div class="product-name">{{ $item['product_name'] }}</div>
+                            @if(!empty($item['product_code']))
+                                <div class="muted">{{ $item['product_code'] }}</div>
+                            @endif
+                        </td>
+                        <td class="right">{{ number_format((float) $item['qty'], 2, ',', '.') }}</td>
+                        <td>{{ $item['unit'] }}</td>
+                    </tr>
+                @endforeach
             </tbody>
         </table>
 
         <table class="summary">
-            <tr><td class="muted">Total item</td><td class="right">{{ $itemsCount }} baris</td></tr>
+            <tr><td class="muted">Total item</td><td class="right">{{ $consolidatedDeliveryItems->count() }} baris</td></tr>
             <tr><td class="muted">Total qty</td><td class="right">{{ number_format($totalQty, 2, ',', '.') }}</td></tr>
         </table>
 

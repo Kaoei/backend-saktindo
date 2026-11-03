@@ -443,7 +443,55 @@
 
         {{-- TABEL BARANG --}}
         @php
-            $displayItems = $customItemsList ?? $items;
+            $rawDisplayItems = $customItemsList ?? $items;
+            $consolidatedItems = collect();
+            foreach ($rawDisplayItems as $item) {
+                $pName = is_array($item) ? ($item['name'] ?? $item['item_name'] ?? $item['product_name'] ?? '') : ($item->product_name ?? '');
+                $pCode = is_array($item) ? ($item['code'] ?? $item['product_code'] ?? '') : ($item->product_code ?? '');
+                $pQty = (float) (is_array($item) ? ($item['qty'] ?? $item['quantity'] ?? 0) : ($item->quantity ?? 0));
+                $pUnit = is_array($item) ? ($item['unit'] ?? 'PCS') : ($item->unit ?? 'PCS');
+                $rawPrice = is_array($item) ? ($item['price'] ?? $item['unit_price'] ?? 0) : ($item->unit_price ?? 0);
+                $pPrice = function_exists('parseFlexibleMoney') ? parseFlexibleMoney($rawPrice) : (float) $rawPrice;
+
+                $d1 = (float) (is_array($item) ? ($item['discount_1'] ?? $item['discount1'] ?? 0) : ($item->discount_1 ?? $item->discount ?? 0));
+                $d2 = (float) (is_array($item) ? ($item['discount_2'] ?? $item['discount2'] ?? 0) : ($item->discount_2 ?? 0));
+
+                $pTotal = is_array($item) && isset($item['subtotal']) && $item['subtotal'] !== ''
+                    ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($item['subtotal']) : (float) $item['subtotal'])
+                    : (is_array($item) && isset($item['line_total']) && $item['line_total'] !== ''
+                        ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($item['line_total']) : (float) $item['line_total'])
+                        : ($pPrice * (1 - $d1/100) * (1 - $d2/100) * $pQty));
+                if ($pTotal <= 0 && !is_array($item)) {
+                    $pTotal = (float) ($item->line_total ?? ($pPrice * $pQty));
+                }
+
+                // Konsolidasi barang yang identik (nama produk, harga satuan, diskon, dan satuan sama)
+                $key = trim(strtolower($pName)) . '|' . round($pPrice, 2) . '|' . round($d1, 2) . '|' . round($d2, 2) . '|' . strtoupper(trim($pUnit));
+                if ($consolidatedItems->has($key)) {
+                    $existing = $consolidatedItems->get($key);
+                    $existing['qty'] += $pQty;
+                    $existing['total'] += $pTotal;
+                    $consolidatedItems->put($key, $existing);
+                } else {
+                    $discs = [];
+                    if ($d1 > 0) $discs[] = rtrim(rtrim(number_format($d1, 2), '0'), '.');
+                    if ($d2 > 0) $discs[] = rtrim(rtrim(number_format($d2, 2), '0'), '.');
+                    $discDisplay = !empty($discs) ? implode('+ ', $discs) : '0+ 0';
+
+                    $consolidatedItems->put($key, [
+                        'name' => $pName,
+                        'code' => $pCode,
+                        'unit' => $pUnit,
+                        'qty' => $pQty,
+                        'price' => $pPrice,
+                        'd1' => $d1,
+                        'd2' => $d2,
+                        'disc_display' => $discDisplay,
+                        'total' => $pTotal,
+                    ]);
+                }
+            }
+            $displayItems = $consolidatedItems->values();
             $rowCount = count($displayItems);
             // Pada kertas Continuous Form Bagi 2 (tinggi 5.5 in), batasi baris kosong agar pas 1 halaman
             $targetRows = ($paperSize === 'continuous_half') ? 3 : 5;
@@ -462,37 +510,13 @@
             </thead>
             <tbody>
                 @foreach ($displayItems as $index => $item)
-                    @php
-                        $pName = is_array($item) ? ($item['name'] ?? $item['item_name'] ?? $item['product_name'] ?? '') : ($item->product_name ?? '');
-                        $pQty = (float) (is_array($item) ? ($item['qty'] ?? $item['quantity'] ?? 0) : ($item->quantity ?? 0));
-                        $pUnit = is_array($item) ? ($item['unit'] ?? 'PCS') : ($item->unit ?? 'PCS');
-                        $rawPrice = is_array($item) ? ($item['price'] ?? $item['unit_price'] ?? 0) : ($item->unit_price ?? 0);
-                        $pPrice = function_exists('parseFlexibleMoney') ? parseFlexibleMoney($rawPrice) : (float) $rawPrice;
-
-                        $d1 = (float) (is_array($item) ? ($item['discount_1'] ?? $item['discount1'] ?? 0) : ($item->discount_1 ?? $item->discount ?? 0));
-                        $d2 = (float) (is_array($item) ? ($item['discount_2'] ?? $item['discount2'] ?? 0) : ($item->discount_2 ?? 0));
-
-                        $discs = [];
-                        if ($d1 > 0) $discs[] = rtrim(rtrim(number_format($d1, 2), '0'), '.');
-                        if ($d2 > 0) $discs[] = rtrim(rtrim(number_format($d2, 2), '0'), '.');
-                        $discDisplay = !empty($discs) ? implode('+ ', $discs) : '0+ 0';
-
-                        $pTotal = is_array($item) && isset($item['subtotal']) && $item['subtotal'] !== ''
-                            ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($item['subtotal']) : (float) $item['subtotal'])
-                            : (is_array($item) && isset($item['line_total']) && $item['line_total'] !== ''
-                                ? (function_exists('parseFlexibleMoney') ? parseFlexibleMoney($item['line_total']) : (float) $item['line_total'])
-                                : ($pPrice * (1 - $d1/100) * (1 - $d2/100) * $pQty));
-                        if ($pTotal <= 0 && !is_array($item)) {
-                            $pTotal = (float) ($item->line_total ?? ($pPrice * $pQty));
-                        }
-                    @endphp
                     <tr>
                         <td class="center">{{ $index + 1 }}</td>
-                        <td style="font-weight: 600;">{{ $pName }}</td>
-                        <td class="center">{{ number_format($pQty, 2, ',', '.') }} {{ strtoupper($pUnit) }}</td>
-                        <td class="right">{{ number_format($pPrice, 2, ',', '.') }}</td>
-                        <td class="center">{{ $discDisplay }}</td>
-                        <td class="right" style="font-weight: 600;">{{ number_format($pTotal, 2, ',', '.') }}</td>
+                        <td style="font-weight: 600;">{{ $item['name'] }}</td>
+                        <td class="center">{{ number_format($item['qty'], 2, ',', '.') }} {{ strtoupper($item['unit']) }}</td>
+                        <td class="right">{{ number_format($item['price'], 2, ',', '.') }}</td>
+                        <td class="center">{{ $item['disc_display'] }}</td>
+                        <td class="right" style="font-weight: 600;">{{ number_format($item['total'], 2, ',', '.') }}</td>
                     </tr>
                 @endforeach
 

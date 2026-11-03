@@ -712,7 +712,15 @@
                                         $remainingQty = max(0, (float) $item->quantity - (float) $item->delivered_qty);
                                     @endphp
                                     <tr>
-                                        <td>{{ $item->product_name }}<div class="small text-muted">{{ $item->salesOrder?->id }}</div></td>
+                                        <td>
+                                            <div class="fw-semibold">{{ $item->product_name }}</div>
+                                            <div class="small text-muted">
+                                                {{ $item->salesOrder?->id }}
+                                                @if($item->rack_id)
+                                                    <span class="badge bg-light-primary text-primary border ms-1" title="Alokasi Rak Gudang"><i class="feather icon-box me-1"></i>Rak: {{ $item->rack_id }}</span>
+                                                @endif
+                                            </div>
+                                        </td>
                                         <td class="text-end">{{ number_format($remainingQty, 2, ',', '.') }} {{ $item->unit }}</td>
                                         <td class="text-end" style="width: 130px;">
                                             <input type="hidden" name="items[{{ $index }}][sales_order_item_id]" value="{{ $item->id }}">
@@ -1177,7 +1185,12 @@
                                             <tr>
                                                 <td>
                                                     <div class="fw-semibold">{{ $item->product_name }}</div>
-                                                    <div class="small text-muted">{{ $item->product_code }} {{ $item->salesOrder?->id ? '('.$item->salesOrder->id.')' : '' }}</div>
+                                                    <div class="small text-muted">
+                                                        {{ $item->product_code }} {{ $item->salesOrder?->id ? '('.$item->salesOrder->id.')' : '' }}
+                                                        @if($item->rack_id)
+                                                            <span class="badge bg-light-primary text-primary border ms-1" title="Alokasi Rak Gudang"><i class="feather icon-box me-1"></i>Rak: {{ $item->rack_id }}</span>
+                                                        @endif
+                                                    </div>
                                                 </td>
                                                 <td class="text-end">
                                                     <span class="badge bg-light text-dark border">{{ number_format($remainingQty, 2, ',', '.') }} {{ $item->unit }}</span>
@@ -1212,10 +1225,42 @@
 
 <!-- Modal Cetak / Sesuaikan Faktur Penjualan -->
 @php
-    $modalItems = $invoiceItems;
-    if ($modalItems->isEmpty() && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
-        $modalItems = $invoice->salesOrders->flatMap(fn($so) => $so->items ?? collect());
+    $rawModalItems = $invoiceItems;
+    if ($rawModalItems->isEmpty() && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
+        $rawModalItems = $invoice->salesOrders->flatMap(fn($so) => $so->items ?? collect());
     }
+    $consolidatedModal = collect();
+    foreach ($rawModalItems as $it) {
+        $pName = $it->item_name ?? $it->product_name ?? '';
+        $pCode = $it->product_code ?? '';
+        $pUnit = $it->unit ?? 'PCS';
+        $pQty = (float) ($it->quantity ?? $it->qty ?? 0);
+        $pPrice = (float) ($it->unit_price ?? $it->price ?? 0);
+        $d1 = (float) ($it->discount_1 ?? $it->discount1 ?? $it->discount ?? 0);
+        $d2 = (float) ($it->discount_2 ?? $it->discount2 ?? 0);
+        $subtotal = (float) ($it->line_total ?? $it->subtotal ?? ($pPrice * (1 - $d1/100) * (1 - $d2/100) * $pQty));
+
+        $key = trim(strtolower($pName)) . '|' . round($pPrice, 2) . '|' . round($d1, 2) . '|' . round($d2, 2) . '|' . strtoupper(trim($pUnit));
+        if ($consolidatedModal->has($key)) {
+            $existing = $consolidatedModal->get($key);
+            $existing->quantity += $pQty;
+            $existing->subtotal += $subtotal;
+            $consolidatedModal->put($key, $existing);
+        } else {
+            $consolidatedModal->put($key, (object)[
+                'item_name' => $pName,
+                'product_name' => $pName,
+                'product_code' => $pCode,
+                'unit' => $pUnit,
+                'quantity' => $pQty,
+                'unit_price' => $pPrice,
+                'discount1' => $d1,
+                'discount2' => $d2,
+                'subtotal' => $subtotal,
+            ]);
+        }
+    }
+    $modalItems = $consolidatedModal->values();
     $modalCustomerName = $order->customer_name ?? $order->customer?->nama_customer ?? ($invoice->salesOrders?->first()?->customer_name ?? '');
     $modalCustomerAddress = $order->customer?->alamat 
         ? $order->customer->alamat . (!empty($order->customer->kota) ? ', ' . $order->customer->kota : '')
@@ -1399,25 +1444,25 @@
                                         <tr class="faktur-item-row">
                                             <td class="text-center row-num">{{ $loop->iteration }}</td>
                                             <td>
-                                                <input type="text" name="items[{{ $idx }}][item_name]" class="form-control form-control-sm item-name" value="{{ $it->item_name }}" required>
+                                                <input type="text" name="items[{{ $idx }}][item_name]" class="form-control form-control-sm item-name" value="{{ $it->item_name ?? $it->product_name }}" required>
                                             </td>
                                             <td>
                                                 <input type="number" step="any" min="0" name="items[{{ $idx }}][qty]" class="form-control form-control-sm text-end item-qty" value="{{ $it->quantity }}" required>
                                             </td>
                                             <td>
-                                                <input type="text" name="items[{{ $idx }}][unit]" class="form-control form-control-sm text-center item-unit" value="{{ $it->unit ?? 'ROL' }}">
+                                                <input type="text" name="items[{{ $idx }}][unit]" class="form-control form-control-sm text-center item-unit" value="{{ $it->unit ?? 'PCS' }}">
                                             </td>
                                             <td>
                                                 <input type="number" step="any" min="0" name="items[{{ $idx }}][unit_price]" class="form-control form-control-sm text-end item-price" value="{{ $it->unit_price }}" required>
                                             </td>
                                             <td>
-                                                <input type="number" step="any" min="0" max="100" name="items[{{ $idx }}][discount1]" class="form-control form-control-sm text-end item-d1" value="{{ $it->discount1 ?? 0 }}">
+                                                <input type="number" step="any" min="0" max="100" name="items[{{ $idx }}][discount1]" class="form-control form-control-sm text-end item-d1" value="{{ $it->discount1 ?? $it->discount_1 ?? 0 }}">
                                             </td>
                                             <td>
-                                                <input type="number" step="any" min="0" max="100" name="items[{{ $idx }}][discount2]" class="form-control form-control-sm text-end item-d2" value="{{ $it->discount2 ?? 0 }}">
+                                                <input type="number" step="any" min="0" max="100" name="items[{{ $idx }}][discount2]" class="form-control form-control-sm text-end item-d2" value="{{ $it->discount2 ?? $it->discount_2 ?? 0 }}">
                                             </td>
                                             <td>
-                                                <input type="number" step="any" name="items[{{ $idx }}][subtotal]" class="form-control form-control-sm text-end item-subtotal" value="{{ $it->subtotal ?? ($it->quantity * $it->unit_price) }}">
+                                                <input type="number" step="any" name="items[{{ $idx }}][subtotal]" class="form-control form-control-sm text-end item-subtotal" value="{{ $it->subtotal ?? $it->line_total ?? ($it->quantity * $it->unit_price) }}">
                                             </td>
                                             <td class="text-center">
                                                 <button type="button" class="btn btn-sm btn-outline-danger p-1 btn-del-row" title="Hapus"><i class="feather icon-trash-2"></i></button>

@@ -176,5 +176,97 @@ class MOMFakturPdfTest extends TestCase
         $responseHtml->assertSee('Courier New', false);
         $responseHtml->assertSee('window.print()', false);
     }
+
+    public function test_faktur_and_delivery_note_consolidate_identical_items_from_different_racks(): void
+    {
+        $user = User::factory()->create([
+            'role' => User::ROLE_SUPER_ADMIN,
+        ]);
+
+        $salesOrder = SalesOrder::create([
+            'customer_name' => 'CARLOS',
+            'customer_po_number' => 'PO-20261103-4E6EB',
+            'po_date' => now()->toDateString(),
+            'order_date' => now()->toDateString(),
+            'sales_type' => 'credit',
+            'order_status' => 'confirmed',
+            'subtotal' => 800000,
+            'tax_amount' => 0,
+            'grand_total' => 800000,
+        ]);
+
+        // Item 1: Rak L2 R1-1 (10 pcs)
+        $soItem1 = SalesOrderItem::create([
+            'sales_order_id' => $salesOrder->id,
+            'product_name' => 'VARIO - CAPSULE',
+            'product_code' => 'SPR-202608-0092',
+            'rack_id' => 'L2 R1-1',
+            'quantity' => 10,
+            'unit' => 'pcs',
+            'unit_price' => 50000,
+            'line_total' => 500000,
+        ]);
+
+        // Item 2: Rak L2 SMP R15 (6 pcs)
+        $soItem2 = SalesOrderItem::create([
+            'sales_order_id' => $salesOrder->id,
+            'product_name' => 'VARIO - CAPSULE',
+            'product_code' => 'SPR-202608-0092',
+            'rack_id' => 'L2 SMP R15',
+            'quantity' => 6,
+            'unit' => 'pcs',
+            'unit_price' => 50000,
+            'line_total' => 300000,
+        ]);
+
+        $invoice = Invoice::create([
+            'sales_order_id' => $salesOrder->id,
+            'invoice_number' => 'INV/2026/11/0007',
+            'invoice_type' => 'standar',
+            'tax_type' => 'sjb_non_pajak',
+            'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(30)->toDateString(),
+            'status' => 'unpaid',
+            'subtotal' => 800000,
+            'tax_amount' => 0,
+            'grand_total' => 800000,
+            'paid_amount' => 0,
+            'outstanding_amount' => 800000,
+        ]);
+        $salesOrder->update(['invoice_id' => $invoice->id]);
+
+        // 1. Verify Faktur PDF consolidates 10 + 6 into 1 row of 16 pcs
+        $fakturView = view('sales-finance.pdf.invoice', ['invoice' => $invoice])->render();
+        $this->assertStringContainsString('VARIO - CAPSULE', $fakturView);
+        $this->assertStringContainsString('16,00 PCS', $fakturView);
+        $this->assertStringContainsString('800.000,00', $fakturView);
+        // It must appear as row No 1 only, and not have row No 2
+        $this->assertStringContainsString('<td class="center">1</td>', $fakturView);
+        $this->assertStringNotContainsString('<td class="center">2</td>', $fakturView);
+
+        // 2. Create Delivery Note and items
+        $deliveryNote = \App\Models\DeliveryNote::create([
+            'invoice_id' => $invoice->id,
+            'delivery_note_number' => 'SJ-202611-0007',
+            'delivery_date' => now()->toDateString(),
+            'status' => 'process',
+        ]);
+        \App\Models\DeliveryNoteItem::create([
+            'delivery_note_id' => $deliveryNote->id,
+            'sales_order_item_id' => $soItem1->id,
+            'qty_sent' => 10,
+        ]);
+        \App\Models\DeliveryNoteItem::create([
+            'delivery_note_id' => $deliveryNote->id,
+            'sales_order_item_id' => $soItem2->id,
+            'qty_sent' => 6,
+        ]);
+
+        // 3. Verify Surat Jalan PDF consolidates 10 + 6 into 1 row of 16 pcs
+        $dnView = view('sales-finance.pdf.delivery-note', ['deliveryNote' => $deliveryNote])->render();
+        $this->assertStringContainsString('VARIO - CAPSULE', $dnView);
+        $this->assertStringContainsString('16,00', $dnView);
+        $this->assertStringContainsString('1 baris', $dnView);
+    }
 }
 
