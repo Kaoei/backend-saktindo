@@ -75,10 +75,12 @@ class User extends Authenticatable
     {
         return match ($this->role) {
             self::ROLE_SUPER_ADMIN => 'Super Admin',
+            self::ROLE_ADMIN => 'Admin',
             self::ROLE_TEKNISI => 'Teknisi',
             self::ROLE_SALES => 'Sales',
             self::ROLE_FINANCE => 'Finance',
-            default => 'Admin',
+            self::ROLE_GUDANG => 'Gudang',
+            default => ucfirst(str_replace('_', ' ', $this->role ?? 'User')),
         };
     }
 

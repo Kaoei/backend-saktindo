@@ -27,4 +27,9 @@ class Rak extends Model
     protected $casts = [
         'is_temporary' => 'boolean',
     ];
+
+    public function gudangProducts()
+    {
+        return $this->hasMany(GudangProduct::class, 'rack_id', 'rak_kode');
+    }
 }

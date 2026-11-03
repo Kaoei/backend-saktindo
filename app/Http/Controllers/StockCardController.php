@@ -17,6 +17,23 @@ class StockCardController extends Controller
      */
     public function index(Request $request)
     {
+        $rackId = $request->get('rack_id');
+        $mutationType = $request->get('mutation_type');
+
+        // Products stored in this rack (if rack_id is specified)
+        $productsInRack = collect();
+        if ($rackId) {
+            $productsInRack = SupplierProduct::whereHas('gudangProducts', function ($q) use ($rackId) {
+                $q->where('rack_id', $rackId);
+            })->with(['gudangProducts' => function ($q) use ($rackId) {
+                $q->where('rack_id', $rackId);
+            }])->orderBy('item_name')->get();
+
+            foreach ($productsInRack as $pItem) {
+                $pItem->current_rack_qty = (int) $pItem->gudangProducts->where('rack_id', $rackId)->sum('qty');
+            }
+        }
+
         // 1. Resolve selected product
         $productId = $request->get('product_id') ?: $request->get('supplier_product_id');
         
@@ -24,6 +41,15 @@ class StockCardController extends Controller
         if (!$productId && $request->filled('sku')) {
             $prod = SupplierProduct::where('sku', $request->sku)->first();
             $productId = $prod?->id;
+        }
+
+        // If rackId is selected and products exist in that rack:
+        // if no product_id was given, or currently selected product is not in this rack, default to first product in rack
+        if ($rackId && $productsInRack->isNotEmpty()) {
+            $inRackIds = $productsInRack->pluck('id')->all();
+            if (!$productId || !in_array($productId, $inRackIds)) {
+                $productId = $productsInRack->first()->id;
+            }
         }
 
         // If still empty, pick first active product with stock or first product
@@ -45,9 +71,6 @@ class StockCardController extends Controller
         $endDate = $request->filled('end_date') 
             ? Carbon::parse($request->end_date)->endOfDay() 
             : Carbon::now()->endOfDay();
-
-        $rackId = $request->get('rack_id');
-        $mutationType = $request->get('mutation_type');
 
         // 3. Compute Saldo Awal Periode (Before start_date)
         $saldoAwalQuery = StockMutation::where('supplier_product_id', $productId)
@@ -137,6 +160,7 @@ class StockCardController extends Controller
         return view('stock_cards.index', compact(
             'currentProduct',
             'allProducts',
+            'productsInRack',
             'allRacks',
             'mutations',
             'startDate',
@@ -155,6 +179,64 @@ class StockCardController extends Controller
             'currentPhysicalStock',
             'rackAllocations'
         ));
+    }
+
+    /**
+     * AJAX endpoint: Get list of products stored in a specific rack.
+     */
+    public function productsByRack(Request $request)
+    {
+        $rackId = $request->get('rack_id');
+        
+        if (empty($rackId)) {
+            $products = SupplierProduct::select('id', 'item_name', 'sku', 'brand')
+                ->orderBy('item_name')
+                ->get()
+                ->map(function ($p) {
+                    return [
+                        'id' => $p->id,
+                        'item_name' => $p->item_name,
+                        'sku' => $p->sku ?: 'No SKU',
+                        'brand' => $p->brand,
+                        'qty' => null,
+                        'text' => $p->item_name . ' (' . ($p->sku ?: 'No SKU') . ')' . ($p->brand ? ' • ' . $p->brand : ''),
+                    ];
+                });
+
+            return response()->json([
+                'status' => 'success',
+                'rack_id' => null,
+                'count' => $products->count(),
+                'products' => $products,
+            ]);
+        }
+
+        $products = SupplierProduct::whereHas('gudangProducts', function ($q) use ($rackId) {
+                $q->where('rack_id', $rackId);
+            })
+            ->with(['gudangProducts' => function ($q) use ($rackId) {
+                $q->where('rack_id', $rackId);
+            }])
+            ->orderBy('item_name')
+            ->get(['id', 'item_name', 'sku', 'brand'])
+            ->map(function ($p) use ($rackId) {
+                $qty = (int) $p->gudangProducts->where('rack_id', $rackId)->sum('qty');
+                return [
+                    'id' => $p->id,
+                    'item_name' => $p->item_name,
+                    'sku' => $p->sku ?: 'No SKU',
+                    'brand' => $p->brand,
+                    'qty' => $qty,
+                    'text' => $p->item_name . ' (' . ($p->sku ?: 'No SKU') . ') [' . $qty . ' pcs]',
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'rack_id' => $rackId,
+            'count' => $products->count(),
+            'products' => $products,
+        ]);
     }
 
     /**

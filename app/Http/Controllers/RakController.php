@@ -10,7 +10,10 @@ class RakController extends Controller
 {
     public function index()
     {
-        $raks = Rak::all();
+        $raks = Rak::withCount('gudangProducts')
+            ->with(['gudangProducts.supplierProduct'])
+            ->orderBy('rak_kode')
+            ->get();
 
         return view('rak.index', compact('raks'));
     }

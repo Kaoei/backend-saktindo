@@ -254,6 +254,7 @@ class ProductController extends Controller
             'price' => 'nullable|numeric|min:0',
             'unit' => 'nullable|string|max:50',
             'stock_allocations' => 'nullable|array',
+            'stock_allocations.*.id' => 'nullable|string',
             'stock_allocations.*.rack_id' => 'required_with:stock_allocations|exists:raks,rak_kode',
             'stock_allocations.*.qty' => 'required_with:stock_allocations|integer|min:0',
         ]);
@@ -304,31 +305,73 @@ class ProductController extends Controller
 
             // If stock allocations were provided from edit form
             if ($request->has('stock_allocations') && is_array($request->stock_allocations)) {
+                $processedIds = [];
                 foreach ($request->stock_allocations as $alloc) {
+                    $allocId = $alloc['id'] ?? null;
                     $rackId = $alloc['rack_id'] ?? null;
                     $qty = (int) ($alloc['qty'] ?? 0);
                     if (!$rackId) continue;
 
-                    $gp = GudangProduct::where('supplier_product_id', $product->id)
-                        ->where('rack_id', $rackId)
-                        ->first();
+                    $rack = Rak::where('rak_kode', $rackId)->first();
+                    $gudangType = $rack ? strtoupper($rack->gudang ?? 'JS') : 'JS';
+
+                    $gp = null;
+                    if (!empty($allocId)) {
+                        $gp = GudangProduct::where('id', $allocId)
+                            ->where('supplier_product_id', $product->id)
+                            ->first();
+                    }
 
                     if ($gp) {
                         $gp->update([
+                            'rack_id' => $rackId,
+                            'gudang_type' => $gudangType,
                             'qty' => $qty,
                             'price' => $request->price ?? $gp->price,
                         ]);
+                        $processedIds[] = $gp->id;
                     } else {
-                        GudangProduct::create([
-                            'id' => GudangProduct::generateId($product->sku),
-                            'supplier_product_id' => $product->id,
-                            'rack_id' => $rackId,
-                            'gudang_type' => 'JS',
-                            'qty' => $qty,
-                            'price' => $request->price ?? 0,
-                            'discount' => 0,
-                            'status' => 'stored',
-                        ]);
+                        // Check if an allocation with this rack already exists for this product
+                        $existingGp = GudangProduct::where('supplier_product_id', $product->id)
+                            ->where('rack_id', $rackId)
+                            ->first();
+
+                        if ($existingGp) {
+                            $existingGp->update([
+                                'gudang_type' => $gudangType,
+                                'qty' => $qty,
+                                'price' => $request->price ?? $existingGp->price,
+                            ]);
+                            $processedIds[] = $existingGp->id;
+                        } else {
+                            $newGp = GudangProduct::create([
+                                'id' => GudangProduct::generateId($product->sku),
+                                'supplier_product_id' => $product->id,
+                                'rack_id' => $rackId,
+                                'gudang_type' => $gudangType,
+                                'qty' => $qty,
+                                'price' => $request->price ?? 0,
+                                'discount' => 0,
+                                'status' => 'stored',
+                            ]);
+                            $processedIds[] = $newGp->id;
+                        }
+                    }
+                }
+
+                // Delete allocations that were removed by the user in the form
+                if (!empty($processedIds)) {
+                    $removedGps = GudangProduct::where('supplier_product_id', $product->id)
+                        ->whereNotIn('id', $processedIds)
+                        ->get();
+
+                    foreach ($removedGps as $rem) {
+                        $hasOutbounds = OutBound::where('gudang_product_id', $rem->id)->exists();
+                        if (!$hasOutbounds) {
+                            $rem->delete();
+                        } else {
+                            $rem->update(['qty' => 0]);
+                        }
                     }
                 }
             }

@@ -55,26 +55,54 @@
                             <tr>
                                 <th>Kode Rak</th>
                                 <th>Lokasi</th>
-                                <th class="text-end" style="width: 120px;">Aksi</th>
+                                <th>Gudang</th>
+                                <th>Produk Tersimpan</th>
+                                <th class="text-end" style="width: 140px;">Aksi</th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @forelse($raks as $rak)
+                                @php
+                                    $prodCount = $rak->gudang_products_count ?? $rak->gudangProducts->count();
+                                    $totalQty = $rak->gudangProducts->sum('qty');
+                                @endphp
                                 <tr>
-                                    <td>{{ $rak->rak_kode }}</td>
+                                    <td>
+                                        <a href="{{ route('stock-cards.index', ['rack_id' => $rak->rak_kode]) }}" class="fw-bold text-primary text-decoration-none" title="Lihat Produk & Kartu Stok di Rak {{ $rak->rak_kode }}">
+                                            <i class="feather icon-layers me-1"></i> {{ $rak->rak_kode }}
+                                        </a>
+                                    </td>
                                     <td>{{ $rak->location ?? '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-light-info text-info">{{ strtoupper($rak->gudang ?? 'JS') }}</span>
+                                    </td>
+                                    <td>
+                                        @if($prodCount > 0)
+                                            <a href="{{ route('stock-cards.index', ['rack_id' => $rak->rak_kode]) }}" class="badge bg-light-success text-success text-decoration-none border border-success-subtle py-1 px-2" title="Klik untuk melihat produk di rak ini">
+                                                <i class="feather icon-package me-1"></i> {{ $prodCount }} Produk ({{ number_format($totalQty) }} pcs)
+                                            </a>
+                                        @else
+                                            <span class="badge bg-light text-muted border py-1 px-2">Kosong (0 produk)</span>
+                                        @endif
+                                    </td>
 
                                     <td class="text-end">
+                                        <a href="{{ route('stock-cards.index', ['rack_id' => $rak->rak_kode]) }}"
+                                           class="text-primary me-2" title="Lihat Kartu Stok Rak Ini">
+                                            <i class="feather icon-book-open f-18"></i>
+                                        </a>
+
                                         <a href="{{ route('rak.edit', $rak->rak_kode) }}"
-                                           class="text-success me-2">
+                                           class="text-success me-2" title="Edit Rak">
                                             <i class="feather icon-edit f-18"></i>
                                         </a>
 
                                         <button type="button"
                                                 class="btn p-0 border-0 bg-transparent text-danger btn-delete-rak"
                                                 data-rak-name="{{ $rak->rak_kode }}"
-                                                data-rak-action="{{ route('rak.destroy', $rak->rak_kode) }}">
+                                                data-rak-action="{{ route('rak.destroy', $rak->rak_kode) }}"
+                                                title="Hapus Rak">
                                             <i class="feather icon-trash-2 f-18"></i>
                                         </button>
                                     </td>

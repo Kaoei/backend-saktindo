@@ -248,38 +248,68 @@
 
                         <!-- TAB 2: RACK STOCK ALLOCATIONS & VARIATIONS -->
                         <div class="tab-pane fade" id="variation" role="tabpanel" aria-labelledby="variation-tab">
-                            <h6 class="fw-bold text-dark mb-2"><i class="feather icon-package me-1 text-primary"></i> Alokasi Stok Rak Gudang</h6>
-                            <p class="text-muted small">Kelola penempatan stok fisik produk ini di rak-rak penyimpanan gudang.</p>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h6 class="fw-bold text-dark mb-1"><i class="feather icon-package me-1 text-primary"></i> Alokasi Stok Rak Gudang</h6>
+                                    <p class="text-muted small mb-0">Kelola penempatan stok fisik produk ini di rak-rak penyimpanan gudang. Anda dapat mengubah rak, menambah alokasi rak baru, atau menyesuaikan kuantitas.</p>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-primary shadow-sm" id="btn-add-rack-row">
+                                    <i class="feather icon-plus me-1"></i> Tambah Alokasi Rak
+                                </button>
+                            </div>
                             
                             <div class="table-responsive mb-4">
-                                <table class="table table-bordered align-middle">
+                                <table class="table table-bordered align-middle" id="table-rack-allocations">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Rak Penyimpanan</th>
-                                            <th>Gudang</th>
-                                            <th>Jumlah Stok (Qty)</th>
-                                            <th>Status</th>
+                                            <th style="min-width: 260px;">Rak Penyimpanan <span class="text-danger">*</span></th>
+                                            <th style="width: 130px;">Gudang</th>
+                                            <th style="width: 180px;">Jumlah Stok (Qty) <span class="text-danger">*</span></th>
+                                            <th style="width: 120px;">Status</th>
+                                            <th style="width: 80px;" class="text-center">Aksi</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody id="rack-allocations-tbody">
                                         @forelse($product->gudangProducts as $idx => $gp)
-                                            <tr>
+                                            <tr class="rack-row" data-row-idx="{{ $idx }}">
                                                 <td>
-                                                    <input type="hidden" name="stock_allocations[{{ $idx }}][rack_id]" value="{{ $gp->rack_id }}">
-                                                    <span class="badge bg-light text-dark border fs-6">{{ $gp->rack->rak_kode ?? $gp->rack_id }} - {{ $gp->rack->location ?? 'Gudang' }}</span>
+                                                    <input type="hidden" name="stock_allocations[{{ $idx }}][id]" value="{{ $gp->id }}">
+                                                    <select name="stock_allocations[{{ $idx }}][rack_id]" class="form-select select-rack-item" required>
+                                                        <option value="">-- Pilih Rak Penyimpanan --</option>
+                                                        @if(isset($racks))
+                                                            @foreach($racks as $rack)
+                                                                <option value="{{ $rack->rak_kode }}" 
+                                                                        data-gudang="{{ strtoupper($rack->gudang ?? 'JS') }}"
+                                                                        {{ (old("stock_allocations.$idx.rack_id", $gp->rack_id) == $rack->rak_kode) ? 'selected' : '' }}>
+                                                                    {{ $rack->rak_kode }} - {{ $rack->location }} (Gudang {{ strtoupper($rack->gudang ?? 'JS') }})
+                                                                </option>
+                                                            @endforeach
+                                                        @endif
+                                                    </select>
                                                 </td>
-                                                <td><span class="badge bg-info text-white">{{ $gp->gudang_type ?: 'JS' }}</span></td>
                                                 <td>
-                                                    <input type="number" name="stock_allocations[{{ $idx }}][qty]" class="form-control" value="{{ $gp->qty }}" min="0">
+                                                    <span class="badge bg-info text-white fs-6 rack-gudang-badge">{{ strtoupper($gp->rack?->gudang ?? ($gp->gudang_type ?: 'JS')) }}</span>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="stock_allocations[{{ $idx }}][qty]" class="form-control" value="{{ old("stock_allocations.$idx.qty", $gp->qty) }}" min="0" required>
                                                 </td>
                                                 <td>
                                                     <span class="badge bg-success">{{ $gp->status ?: 'stored' }}</span>
                                                 </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove-rack-row" title="Hapus Alokasi">
+                                                        <i class="feather icon-trash-2"></i>
+                                                    </button>
+                                                </td>
                                             </tr>
                                         @empty
-                                            <tr>
-                                                <td colspan="4" class="text-center py-3 text-muted">
-                                                    Belum ada alokasi stok rak untuk produk ini.
+                                            <tr class="no-rack-row">
+                                                <td colspan="5" class="text-center py-4 text-muted">
+                                                    <i class="feather icon-inbox d-block mb-1 fs-3"></i>
+                                                    Belum ada alokasi stok rak untuk produk ini.<br>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="$('#btn-add-rack-row').click();">
+                                                        <i class="feather icon-plus me-1"></i> Tambah Alokasi Rak Pertama
+                                                    </button>
                                                 </td>
                                             </tr>
                                         @endforelse
@@ -551,6 +581,69 @@
                 width: '100%'
             });
         }
+
+        // --- Rack Allocation Management ---
+        let rackRowIndex = {{ $product->gudangProducts->count() + 10 }};
+        const rackOptionsHtml = `@if(isset($racks))@foreach($racks as $rack)<option value="{{ $rack->rak_kode }}" data-gudang="{{ strtoupper($rack->gudang ?? 'JS') }}">{{ $rack->rak_kode }} - {{ $rack->location }} (Gudang {{ strtoupper($rack->gudang ?? 'JS') }})</option>@endforeach @endif`;
+
+        $('#btn-add-rack-row').on('click', function() {
+            $('.no-rack-row').remove();
+            rackRowIndex++;
+            const newRow = `
+                <tr class="rack-row" data-row-idx="${rackRowIndex}">
+                    <td>
+                        <input type="hidden" name="stock_allocations[${rackRowIndex}][id]" value="">
+                        <select name="stock_allocations[${rackRowIndex}][rack_id]" class="form-select select-rack-item" required>
+                            <option value="">-- Pilih Rak Penyimpanan --</option>
+                            ${rackOptionsHtml}
+                        </select>
+                    </td>
+                    <td>
+                        <span class="badge bg-info text-white fs-6 rack-gudang-badge">JS</span>
+                    </td>
+                    <td>
+                        <input type="number" name="stock_allocations[${rackRowIndex}][qty]" class="form-control" value="0" min="0" required>
+                    </td>
+                    <td>
+                        <span class="badge bg-success">stored</span>
+                    </td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger btn-remove-rack-row" title="Hapus Alokasi">
+                            <i class="feather icon-trash-2"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            $('#rack-allocations-tbody').append(newRow);
+        });
+
+        // Event delegation for updating gudang badge on rack change
+        $(document).on('change', '.select-rack-item', function() {
+            const selectedOpt = $(this).find('option:selected');
+            const gudang = selectedOpt.data('gudang') || 'JS';
+            $(this).closest('tr').find('.rack-gudang-badge').text(gudang);
+        });
+
+        // Event delegation for removing rack row
+        $(document).on('click', '.btn-remove-rack-row', function() {
+            const row = $(this).closest('tr');
+            if (confirm('Apakah Anda yakin ingin menghapus alokasi rak ini?')) {
+                row.remove();
+                if ($('#rack-allocations-tbody tr.rack-row').length === 0) {
+                    $('#rack-allocations-tbody').html(`
+                        <tr class="no-rack-row">
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="feather icon-inbox d-block mb-1 fs-3"></i>
+                                Belum ada alokasi stok rak untuk produk ini.<br>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="$('#btn-add-rack-row').click();">
+                                    <i class="feather icon-plus me-1"></i> Tambah Alokasi Rak Pertama
+                                </button>
+                            </td>
+                        </tr>
+                    `);
+                }
+            }
+        });
 
         // Switch to the appropriate tab if any input triggers validation error
         document.querySelectorAll('form input, form select, form textarea').forEach(el => {

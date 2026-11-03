@@ -281,6 +281,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('kartu-stok')->name('stock-cards.')->middleware('role:' . User::ROLE_SUPER_ADMIN . ',' . User::ROLE_GUDANG)->group(function () {
         Route::get('/', [StockCardController::class, 'index'])->name('index');
+        Route::get('/products-by-rack', [StockCardController::class, 'productsByRack'])->name('products-by-rack');
         Route::get('/print', [StockCardController::class, 'print'])->name('print');
         Route::get('/export-excel', [StockCardController::class, 'exportExcel'])->name('export-excel');
         Route::post('/recalculate', [StockCardController::class, 'recalculate'])->name('recalculate');

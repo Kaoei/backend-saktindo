@@ -109,11 +109,30 @@
                             <i class="feather icon-package me-1 text-primary"></i> Pilih Produk <span class="text-danger">*</span>
                         </label>
                         <select name="product_id" id="product_select" class="form-select select2-products" required>
-                            @foreach($allProducts as $p)
-                                <option value="{{ $p->id }}" {{ $currentProduct && $currentProduct->id === $p->id ? 'selected' : '' }}>
-                                    {{ $p->item_name }} ({{ $p->sku ?: 'No SKU' }}) {{ $p->brand ? '• ' . $p->brand : '' }}
-                                </option>
-                            @endforeach
+                            @if($rackId && isset($productsInRack) && $productsInRack->isNotEmpty())
+                                <optgroup label="Produk di Rak {{ $rackId }} ({{ $productsInRack->count() }})">
+                                    @foreach($productsInRack as $p)
+                                        <option value="{{ $p->id }}" {{ $currentProduct && $currentProduct->id === $p->id ? 'selected' : '' }}>
+                                            {{ $p->item_name }} ({{ $p->sku ?: 'No SKU' }}) [{{ $p->current_rack_qty ?? 0 }} pcs di rak]
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                                <optgroup label="Produk Lainnya">
+                                    @foreach($allProducts as $p)
+                                        @if(!$productsInRack->contains('id', $p->id))
+                                            <option value="{{ $p->id }}" {{ $currentProduct && $currentProduct->id === $p->id ? 'selected' : '' }}>
+                                                {{ $p->item_name }} ({{ $p->sku ?: 'No SKU' }}) {{ $p->brand ? '• ' . $p->brand : '' }}
+                                            </option>
+                                        @endif
+                                    @endforeach
+                                </optgroup>
+                            @else
+                                @foreach($allProducts as $p)
+                                    <option value="{{ $p->id }}" {{ $currentProduct && $currentProduct->id === $p->id ? 'selected' : '' }}>
+                                        {{ $p->item_name }} ({{ $p->sku ?: 'No SKU' }}) {{ $p->brand ? '• ' . $p->brand : '' }}
+                                    </option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
 
@@ -122,7 +141,7 @@
                         <label class="form-label fw-bold small text-dark mb-1">
                             <i class="feather icon-layers me-1 text-primary"></i> Lokasi Rak
                         </label>
-                        <select name="rack_id" class="form-select form-select-sm">
+                        <select name="rack_id" id="rack_select" class="form-select form-select-sm">
                             <option value="">-- Semua Rak (Global) --</option>
                             @foreach($allRacks as $r)
                                 <option value="{{ $r->rak_kode }}" {{ $rackId === $r->rak_kode ? 'selected' : '' }}>
@@ -169,6 +188,30 @@
                             </a>
                         </div>
                     </div>
+
+                    @if($rackId)
+                        <!-- Dynamic Rack Products Chips -->
+                        <div class="col-12 mt-2 pt-2 border-top">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-primary fs-6"><i class="feather icon-layers me-1"></i> Rak: {{ $rackId }}</span>
+                                <span class="small fw-bold text-dark">Produk Tersimpan di Rak Ini:</span>
+                                @if(isset($productsInRack) && $productsInRack->count() > 0)
+                                    @foreach($productsInRack as $pRack)
+                                        <a href="{{ route('stock-cards.index', array_merge(request()->except(['page']), ['product_id' => $pRack->id, 'rack_id' => $rackId])) }}" 
+                                           class="badge {{ $currentProduct && $currentProduct->id === $pRack->id ? 'bg-success text-white shadow-sm' : 'bg-white text-dark border' }} text-decoration-none py-2 px-3"
+                                           title="Klik untuk melihat kartu stok {{ $pRack->item_name }} di rak ini">
+                                            <i class="feather icon-package me-1"></i> {{ $pRack->item_name }} 
+                                            <span class="badge bg-dark ms-1">{{ $pRack->current_rack_qty ?? 0 }} pcs</span>
+                                        </a>
+                                    @endforeach
+                                @else
+                                    <span class="badge bg-light-warning text-dark border py-2 px-3">
+                                        <i class="feather icon-alert-circle me-1 text-warning"></i> Belum ada produk yang tersimpan di rak {{ $rackId }}
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
                 </form>
             </div>
         </div>
@@ -445,13 +488,59 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
-        $('.select2-products').select2({
+        const productSelect = $('.select2-products').select2({
             theme: 'bootstrap-5',
             placeholder: 'Cari & pilih produk...',
             allowClear: false,
             width: '100%'
-        }).on('change', function() {
-            $('#stock-card-filter-form').submit();
+        });
+
+        let isAutoChanging = false;
+
+        productSelect.on('change', function() {
+            if (!isAutoChanging) {
+                $('#stock-card-filter-form').submit();
+            }
+        });
+
+        // When user selects / changes a Rak in "Lokasi Rak"
+        $('#rack_select').on('change', function() {
+            const selectedRack = $(this).val();
+            isAutoChanging = true;
+
+            // Visual feedback
+            productSelect.prop('disabled', true);
+
+            $.ajax({
+                url: "{{ route('stock-cards.products-by-rack') }}",
+                type: 'GET',
+                data: { rack_id: selectedRack },
+                dataType: 'json',
+                success: function(response) {
+                    productSelect.empty();
+                    if (response.products && response.products.length > 0) {
+                        $.each(response.products, function(i, item) {
+                            const isSelected = (i === 0);
+                            const opt = new Option(item.text, item.id, isSelected, isSelected);
+                            productSelect.append(opt);
+                        });
+                        productSelect.prop('disabled', false).trigger('change.select2');
+                        isAutoChanging = false;
+                        // Automatically submit so the stock card and product list for this rack appear immediately
+                        $('#stock-card-filter-form').submit();
+                    } else {
+                        productSelect.append(new Option('-- Tidak ada produk di rak ini --', '', true, true));
+                        productSelect.prop('disabled', false).trigger('change.select2');
+                        isAutoChanging = false;
+                        $('#stock-card-filter-form').submit();
+                    }
+                },
+                error: function() {
+                    productSelect.prop('disabled', false);
+                    isAutoChanging = false;
+                    $('#stock-card-filter-form').submit();
+                }
+            });
         });
     });
 </script>

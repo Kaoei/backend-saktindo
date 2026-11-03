@@ -54,10 +54,12 @@
                                         @php
                                             $badgeClass = match ($user->role) {
                                                 \App\Models\User::ROLE_SUPER_ADMIN => 'bg-light-danger',
-                                                \App\Models\User::ROLE_TEKNISI    => 'bg-light-warning',
-                                                \App\Models\User::ROLE_SALES      => 'bg-light-success',
-                                                \App\Models\User::ROLE_FINANCE    => 'bg-light-info',
-                                                default                           => 'bg-light-primary',
+                                                \App\Models\User::ROLE_ADMIN       => 'bg-light-primary',
+                                                \App\Models\User::ROLE_TEKNISI     => 'bg-light-warning',
+                                                \App\Models\User::ROLE_SALES       => 'bg-light-success',
+                                                \App\Models\User::ROLE_FINANCE     => 'bg-light-info',
+                                                \App\Models\User::ROLE_GUDANG      => 'bg-light-secondary text-dark',
+                                                default                            => 'bg-light-secondary',
                                             };
                                         @endphp
                                         <span class="badge {{ $badgeClass }}">{{ $user->role_label }}</span>
