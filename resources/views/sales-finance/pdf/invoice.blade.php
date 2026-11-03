@@ -61,21 +61,15 @@
     $invoiceNumber = !empty($c['invoice_number']) ? $c['invoice_number'] : ($invoice->invoice_number ?? $invoice->id);
 
     // Permintaan user: No Faktur dan No Reff harus sama
-    if (!empty($c['po_number'])) {
-        $poNumber = $c['po_number'];
-    } elseif (!empty($order?->customer_po_number) && !preg_match('/^PO-\d{8}-[A-Za-z0-9]{5}$/', (string)$order->customer_po_number)) {
-        $poNumber = $order->customer_po_number;
-    } else {
-        $poNumber = $invoiceNumber;
-    }
-    // Jika poNumber masih berupa nomor auto-generate PO-YYYYMMDD-XXXXX, otomatis samakan dengan No Faktur
-    if (preg_match('/^PO-\d{8}-[A-Za-z0-9]{5}$/', (string)$poNumber)) {
-        $poNumber = $invoiceNumber;
-    }
+    $poNumber = !empty($c['po_number']) ? $c['po_number'] : $invoiceNumber;
 
     $invoiceDateObj = !empty($c['invoice_date']) ? \Carbon\Carbon::parse($c['invoice_date']) : ($invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date) : now());
     $dueDateObj = !empty($c['due_date']) ? \Carbon\Carbon::parse($c['due_date']) : ($invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date) : null);
     $notesText = isset($c['notes']) ? $c['notes'] : ($order->notes ?? '');
+    // Jika keterangan kosong tetapi terdapat referensi PO customer, cantumkan di keterangan
+    if (empty($notesText) && !empty($order?->customer_po_number) && !preg_match('/^(PO-\d{8}-[A-Za-z0-9]{5}|WEB-\d{14}-[A-Za-z0-9]+)$/', $order->customer_po_number)) {
+        $notesText = $order->customer_po_number;
+    }
 
     // Permintaan user: Jika bukan SJB Pajak, no seri faktur pajak tidak diperlukan
     $isSjbPajak = ($invoice->tax_type === 'sjb_pajak') || ($order?->sales_type === 'sjb_pajak');
