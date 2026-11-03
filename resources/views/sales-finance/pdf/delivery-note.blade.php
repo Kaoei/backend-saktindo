@@ -36,13 +36,15 @@
     </style>
 </head>
 <body>
-    @php($invoice = $deliveryNote->invoice)
-    @php($customer = $invoice?->salesOrders?->first() ?? $order)
-    @php($noteItems = $deliveryNote->items)
-    @php($hasNoteItems = $noteItems && $noteItems->isNotEmpty())
-    @php($fallbackItems = $order?->items ?? ($invoice?->salesOrders?->flatMap->items ?? collect()))
-    @php($totalQty = $hasNoteItems ? $noteItems->sum(fn ($item) => (float) $item->qty_sent) : $fallbackItems->sum(fn ($item) => (float) $item->quantity))
-    @php($itemsCount = $hasNoteItems ? $noteItems->count() : $fallbackItems->count())
+    <?php
+        $invoice = $deliveryNote->invoice;
+        $customer = $invoice?->salesOrders?->first() ?? ($order ?? null);
+        $noteItems = $deliveryNote->items;
+        $hasNoteItems = $noteItems && $noteItems->isNotEmpty();
+        $fallbackItems = ($order?->items ?? null) ?: ($invoice?->salesOrders?->flatMap->items ?? collect());
+        $totalQty = $hasNoteItems ? $noteItems->sum(fn ($item) => (float) $item->qty_sent) : $fallbackItems->sum(fn ($item) => (float) $item->quantity);
+        $itemsCount = $hasNoteItems ? $noteItems->count() : $fallbackItems->count();
+    ?>
 
     <div class="doc">
         <table class="header">
@@ -81,7 +83,7 @@
         </div>
 
         <div class="section-title">Detail Barang</div>
-        @php
+        <?php
             $consolidatedDeliveryItems = collect();
             $rawDeliveryItems = $hasNoteItems ? $noteItems : $fallbackItems;
             foreach ($rawDeliveryItems as $it) {
@@ -104,7 +106,7 @@
                     ]);
                 }
             }
-        @endphp
+        ?>
         <table class="items">
             <thead>
                 <tr><th style="width: 10%;" class="center">No</th><th>Barang</th><th style="width: 18%;" class="right">Qty</th><th style="width: 14%;">Unit</th></tr>
