@@ -11,127 +11,215 @@
 @section('content')
 <div class="row">
     <div class="col-12">
-        @if(session('status'))
-    <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-        {{ session('status') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
+        @if(session('status') || session('success'))
+            <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+                {{ session('status') ?? session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-@if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0 fw-semibold">Daftar Tagihan Hutang ke Supplier</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table id="ap-table" class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Invoice Supplier</th>
-                        <th>Supplier</th>
-                        <th>Barang</th>
-                        <th>Qty</th>
-                        <th>Tgl Pembelian</th>
-                        <th class="text-end">Total Tagihan</th>
-                        <th>Status</th>
-                        <th class="text-center">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($purchases as $purchase)
-                        <tr>
-                            <td class="fw-semibold">{{ $purchase->invoice_number }}</td>
-                            <td>{{ $purchase->supplier->name ?? 'N/A' }}</td>
-                            <td>{{ $purchase->item_name }}</td>
-                            <td>{{ number_format($purchase->quantity, 0) }}</td>
-                            <td>{{ $purchase->purchase_date->format('d/m/Y') }}</td>
-                            <td class="text-end fw-bold text-danger">Rp {{ number_format($purchase->total_amount, 0, ',', '.') }}</td>
-                            <td>
-                                @if($purchase->status === 'paid')
-                                    <span class="badge bg-success">Lunas</span>
-                                @else
-                                    <span class="badge bg-danger">Belum Bayar</span>
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                @if($purchase->status !== 'paid')
-                                    <button type="button" class="btn btn-sm btn-danger btn-pay" 
-                                            data-id="{{ $purchase->id }}" 
-                                            data-number="{{ $purchase->invoice_number }}" 
-                                            data-total="{{ $purchase->total_amount }}"
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#paymentModal">
-                                        Bayar Tagihan
-                                    </button>
-                                @else
-                                    <button class="btn btn-sm btn-outline-secondary" disabled>Lunas</button>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <h5 class="card-title mb-0 fw-semibold">Daftar Tagihan Hutang ke Supplier</h5>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('supplier-po.index') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="feather icon-list me-1"></i> Data PO Supplier
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="ap-table" class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Invoice Supplier</th>
+                                <th>Supplier</th>
+                                <th>Barang</th>
+                                <th>Qty</th>
+                                <th>Tgl Pembelian</th>
+                                <th class="text-end">Total Tagihan</th>
+                                <th>Status</th>
+                                <th class="text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($purchases as $purchase)
+                                @php
+                                    $isPo = $purchase instanceof \App\Models\SupplierPO;
+                                    $invNumber = $isPo ? ($purchase->reference_number ?: $purchase->po_number) : ($purchase->invoice_number ?: '-');
+                                    $poNumber = $isPo ? $purchase->po_number : null;
+                                    $supplierName = $purchase->supplier->name ?? 'N/A';
+                                    
+                                    if ($isPo) {
+                                        $items = $purchase->items ?? collect();
+                                        $itemCount = $items->count();
+                                        $firstItemName = $items->first()?->supplierProduct?->item_name ?? 'Barang PO';
+                                        $barangLabel = $itemCount > 1 ? $firstItemName . ' (+' . ($itemCount - 1) . ' item lainnya)' : $firstItemName;
+                                        $qtyTotal = $items->sum('qty');
+                                        $tgl = $purchase->order_date ? \Carbon\Carbon::parse($purchase->order_date)->format('d/m/Y') : '-';
+                                        $dueDate = $purchase->due_date ? \Carbon\Carbon::parse($purchase->due_date)->format('d/m/Y') : null;
+                                        $totalTagihan = (float) $purchase->total_amount;
+                                        $paid = (float) ($purchase->paid_amount ?? 0);
+                                        $outstanding = $purchase->outstanding_amount !== null ? (float) $purchase->outstanding_amount : max(0, $totalTagihan - $paid);
+                                        $payStatus = $purchase->payment_status ?: ($paid >= $totalTagihan && $totalTagihan > 0 ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'));
+                                    } else {
+                                        $barangLabel = $purchase->item_name ?? '-';
+                                        $qtyTotal = $purchase->quantity ?? 1;
+                                        $tgl = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') : '-';
+                                        $dueDate = null;
+                                        $totalTagihan = (float) $purchase->total_amount;
+                                        $paid = $purchase->status === 'paid' ? $totalTagihan : 0;
+                                        $outstanding = $purchase->status === 'paid' ? 0 : $totalTagihan;
+                                        $payStatus = $purchase->status === 'paid' ? 'paid' : 'unpaid';
+                                    }
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold">{{ $invNumber }}</span>
+                                        @if($poNumber && $poNumber !== $invNumber)
+                                            <div><span class="badge bg-light text-muted border">PO: {{ $poNumber }}</span></div>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="fw-medium">{{ $supplierName }}</div>
+                                        @if($purchase->supplier?->company_name && $purchase->supplier->company_name !== $supplierName)
+                                            <small class="text-muted d-block">{{ $purchase->supplier->company_name }}</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span>{{ $barangLabel }}</span>
+                                    </td>
+                                    <td>{{ number_format($qtyTotal, 0, ',', '.') }}</td>
+                                    <td>
+                                        <div>{{ $tgl }}</div>
+                                        @if($dueDate)
+                                            <small class="text-danger d-block">Tempo: {{ $dueDate }}</small>
+                                        @endif
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="fw-bold text-dark">Rp {{ number_format($totalTagihan, 0, ',', '.') }}</div>
+                                        @if($paid > 0 && $payStatus !== 'paid')
+                                            <small class="text-success d-block">Dibayar: Rp {{ number_format($paid, 0, ',', '.') }}</small>
+                                            <small class="text-danger fw-semibold d-block">Sisa: Rp {{ number_format($outstanding, 0, ',', '.') }}</small>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($payStatus === 'paid')
+                                            <span class="badge bg-success">Lunas</span>
+                                        @elseif($payStatus === 'partial')
+                                            <span class="badge bg-warning text-dark">Sebagian</span>
+                                        @else
+                                            <span class="badge bg-danger">Belum Bayar</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            @if($payStatus !== 'paid' && $outstanding > 0)
+                                                <button type="button" class="btn btn-sm btn-danger btn-pay text-white" 
+                                                        data-id="{{ $purchase->id }}" 
+                                                        data-number="{{ $invNumber }}"
+                                                        data-supplier="{{ $supplierName }}"
+                                                        data-total="{{ $totalTagihan }}"
+                                                        data-outstanding="{{ $outstanding }}"
+                                                        data-bs-toggle="modal" 
+                                                        data-bs-target="#paymentModal">
+                                                    Bayar Tagihan
+                                                </button>
+                                            @else
+                                                <button class="btn btn-sm btn-outline-secondary" disabled>Lunas</button>
+                                            @endif
+                                            @if($isPo)
+                                                <a href="{{ route('finance.ap.show', $purchase->id) }}" class="btn btn-sm btn-outline-info" title="Detail Hutang & Riwayat Pembayaran">
+                                                    Detail
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
-<!-- Payment Modal -->
-<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form action="{{ route('finance.payment.store') }}" method="POST" class="modal-content">
-            @csrf
-            <input type="hidden" name="type" value="ap">
-            <input type="hidden" name="id" id="modal-purchase-id">
-            
-            <div class="modal-header">
-                <h5 class="modal-title" id="paymentModalLabel">Catat Pelunasan Hutang</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <!-- Payment Modal -->
+        <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <form action="{{ route('finance.payment.store') }}" method="POST" class="modal-content">
+                    @csrf
+                    <input type="hidden" name="type" value="ap">
+                    <input type="hidden" name="id" id="modal-purchase-id">
+                    
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title text-white fw-bold" id="paymentModalLabel">Catat Pelunasan Hutang ke Supplier</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label text-muted mb-1">Supplier</label>
+                            <input type="text" class="form-control-plaintext fw-bold p-0 text-dark" id="modal-supplier-name" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-muted mb-1">No. Invoice / No. PO</label>
+                            <input type="text" class="form-control-plaintext fw-bold p-0 text-dark" id="modal-invoice-number" readonly>
+                        </div>
+                        <div class="row mb-3 bg-light p-2 rounded">
+                            <div class="col-6">
+                                <label class="form-label text-muted mb-0 small">Total Tagihan</label>
+                                <input type="text" class="form-control-plaintext text-muted fw-bold p-0" id="modal-invoice-total" readonly>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-muted mb-0 small">Sisa Hutang</label>
+                                <input type="text" class="form-control-plaintext text-danger fw-bold p-0" id="modal-invoice-outstanding" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Jumlah Pembayaran (Rp) <span class="text-danger">*</span></label>
+                            <input type="number" name="amount" id="modal-payment-amount" class="form-control" min="0.01" step="0.01" required>
+                            <small class="text-muted">Nominal default terisi sisa hutang. Dapat diubah jika membayar sebagian.</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Tanggal Pembayaran <span class="text-danger">*</span></label>
+                            <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Metode Pembayaran <span class="text-danger">*</span></label>
+                            <select name="payment_method" class="form-select" required>
+                                <option value="transfer">Transfer Bank</option>
+                                <option value="cash">Tunai / Kas</option>
+                                <option value="cheque">Bilyet Giro / Cheque</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Bank / Rekening Pengirim (Opsional)</label>
+                            <input type="text" name="bank_name" class="form-control" placeholder="Contoh: Rekening BCA Operasional">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">No. Bukti Transfer / No. Referensi / No. Giro</label>
+                            <input type="text" name="reference_number" class="form-control" placeholder="Contoh: TRF-20261103-01 atau No. Bilyet Giro">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Catatan (Opsional)</label>
+                            <textarea name="notes" class="form-control" rows="2" placeholder="Catatan pembayaran hutang..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-danger">Simpan Pembayaran</button>
+                    </div>
+                </form>
             </div>
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label text-muted">No. Invoice Supplier</label>
-                    <input type="text" class="form-control-plaintext fw-bold p-0" id="modal-invoice-number" readonly>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted">Jumlah Tagihan</label>
-                    <input type="text" class="form-control-plaintext text-danger fw-bold p-0" id="modal-invoice-total" readonly>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Jumlah Pembayaran (Rp)</label>
-                    <input type="number" name="amount" id="modal-payment-amount" class="form-control" min="0.01" step="0.01" readonly required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Tanggal Pembayaran</label>
-                    <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}" required>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Metode Pembayaran</label>
-                    <select name="payment_method" class="form-select" required>
-                        <option value="transfer">Transfer Bank</option>
-                        <option value="cash">Tunai / Cash</option>
-                        <option value="cheque">Giro / Cheque</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Catatan (Optional)</label>
-                    <textarea name="notes" class="form-control" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-primary">Simpan Pembayaran</button>
-            </div>
-        </form>
-    </div>
-</div>
+        </div>
+
     </div>
 </div>
 @endsection
@@ -153,12 +241,19 @@
             $(document).on('click', '.btn-pay', function() {
                 const id = this.getAttribute('data-id');
                 const number = this.getAttribute('data-number');
-                const total = this.getAttribute('data-total');
+                const supplier = this.getAttribute('data-supplier');
+                const total = parseFloat(this.getAttribute('data-total')) || 0;
+                const outstanding = parseFloat(this.getAttribute('data-outstanding')) || total;
 
                 document.getElementById('modal-purchase-id').value = id;
+                document.getElementById('modal-supplier-name').value = supplier || '-';
                 document.getElementById('modal-invoice-number').value = number;
                 document.getElementById('modal-invoice-total').value = 'Rp ' + new Intl.NumberFormat('id-ID').format(total);
-                document.getElementById('modal-payment-amount').value = total;
+                document.getElementById('modal-invoice-outstanding').value = 'Rp ' + new Intl.NumberFormat('id-ID').format(outstanding);
+                
+                const amountInput = document.getElementById('modal-payment-amount');
+                amountInput.value = outstanding;
+                amountInput.max = outstanding;
             });
         });
     </script>

@@ -104,11 +104,16 @@
                         </thead>
                         <tbody>
                             @forelse($recentAPPayments as $payment)
+                                @php
+                                    $invNum = $payment->supplierPo ? ($payment->supplierPo->reference_number ?: $payment->supplierPo->po_number) : ($payment->invoice_number ?? $payment->payment_number ?? '-');
+                                    $payDate = $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d/m/Y') : ($payment->purchase_date ? \Carbon\Carbon::parse($payment->purchase_date)->format('d/m/Y') : '-');
+                                    $payAmount = $payment->amount ?? $payment->total_amount ?? 0;
+                                @endphp
                                 <tr>
-                                    <td class="fw-semibold">{{ $payment->invoice_number }}</td>
-                                    <td>{{ $payment->purchase_date->format('d/m/Y') }}</td>
+                                    <td class="fw-semibold">{{ $invNum }}</td>
+                                    <td>{{ $payDate }}</td>
                                     <td><span class="badge bg-success">Lunas</span></td>
-                                    <td class="text-end fw-bold text-danger">Rp {{ number_format($payment->total_amount, 0, ',', '.') }}</td>
+                                    <td class="text-end fw-bold text-danger">Rp {{ number_format($payAmount, 0, ',', '.') }}</td>
                                 </tr>
                             @empty
                                 <tr>

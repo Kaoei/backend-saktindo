@@ -154,6 +154,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/invoices/{invoice}', [FinanceController::class, 'showPiutang'])->name('show');
         Route::get('/receivables/{invoice}/payment', [FinanceController::class, 'paymentForm'])->name('payment.form');
         Route::get('/ap', [FinanceController::class, 'ap'])->name('ap');
+        Route::get('/ap/{supplierPo}', [FinanceController::class, 'showHutang'])->name('ap.show');
         Route::post('/payment/{invoice?}', [FinanceController::class, 'storePayment'])->name('payment.store');
         Route::post('/invoices/{invoice}/send-email', [FinanceController::class, 'sendInvoiceEmail'])->name('invoices.send-email');
         Route::get('/report', [FinanceController::class, 'report'])->name('report');

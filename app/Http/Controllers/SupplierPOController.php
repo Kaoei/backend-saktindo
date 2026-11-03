@@ -113,17 +113,25 @@ class SupplierPOController extends Controller
             $dpp = max(0, $subtotal - $additionalDiscount);
             $totalAmount = $dpp + $taxAmount;
 
+            $supplier = \App\Models\Supplier::find($request->supplier_id);
+            $dueDays = (int) ($supplier?->payment_due_days ?? 0);
+            $dueDate = $dueDays > 0 ? \Carbon\Carbon::parse($request->order_date)->addDays($dueDays)->toDateString() : null;
+
             $supplierPo = SupplierPO::create([
                 'id' => $poId,
                 'supplier_id' => $request->supplier_id,
                 'po_number' => $poNumber,
                 'reference_number' => $request->reference_number,
                 'order_date' => $request->order_date,
+                'due_date' => $dueDate,
                 'subtotal' => $subtotal,
                 'additional_discount' => $additionalDiscount,
                 'tax_type' => $taxType,
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
+                'paid_amount' => 0,
+                'outstanding_amount' => $totalAmount,
+                'payment_status' => $totalAmount <= 0 ? 'paid' : 'unpaid',
                 'status' => 'pending',
                 'notes' => $request->notes,
             ]);
@@ -222,6 +230,10 @@ class SupplierPOController extends Controller
             $dpp = max(0, $subtotal - $additionalDiscount);
             $totalAmount = $dpp + $taxAmount;
 
+            $paidAmount = (float) ($supplierPo->paid_amount ?? 0);
+            $outstandingAmount = max(0, $totalAmount - $paidAmount);
+            $paymentStatus = $outstandingAmount <= 0.01 ? 'paid' : ($paidAmount > 0 ? 'partial' : 'unpaid');
+
             $updateData = [
                 'supplier_id' => $request->supplier_id,
                 'reference_number' => $request->reference_number,
@@ -231,6 +243,8 @@ class SupplierPOController extends Controller
                 'tax_type' => $taxType,
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
+                'outstanding_amount' => $outstandingAmount,
+                'payment_status' => $paymentStatus,
                 'notes' => $request->notes,
             ];
 
