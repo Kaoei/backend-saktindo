@@ -310,9 +310,12 @@
                 <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
                         <h5 class="mb-0">Invoice Management</h5>
-                        <small class="text-muted">{{ $invoice->invoice_number }} - {{ ucfirst($invoice->invoice_type) }} - Faktur {{ $invoice->faktur_number }}
-                            @if($invoice->faktur_checked)
-                                <span class="badge bg-success ms-1">✓ Dicek</span>
+                        <small class="text-muted">{{ $invoice->invoice_number }} - {{ ucfirst($invoice->invoice_type) }}
+                            @if($invoice->tax_type === 'sjb_pajak' && $invoice->faktur_number)
+                                - Faktur {{ $invoice->faktur_number }}
+                                @if($invoice->faktur_checked)
+                                    <span class="badge bg-success ms-1">✓ Dicek</span>
+                                @endif
                             @endif
                         </small>
                     </div>
@@ -349,8 +352,8 @@
                     </div>
                 </div>
 
-                {{-- Faktur Checklist Bar --}}
-                @if($invoice->faktur_number)
+                {{-- Faktur Checklist Bar (Khusus SJB Pajak) --}}
+                @if($invoice->tax_type === 'sjb_pajak' && $invoice->faktur_number)
                 <div class="px-3 py-2 border-bottom {{ $invoice->faktur_checked ? 'bg-success-subtle' : 'bg-warning-subtle' }}">
                     @if($invoice->faktur_checked)
                         <div class="d-flex align-items-center gap-2 text-success">
@@ -414,6 +417,7 @@
                         <div class="col-6 col-sm-4 col-md-2"><div class="text-muted small">Tanggal</div>{{ optional($invoice->invoice_date)->format('d M Y') }}</div>
                         <div class="col-6 col-sm-4 col-md-2"><div class="text-muted small">Terbayar</div>Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}</div>
                         <div class="col-6 col-sm-4 col-md-2"><div class="text-muted small">Outstanding</div>Rp {{ number_format((float) $invoice->outstanding_amount, 0, ',', '.') }}</div>
+                        @if($invoice->tax_type === 'sjb_pajak')
                         <div class="col-12 col-sm-8 col-md-4">
                             <div class="text-muted small">No. Faktur Pajak</div>
                             <div class="d-flex align-items-center gap-2">
@@ -423,6 +427,7 @@
                                 </button>
                             </div>
                         </div>
+                        @endif
                     </div>
 
                     {{-- Riwayat Pemindahan Transaksi (Audit Trail) --}}
@@ -1215,10 +1220,8 @@
     $modalCustomerAddress = $order->customer?->alamat 
         ? $order->customer->alamat . (!empty($order->customer->kota) ? ', ' . $order->customer->kota : '')
         : ($order->shipping_address ?? '');
-    $modalPoNumber = $order->customer_po_number ?? '';
-    if (empty($modalPoNumber) && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
-        $modalPoNumber = $invoice->salesOrders->pluck('customer_po_number')->filter()->unique()->join(', ');
-    }
+    // Persyaratan: No Faktur dan No Reff harus sama
+    $modalPoNumber = $invoice->invoice_number;
 @endphp
 <div class="modal fade" id="editFakturModal" tabindex="-1" aria-labelledby="editFakturModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
@@ -1310,11 +1313,12 @@
                                     <div class="row g-2 mb-2">
                                         <div class="col-sm-6">
                                             <label class="form-label small fw-semibold">No. Faktur</label>
-                                            <input type="text" name="invoice_number" class="form-control form-control-sm" value="{{ $invoice->invoice_number }}">
+                                            <input type="text" name="invoice_number" id="fakturInvoiceNumberInput" class="form-control form-control-sm" value="{{ $invoice->invoice_number }}">
                                         </div>
                                         <div class="col-sm-6">
-                                            <label class="form-label small fw-semibold">No. Reff (PO Customer)</label>
-                                            <input type="text" name="po_number" class="form-control form-control-sm" value="{{ $modalPoNumber }}">
+                                            <label class="form-label small fw-semibold">No. Reff</label>
+                                            <input type="text" name="po_number" id="fakturPoNumberInput" class="form-control form-control-sm" value="{{ $invoice->invoice_number }}">
+                                            <div class="form-text text-muted" style="font-size: 11px;">Otomatis disamakan dengan No. Faktur.</div>
                                         </div>
                                     </div>
                                     <div class="row g-2 mb-2">
@@ -1334,7 +1338,13 @@
                                         </div>
                                         <div class="col-sm-6">
                                             <label class="form-label small fw-semibold">No. Seri Faktur Pajak</label>
-                                            <input type="text" name="faktur_pajak" class="form-control form-control-sm" value="{{ $invoice->faktur_number ?? '' }}" placeholder="-">
+                                            @if($invoice->tax_type === 'sjb_pajak')
+                                                <input type="text" name="faktur_pajak" class="form-control form-control-sm" value="{{ $invoice->faktur_number ?? '' }}" placeholder="Contoh: 010.000-26.00000001">
+                                                <div class="form-text text-muted" style="font-size: 11px;">Khusus transaksi SJB Pajak (PPN 11%).</div>
+                                            @else
+                                                <input type="text" name="faktur_pajak" class="form-control form-control-sm bg-light text-muted" value="" placeholder="Tidak diperlukan (Bukan SJB Pajak)" readonly>
+                                                <div class="form-text text-muted" style="font-size: 11px;">Tidak diperlukan untuk transaksi non-pajak ({{ strtoupper(str_replace('_', ' ', $invoice->tax_type)) }}).</div>
+                                            @endif
                                         </div>
                                     </div>
                                 </div>
@@ -1827,6 +1837,11 @@ $(function() {
             $('#transferFakturNumberGroup').slideUp(150);
             $('#transferTaxNotice').text('');
         }
+    });
+
+    // Sinkronisasi otomatis No. Faktur dan No. Reff pada Modal Sesuaikan Faktur
+    $(document).on('input change', '#fakturInvoiceNumberInput', function() {
+        $('#fakturPoNumberInput').val($(this).val());
     });
 
     // Hitung awal saat modal dibuka (dukung show.bs.modal dan shown.bs.modal)

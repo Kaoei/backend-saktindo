@@ -59,18 +59,30 @@
     $isHtmlPrint = $isHtmlPrint ?? false;
 
     $invoiceNumber = !empty($c['invoice_number']) ? $c['invoice_number'] : ($invoice->invoice_number ?? $invoice->id);
-    $poNumber = !empty($c['po_number']) ? $c['po_number'] : ($order?->customer_po_number);
-    if (empty($poNumber) && isset($invoice->salesOrders) && $invoice->salesOrders->isNotEmpty()) {
-        $poNumber = $invoice->salesOrders->pluck('customer_po_number')->filter()->unique()->join(', ');
+
+    // Permintaan user: No Faktur dan No Reff harus sama
+    if (!empty($c['po_number'])) {
+        $poNumber = $c['po_number'];
+    } elseif (!empty($order?->customer_po_number) && !preg_match('/^PO-\d{8}-[A-Za-z0-9]{5}$/', (string)$order->customer_po_number)) {
+        $poNumber = $order->customer_po_number;
+    } else {
+        $poNumber = $invoiceNumber;
     }
-    if (empty($poNumber)) {
-        $poNumber = '-';
+    // Jika poNumber masih berupa nomor auto-generate PO-YYYYMMDD-XXXXX, otomatis samakan dengan No Faktur
+    if (preg_match('/^PO-\d{8}-[A-Za-z0-9]{5}$/', (string)$poNumber)) {
+        $poNumber = $invoiceNumber;
     }
 
     $invoiceDateObj = !empty($c['invoice_date']) ? \Carbon\Carbon::parse($c['invoice_date']) : ($invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date) : now());
     $dueDateObj = !empty($c['due_date']) ? \Carbon\Carbon::parse($c['due_date']) : ($invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date) : null);
     $notesText = isset($c['notes']) ? $c['notes'] : ($order->notes ?? '');
-    $fakturPajakText = isset($c['faktur_pajak']) ? $c['faktur_pajak'] : ($invoice->faktur_number ?? '-');
+
+    // Permintaan user: Jika bukan SJB Pajak, no seri faktur pajak tidak diperlukan
+    $isSjbPajak = ($invoice->tax_type === 'sjb_pajak') || ($order?->sales_type === 'sjb_pajak');
+    $fakturPajakText = '';
+    if ($isSjbPajak) {
+        $fakturPajakText = isset($c['faktur_pajak']) ? trim((string)$c['faktur_pajak']) : ($invoice->faktur_number ?? '');
+    }
 
     $customerDisplayName = !empty($c['customer_name'])
         ? $c['customer_name']
@@ -424,6 +436,7 @@
                     {{ $notesText }}
                 </td>
             </tr>
+            @if($isSjbPajak && !empty($fakturPajakText) && $fakturPajakText !== '-')
             <tr>
                 <td colspan="2">
                     <span class="label-bold">No . Seri faktur Pajak :</span>
@@ -431,6 +444,7 @@
                 </td>
                 <td></td>
             </tr>
+            @endif
         </table>
 
         {{-- TABEL BARANG --}}

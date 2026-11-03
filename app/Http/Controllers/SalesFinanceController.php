@@ -694,13 +694,13 @@ class SalesFinanceController extends Controller
 
                 // Jika sudah ada invoice lama yang diterbitkan
                 if ($oldInvoice) {
-                    // Tentukan nomor faktur pajak baru
+                    // Tentukan nomor faktur pajak baru (hanya jika entitas target adalah SJB Pajak)
                     if ($targetTaxType === 'sjb_pajak') {
                         $newFakturNumber = !empty($data['faktur_number'])
                             ? trim($data['faktur_number'])
                             : $this->nextFakturNumber('sjb_pajak');
                     } else {
-                        $newFakturNumber = $this->nextFakturNumber($targetTaxType);
+                        $newFakturNumber = null;
                     }
 
                     // Buat Invoice Baru
@@ -4099,8 +4099,12 @@ private function findActiveMergedInvoice(
     }
 
     private function nextFakturNumber(
-        string $taxType
-    ): string {
+        string $taxType = 'sjb_pajak'
+    ): ?string {
+        // Jika bukan SJB Pajak, nomor seri faktur pajak tidak diperlukan
+        if ($taxType !== 'sjb_pajak') {
+            return null;
+        }
 
         $year =
             now()->format('y');
@@ -4108,22 +4112,14 @@ private function findActiveMergedInvoice(
         $month =
             now()->format('m');
 
-        $prefix =
-            match ($taxType) {
-
-                'sjb_non_pajak',
-                'sjb_pajak' =>
-                    'SJB',
-
-                default =>
-                    'JS',
-            };
+        $prefix = 'SJB';
 
         $count =
-            \App\Models\Invoice::whereYear(
-                'invoice_date',
-                now()->year
-            )
+            \App\Models\Invoice::where('tax_type', 'sjb_pajak')
+                ->whereYear(
+                    'invoice_date',
+                    now()->year
+                )
                 ->whereMonth(
                     'invoice_date',
                     now()->month
