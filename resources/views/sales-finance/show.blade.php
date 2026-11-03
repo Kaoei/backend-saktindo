@@ -6,6 +6,37 @@
 
 @push('styles')
 <style>
+/* Responsive layout fixes for mobile & tablet */
+@media (max-width: 991.98px) {
+    .card-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+    .card-header > div:last-child {
+        width: 100% !important;
+    }
+    .card-header .btn {
+        flex: 1 1 auto;
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .card-header .btn {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 @media print {
     /* Hide dashboard layout and modals so browser print never prints the web page interface */
     .pc-sidebar, .pc-header, .pc-footer, .breadcrumb, .breadcrumb-item, 
@@ -61,14 +92,14 @@
 @endif
 
 <div class="row mt-3">
-    <div class="col-lg-8">
+    <div class="col-12 col-xl-8">
         <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                 <div>
                     <h5 class="mb-0">{{ $order->id }}</h5>
                     <small class="text-muted">{{ $order->customer_name }} - PI/PO {{ $order->customer_po_number }}</small>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2">
                     @if(auth()->user()?->hasPermission('sales_finance.edit') && !in_array($order->order_status, ['invoiced', 'completed']) && empty($order->invoice_id))
                         <a href="{{ route('sales-finance.edit', $order) }}" class="btn btn-outline-primary btn-sm">Edit</a>
                     @endif
@@ -82,17 +113,17 @@
                 </div>
             </div>
             <div class="card-body">
-                <div class="row mb-3">
-                    <div class="col-md-3"><div class="text-muted small">Status Order</div><span class="badge bg-light-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span></div>
-                    <div class="col-md-3">
+                <div class="row g-2 mb-3">
+                    <div class="col-6 col-md-3"><div class="text-muted small">Status Order</div><span class="badge bg-light-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span></div>
+                    <div class="col-6 col-md-3">
                         <div class="text-muted small">Status Stok</div>
                         <span class="badge {{ $order->stock_status === 'available' ? 'bg-light-success text-success' : 'bg-light-warning text-dark' }}">{{ ucfirst($order->stock_status) }}</span>
                         @if($order->sales_type === 'nearby_store')
                             <div class="mt-1"><span class="badge bg-info text-white" title="Pemenuhan pesanan dari toko/cabang fisik terdekat"><i class="feather icon-map-pin me-1"></i>Nearby Store</span></div>
                         @endif
                     </div>
-                    <div class="col-md-3"><div class="text-muted small">Tanggal Order</div>{{ optional($order->order_date)->format('d M Y') }}</div>
-                    <div class="col-md-3">
+                    <div class="col-6 col-md-3"><div class="text-muted small">Tanggal Order</div>{{ optional($order->order_date)->format('d M Y') }}</div>
+                    <div class="col-6 col-md-3">
                         <div class="text-muted small">Task Gudang</div>
                         {{ $warehouseTaskReference }}
                         @if($warehouseTask)
@@ -178,7 +209,7 @@
 
         @if($order->is_pre_order || $order->order_status === 'pending_stock')
             <div class="card border-primary mb-3">
-                <div class="card-header bg-light-primary d-flex align-items-center justify-content-between">
+                <div class="card-header bg-light-primary d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div class="d-flex align-items-center">
                         <i class="feather icon-clock text-primary fs-4 me-2"></i>
                         <div>
@@ -186,7 +217,7 @@
                             <small class="text-muted">Pesanan ini dalam status indent / pre-order pengadaan barang.</small>
                         </div>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex flex-wrap gap-2">
                         @if($order->proformaInvoice)
                             <a href="{{ route('sales-finance.proforma.print', $order) }}" target="_blank" class="btn btn-outline-primary btn-sm">
                                 <i class="feather icon-printer me-1"></i> Cetak Proforma (PI)
@@ -202,26 +233,26 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row g-3 align-items-center">
-                        <div class="col-md-3">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-6 col-md-3">
                             <div class="text-muted small">Estimasi Tiba (ETA)</div>
                             <div class="fw-bold fs-6 {{ $order->pre_order_eta ? 'text-primary' : 'text-muted' }}">
                                 {{ $order->pre_order_eta ? optional($order->pre_order_eta)->format('d M Y') : '-' }}
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-md-3">
                             <div class="text-muted small">Target DP</div>
                             <div class="fw-bold text-dark fs-6">
                                 Rp {{ number_format((float) ($order->dp_amount > 0 ? $order->dp_amount : $order->grand_total), 0, ',', '.') }}
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-md-3">
                             <div class="text-muted small">DP Terbayar</div>
                             <div class="fw-bold text-success fs-6">
                                 Rp {{ number_format((float) $order->dp_paid, 0, ',', '.') }}
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-6 col-md-3">
                             <div class="text-muted small">Status DP</div>
                             <div>
                                 @if($order->dp_status === 'paid')
@@ -274,7 +305,7 @@
 
         @if($invoice)
             <div class="card">
-                <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
                         <h5 class="mb-0">Invoice Management</h5>
                         <small class="text-muted">{{ $invoice->invoice_number }} - {{ ucfirst($invoice->invoice_type) }} - Faktur {{ $invoice->faktur_number }}
@@ -283,7 +314,7 @@
                             @endif
                         </small>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
                         @if($invoice->status !== 'paid' && $invoice->outstanding_amount > 0)
                             <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#sendInvoiceEmailModal" data-toggle="modal" data-target="#sendInvoiceEmailModal">
                                 <i class="feather icon-mail me-1"></i> Kirim Tagihan Email
@@ -304,6 +335,7 @@
                             <i class="feather icon-sliders me-1"></i> Sesuaikan Faktur
                         </button>
                     </div>
+                </div>
 
                 {{-- Faktur Checklist Bar --}}
                 @if($invoice->faktur_number)
@@ -314,7 +346,7 @@
                             <small class="fw-semibold">Faktur sudah dicek pada {{ optional($invoice->faktur_checked_at)->format('d M Y H:i') }}</small>
                         </div>
                     @else
-                        <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
                             <small class="text-warning-emphasis fw-semibold"><i class="feather icon-alert-circle me-1"></i>Faktur belum dicek</small>
                             <form method="POST" action="{{ route('invoices.check-faktur', $invoice) }}" class="d-inline">
                                 @csrf @method('PATCH')
@@ -357,8 +389,8 @@
                         </div>
                     @endif
 
-                    <div class="row mb-3">
-                        <div class="col-md-2">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-sm-4 col-md-2">
                             <div class="text-muted small">Status</div>
                             <span class="badge bg-light-info">{{ ucfirst($invoice->status) }}</span>
                             <div class="mt-1">
@@ -367,10 +399,10 @@
                                 </span>
                             </div>
                         </div>
-                        <div class="col-md-2"><div class="text-muted small">Tanggal</div>{{ optional($invoice->invoice_date)->format('d M Y') }}</div>
-                        <div class="col-md-2"><div class="text-muted small">Terbayar</div>Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}</div>
-                        <div class="col-md-2"><div class="text-muted small">Outstanding</div>Rp {{ number_format((float) $invoice->outstanding_amount, 0, ',', '.') }}</div>
-                        <div class="col-md-4">
+                        <div class="col-6 col-sm-4 col-md-2"><div class="text-muted small">Tanggal</div>{{ optional($invoice->invoice_date)->format('d M Y') }}</div>
+                        <div class="col-6 col-sm-4 col-md-2"><div class="text-muted small">Terbayar</div>Rp {{ number_format((float) $invoice->paid_amount, 0, ',', '.') }}</div>
+                        <div class="col-6 col-sm-4 col-md-2"><div class="text-muted small">Outstanding</div>Rp {{ number_format((float) $invoice->outstanding_amount, 0, ',', '.') }}</div>
+                        <div class="col-12 col-sm-8 col-md-4">
                             <div class="text-muted small">No. Faktur Pajak</div>
                             <div class="d-flex align-items-center gap-2">
                                 <strong class="text-dark">{{ $invoice->faktur_number ?: '-' }}</strong>
@@ -489,7 +521,7 @@
         @endif
     </div>
 
-    <div class="col-lg-4">
+    <div class="col-12 col-xl-4 mt-4 mt-xl-0">
         @if(auth()->user()?->hasPermission('sales_finance.edit') && !in_array($order->order_status, ['invoiced', 'partial_delivery', 'delivered', 'completed']) && !$invoice)
             <div class="card shadow-sm border mb-3">
                 <div class="card-header bg-white py-2 d-flex align-items-center justify-content-between">
