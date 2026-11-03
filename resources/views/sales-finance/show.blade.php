@@ -4,6 +4,26 @@
     'breadcrumb' => '<li class="breadcrumb-item"><a href="'.route('dashboard').'">Home</a></li><li class="breadcrumb-item"><a href="'.route('sales-finance.index').'">Sales & Finance</a></li><li class="breadcrumb-item">'.$order->id.'</li>',
 ])
 
+@push('styles')
+<style>
+@media print {
+    /* Hide dashboard layout and modals so browser print never prints the web page interface */
+    .pc-sidebar, .pc-header, .pc-footer, .breadcrumb, .breadcrumb-item, 
+    .modal-backdrop, .modal, .card, .btn, .alert, nav, header, aside, .row {
+        display: none !important;
+    }
+    body::before {
+        content: "Gunakan tombol 'Cetak Faktur (LX-310)' untuk mencetak faktur dalam format Continuous Form Epson LX-310.";
+        display: block !important;
+        font-size: 14pt;
+        text-align: center;
+        padding: 40px;
+        color: #000;
+    }
+}
+</style>
+@endpush
+
 @section('content')
 @php
     $invoice = $order->invoice;
@@ -274,12 +294,15 @@
                                 <i class="feather icon-repeat me-1"></i> Pindahkan Transaksi (JS ⇄ SJB)
                             </button>
                         @endif
-                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editFakturModal" data-toggle="modal" data-target="#editFakturModal">
-                            <i class="feather icon-printer me-1"></i> Cetak / Sesuaikan Faktur
-                        </button>
-                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}?action=stream" class="btn btn-outline-secondary btn-sm" target="_blank" title="Preview / Cetak Faktur Epson LX-310">
-                            <i class="feather icon-printer me-1"></i> Cetak Cepat (LX-310)
+                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}?action=print_html" class="btn btn-success btn-sm shadow-sm fw-semibold" target="_blank" title="Langsung cetak bentuk faktur ke printer Epson LX-310 / Dot Matrix">
+                            <i class="feather icon-printer me-1"></i> Cetak Faktur (LX-310)
                         </a>
+                        <a href="{{ route('sales-finance.invoices.pdf', $invoice) }}?action=stream" class="btn btn-primary btn-sm shadow-sm" target="_blank" title="Preview faktur PDF dengan ukuran continuous form">
+                            <i class="feather icon-eye me-1"></i> Preview PDF
+                        </a>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#editFakturModal" data-toggle="modal" data-target="#editFakturModal" title="Ubah keterangan, nama barang, harga, diskon, atau tanda tangan sebelum dicetak">
+                            <i class="feather icon-sliders me-1"></i> Sesuaikan Faktur
+                        </button>
                     </div>
 
                 {{-- Faktur Checklist Bar --}}
@@ -1011,18 +1034,31 @@
         <div class="modal-content">
             <form id="formEditFaktur" method="POST" action="{{ route('sales-finance.invoices.pdf', $invoice) }}" target="_blank">
                 @csrf
-                <input type="hidden" name="action" id="faktur-action" value="stream">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title text-white fw-bold" id="editFakturModalLabel">
-                        <i class="feather icon-printer me-2"></i> Sesuaikan & Cetak Faktur Penjualan
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                <input type="hidden" name="action" id="faktur-action" value="print_html">
+                <div class="modal-header bg-dark text-white d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="modal-title text-white fw-bold mb-0" id="editFakturModalLabel">
+                            <i class="feather icon-printer me-2"></i> Sesuaikan & Cetak Faktur Penjualan
+                        </h5>
+                        <small class="text-white-50">Atur kertas, item, dan keterangan sebelum mencetak</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="submit" class="btn btn-success btn-sm fw-bold shadow-sm" onclick="$('#faktur-action').val('print_html');" title="Buka jendela print browser langsung ke printer LX-310">
+                            <i class="feather icon-printer me-1"></i> Cetak Langsung (LX-310)
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm shadow-sm" onclick="$('#faktur-action').val('stream');" title="Preview faktur PDF dengan ukuran continuous form">
+                            <i class="feather icon-eye me-1"></i> Preview PDF
+                        </button>
+                        <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                    </div>
                 </div>
                 <div class="modal-body p-4 bg-light">
-                    <div class="alert alert-info py-2 px-3 small d-flex align-items-center mb-3">
-                        <i class="feather icon-info me-2 fs-5"></i>
-                        <div>
-                            Anda dapat mengubah keterangan, nama barang, harga, diskon, dan total sebelum mencetak faktur agar tidak ada data yang kosong sesuai format faktur fisik PT. SAKTINDO JAYA BERSAMA.
+                    <div class="alert alert-success py-2 px-3 small d-flex align-items-center justify-content-between mb-3 shadow-sm border-0">
+                        <div class="d-flex align-items-center">
+                            <i class="feather icon-check-circle me-2 fs-5 text-success"></i>
+                            <div>
+                                <strong>Siap Cetak Faktur?</strong> Klik tombol hijau <strong>"Cetak Langsung (LX-310)"</strong> di atas atau bawah untuk langsung mencetak faktur ke printer. Anda juga dapat mengubah item/keterangan di bawah ini bila diperlukan.
+                            </div>
                         </div>
                     </div>
 
@@ -1608,6 +1644,21 @@ $(function() {
             recalculateFakturTotals();
         }
     });
+
+    // Intercept Ctrl+P / Cmd+P on this page so the clean invoice is printed directly, not the webpage UI
+    @if($invoice)
+    $(document).on('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.keyCode === 80)) {
+            e.preventDefault();
+            if ($('#editFakturModal').hasClass('show')) {
+                $('#faktur-action').val('print_html');
+                $('#formEditFaktur').submit();
+            } else {
+                window.open("{{ route('sales-finance.invoices.pdf', $invoice) }}?action=print_html", "_blank");
+            }
+        }
+    });
+    @endif
 });
 </script>
 @endpush
