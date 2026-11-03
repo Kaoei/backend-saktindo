@@ -189,6 +189,18 @@ class SalesFinanceController extends Controller
             'invoice.warehouseTask',
         ]);
 
+        if (!$salesOrder->invoice) {
+            $foundInvoice = Invoice::query()->where('sales_order_id', $salesOrder->id)->latest('id')->first()
+                ?? $salesOrder->invoices()->latest('id')->first();
+            if ($foundInvoice) {
+                if (empty($salesOrder->invoice_id)) {
+                    $salesOrder->update(['invoice_id' => $foundInvoice->id]);
+                }
+                $foundInvoice->load(['deliveryNote', 'deliveryNotes.items', 'payments', 'warehouseTask']);
+                $salesOrder->setRelation('invoice', $foundInvoice);
+            }
+        }
+
         $invoice = $salesOrder->invoice;
 
         $sourceSalesOrders = collect();

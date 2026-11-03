@@ -57,7 +57,9 @@
 
 @section('content')
 @php
-    $invoice = $order->invoice;
+    $invoice = $order->invoice
+        ?? \App\Models\Invoice::where('sales_order_id', $order->id)->latest('id')->first()
+        ?? $order->invoices?->first();
 
     $deliveryNotes = $invoice?->deliveryNotes ?? collect();
 
