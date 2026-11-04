@@ -9,15 +9,27 @@
     <div class="col-12">
         @if(session('status') || session('success'))
             <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-                {{ session('status') ?? session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <i class="feather icon-check-circle me-1"></i> {{ session('status') ?? session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" data-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
 
         @if(session('error'))
             <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
-                {{ session('error') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <i class="feather icon-alert-triangle me-1"></i> {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" data-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+                <div class="fw-bold mb-1"><i class="feather icon-alert-circle me-1"></i> Terjadi kesalahan pengisian form:</div>
+                <ul class="mb-0 ps-3">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" data-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
     </div>
@@ -271,6 +283,9 @@
                 @if($supplierPo->effective_outstanding_amount > 0 && $supplierPo->payment_status !== 'paid')
                     <button type="button" 
                             class="btn btn-danger w-100 mb-2 py-2 fw-semibold"
+                            id="btn-open-payment-modal"
+                            data-toggle="modal"
+                            data-target="#paymentModal"
                             data-bs-toggle="modal" 
                             data-bs-target="#paymentModal">
                         <i class="feather icon-check-circle me-1"></i> Catat Pelunasan Hutang
@@ -300,14 +315,14 @@
 <!-- Payment Modal -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form action="{{ route('finance.payment.store') }}" method="POST" class="modal-content">
+        <form action="{{ route('finance.payment.store') }}" method="POST" class="modal-content" id="formPaymentModal">
             @csrf
             <input type="hidden" name="type" value="ap">
             <input type="hidden" name="id" value="{{ $supplierPo->id }}">
             
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title text-white fw-bold" id="paymentModalLabel">Catat Pelunasan Hutang ke Supplier</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
@@ -359,11 +374,33 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="submit" class="btn btn-danger">Simpan Pembayaran</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" data-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-danger" id="btnSubmitPayment">
+                    <i class="feather icon-check me-1"></i> Simpan Pembayaran
+                </button>
             </div>
         </form>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    $(function() {
+        $('#btn-open-payment-modal').on('click', function(e) {
+            e.preventDefault();
+            if (typeof $.fn.modal !== 'undefined') {
+                $('#paymentModal').modal('show');
+            } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                new bootstrap.Modal(document.getElementById('paymentModal')).show();
+            }
+        });
+
+        $('#formPaymentModal').on('submit', function() {
+            const btn = $('#btnSubmitPayment');
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Memproses...');
+        });
+    });
+</script>
+@endpush
 

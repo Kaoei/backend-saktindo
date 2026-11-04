@@ -33,5 +33,32 @@
 
         // Expose initSelect2 globally
         window.initSelect2 = initSelect2;
+
+        // Global polyfill for modal toggles & dismisses to eliminate dead buttons across all pages
+        $(document).on('click', '[data-bs-toggle="modal"], [data-toggle="modal"]', function(e) {
+            const target = $(this).attr('data-bs-target') || $(this).attr('data-target') || $(this).attr('href');
+            if (target && target.startsWith('#')) {
+                const $targetModal = $(target);
+                if ($targetModal.length) {
+                    if (typeof $.fn.modal !== 'undefined') {
+                        $targetModal.modal('show');
+                    } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        bootstrap.Modal.getOrCreateInstance($targetModal[0]).show();
+                    }
+                }
+            }
+        });
+
+        $(document).on('click', '[data-bs-dismiss="modal"], [data-dismiss="modal"]', function(e) {
+            const $modal = $(this).closest('.modal');
+            if ($modal.length) {
+                if (typeof $.fn.modal !== 'undefined') {
+                    $modal.modal('hide');
+                } else if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    const inst = bootstrap.Modal.getInstance($modal[0]);
+                    if (inst) inst.hide();
+                }
+            }
+        });
     });
 </script>
