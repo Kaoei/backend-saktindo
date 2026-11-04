@@ -13,12 +13,28 @@ use Illuminate\Support\Facades\DB;
 class StockCardController extends Controller
 {
     /**
-     * Display the stock card for a specific product and location.
+     * Display the stock card for a specific warehouse, rack, or product.
      */
     public function index(Request $request)
     {
+        $gudangType = $request->get('gudang_type');
         $rackId = $request->get('rack_id');
+        $productId = $request->get('product_id') ?: $request->get('supplier_product_id');
         $mutationType = $request->get('mutation_type');
+
+        // If sku provided, resolve by SKU
+        if (!$productId && $request->filled('sku')) {
+            $prod = SupplierProduct::where('sku', $request->sku)->first();
+            $productId = $prod?->id;
+        }
+
+        // Auto resolve gudang_type if rackId is provided
+        if ($rackId && empty($gudangType)) {
+            $selectedRackObj = Rak::where('rak_kode', $rackId)->first();
+            if ($selectedRackObj && $selectedRackObj->gudang) {
+                $gudangType = strtoupper($selectedRackObj->gudang);
+            }
+        }
 
         // Products stored in this rack (if rack_id is specified)
         $productsInRack = collect();
@@ -34,36 +50,11 @@ class StockCardController extends Controller
             }
         }
 
-        // 1. Resolve selected product
-        $productId = $request->get('product_id') ?: $request->get('supplier_product_id');
-        
-        // If sku provided, resolve by SKU
-        if (!$productId && $request->filled('sku')) {
-            $prod = SupplierProduct::where('sku', $request->sku)->first();
-            $productId = $prod?->id;
-        }
-
-        // If rackId is selected and products exist in that rack:
-        // if no product_id was given, or currently selected product is not in this rack, default to first product in rack
-        if ($rackId && $productsInRack->isNotEmpty()) {
-            $inRackIds = $productsInRack->pluck('id')->all();
-            if (!$productId || !in_array($productId, $inRackIds)) {
-                $productId = $productsInRack->first()->id;
-            }
-        }
-
-        // If still empty, pick first active product with stock or first product
-        if (!$productId) {
-            $firstProduct = SupplierProduct::whereHas('gudangProducts', function ($q) {
-                $q->where('qty', '>', 0);
-            })->first() ?: SupplierProduct::first();
-
-            $productId = $firstProduct?->id;
-        }
-
+        // Selected product model
         $currentProduct = $productId ? SupplierProduct::with(['gudangProducts.rack', 'supplier'])->find($productId) : null;
+        $currentRack = $rackId ? Rak::where('rak_kode', $rackId)->first() : null;
 
-        // 2. Resolve filters
+        // Resolve date range filters
         $startDate = $request->filled('start_date') 
             ? Carbon::parse($request->start_date)->startOfDay() 
             : Carbon::now()->subDays(60)->startOfDay();
@@ -73,14 +64,27 @@ class StockCardController extends Controller
             : Carbon::now()->endOfDay();
 
         // 3. Compute Saldo Awal Periode (Before start_date)
-        $saldoAwalQuery = StockMutation::where('supplier_product_id', $productId)
-            ->where('transaction_date', '<', $startDate);
+        $saldoAwalQuery = StockMutation::where('transaction_date', '<', $startDate);
 
-        if ($rackId) {
+        if (!empty($gudangType)) {
+            $gTypes = [strtoupper($gudangType), strtolower($gudangType)];
+            $saldoAwalQuery->where(function ($q) use ($gTypes) {
+                $q->whereIn('gudang_type', $gTypes)
+                  ->orWhereHas('rack', function ($rq) use ($gTypes) {
+                      $rq->whereIn('gudang', $gTypes);
+                  });
+            });
+        }
+
+        if (!empty($rackId)) {
             $saldoAwalQuery->where('rack_id', $rackId);
         }
 
-        $saldoAwalQty = (int)$saldoAwalQuery->select(DB::raw('COALESCE(SUM(qty_in - qty_out), 0) as balance'))->value('balance');
+        if (!empty($productId)) {
+            $saldoAwalQuery->where('supplier_product_id', $productId);
+        }
+
+        $saldoAwalQty = (int) $saldoAwalQuery->select(DB::raw('COALESCE(SUM(qty_in - qty_out), 0) as balance'))->value('balance');
         if ($saldoAwalQty < 0) {
             $saldoAwalQty = 0;
         }
@@ -92,36 +96,48 @@ class StockCardController extends Controller
         $saldoAwalValue = $saldoAwalQty * $unitCost;
 
         // 4. Query mutations in current period
-        $mutationsQuery = StockMutation::with(['rack', 'user'])
-            ->where('supplier_product_id', $productId)
+        $mutationsQuery = StockMutation::with(['rack', 'supplierProduct', 'user'])
             ->whereBetween('transaction_date', [$startDate, $endDate]);
 
-        if ($rackId) {
+        if (!empty($gudangType)) {
+            $gTypes = [strtoupper($gudangType), strtolower($gudangType)];
+            $mutationsQuery->where(function ($q) use ($gTypes) {
+                $q->whereIn('gudang_type', $gTypes)
+                  ->orWhereHas('rack', function ($rq) use ($gTypes) {
+                      $rq->whereIn('gudang', $gTypes);
+                  });
+            });
+        }
+
+        if (!empty($rackId)) {
             $mutationsQuery->where('rack_id', $rackId);
         }
 
-        if ($mutationType) {
+        if (!empty($productId)) {
+            $mutationsQuery->where('supplier_product_id', $productId);
+        }
+
+        if (!empty($mutationType)) {
             $mutationsQuery->where('mutation_type', $mutationType);
         }
 
         // Clone query for period summary stats
         $summaryQuery = clone $mutationsQuery;
-        $totalMasukPeriode = (int)$summaryQuery->sum('qty_in');
-        $totalKeluarPeriode = (int)$summaryQuery->sum('qty_out');
-        $totalNilaiMasuk = (float)$summaryQuery->sum(DB::raw('qty_in * unit_cost'));
-        $totalNilaiKeluar = (float)$summaryQuery->sum(DB::raw('qty_out * unit_cost'));
+        $totalMasukPeriode = (int) $summaryQuery->sum('qty_in');
+        $totalKeluarPeriode = (int) $summaryQuery->sum('qty_out');
+        $totalNilaiMasuk = (float) $summaryQuery->sum(DB::raw('qty_in * unit_cost'));
+        $totalNilaiKeluar = (float) $summaryQuery->sum(DB::raw('qty_out * unit_cost'));
 
         $saldoAkhirPeriode = max(0, $saldoAwalQty + $totalMasukPeriode - $totalKeluarPeriode);
         $totalValuasiSaldo = $saldoAkhirPeriode * $unitCost;
 
-        // Get chronological mutation records for table (pagination or full for card)
+        // Get chronological mutation records for table
         $mutations = $mutationsQuery->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc')
             ->paginate(50)
             ->withQueryString();
 
         // Compute running balance dynamically for paginated rows
-        // Calculate offset balance before current page
         $page = $mutations->currentPage();
         $perPage = $mutations->perPage();
         $offset = ($page - 1) * $perPage;
@@ -133,9 +149,7 @@ class StockCardController extends Controller
                 ->orderBy('id', 'asc')
                 ->take($offset)
                 ->get();
-            $prevOffsetDiff = (int)$prevRows->sum(function ($r) {
-                return $r->qty_in - $r->qty_out;
-            });
+            $prevOffsetDiff = (int) $prevRows->sum(fn ($r) => $r->qty_in - $r->qty_out);
         }
 
         $currentRunningBal = $saldoAwalQty + $prevOffsetDiff;
@@ -153,19 +167,36 @@ class StockCardController extends Controller
 
         $allRacks = Rak::orderBy('rak_kode')->get();
 
-        // Current physical stock in warehouse
-        $currentPhysicalStock = (int)($currentProduct?->gudangProducts->sum('qty') ?? 0);
+        // Current physical stock calculation
+        $currentPhysicalStock = 0;
+        if ($currentProduct) {
+            if ($rackId) {
+                $currentPhysicalStock = (int) $currentProduct->gudangProducts->where('rack_id', $rackId)->sum('qty');
+            } else {
+                $currentPhysicalStock = (int) $currentProduct->gudangProducts->sum('qty');
+            }
+        } elseif ($rackId) {
+            $currentPhysicalStock = (int) \App\Models\GudangProduct::where('rack_id', $rackId)->sum('qty');
+        } elseif (!empty($gudangType)) {
+            $currentPhysicalStock = (int) \App\Models\GudangProduct::where('gudang_type', $gudangType)->sum('qty');
+        } else {
+            $currentPhysicalStock = (int) \App\Models\GudangProduct::sum('qty');
+        }
+
         $rackAllocations = $currentProduct?->gudangProducts ?? collect();
 
         return view('stock_cards.index', compact(
             'currentProduct',
+            'currentRack',
             'allProducts',
             'productsInRack',
             'allRacks',
             'mutations',
             'startDate',
             'endDate',
+            'gudangType',
             'rackId',
+            'productId',
             'mutationType',
             'saldoAwalQty',
             'saldoAwalValue',
@@ -244,8 +275,10 @@ class StockCardController extends Controller
      */
     public function print(Request $request)
     {
+        $gudangType = $request->get('gudang_type');
+        $rackId = $request->get('rack_id');
         $productId = $request->get('product_id');
-        $currentProduct = SupplierProduct::with(['gudangProducts.rack', 'supplier'])->findOrFail($productId);
+        $currentProduct = $productId ? SupplierProduct::with(['gudangProducts.rack', 'supplier'])->find($productId) : null;
 
         $startDate = $request->filled('start_date') 
             ? Carbon::parse($request->start_date)->startOfDay() 
@@ -255,32 +288,53 @@ class StockCardController extends Controller
             ? Carbon::parse($request->end_date)->endOfDay() 
             : Carbon::now()->endOfDay();
 
-        $rackId = $request->get('rack_id');
         $mutationType = $request->get('mutation_type');
 
         // Saldo Awal
-        $saldoAwalQuery = StockMutation::where('supplier_product_id', $productId)
-            ->where('transaction_date', '<', $startDate);
+        $saldoAwalQuery = StockMutation::where('transaction_date', '<', $startDate);
 
+        if (!empty($gudangType)) {
+            $gTypes = [strtoupper($gudangType), strtolower($gudangType)];
+            $saldoAwalQuery->where(function ($q) use ($gTypes) {
+                $q->whereIn('gudang_type', $gTypes)
+                  ->orWhereHas('rack', function ($rq) use ($gTypes) {
+                      $rq->whereIn('gudang', $gTypes);
+                  });
+            });
+        }
         if ($rackId) {
             $saldoAwalQuery->where('rack_id', $rackId);
+        }
+        if ($productId) {
+            $saldoAwalQuery->where('supplier_product_id', $productId);
         }
 
         $saldoAwalQty = (int)$saldoAwalQuery->select(DB::raw('COALESCE(SUM(qty_in - qty_out), 0) as balance'))->value('balance');
         if ($saldoAwalQty < 0) $saldoAwalQty = 0;
 
         $unitCost = (float)($currentProduct->last_purchase_price ?? 0);
-        if ($unitCost <= 0) {
+        if ($unitCost <= 0 && $currentProduct) {
             $unitCost = (float)($currentProduct->gudangProducts->max('price') ?? 0);
         }
         $saldoAwalValue = $saldoAwalQty * $unitCost;
 
-        $mutationsQuery = StockMutation::with(['rack', 'user'])
-            ->where('supplier_product_id', $productId)
+        $mutationsQuery = StockMutation::with(['rack', 'supplierProduct', 'user'])
             ->whereBetween('transaction_date', [$startDate, $endDate]);
 
+        if (!empty($gudangType)) {
+            $gTypes = [strtoupper($gudangType), strtolower($gudangType)];
+            $mutationsQuery->where(function ($q) use ($gTypes) {
+                $q->whereIn('gudang_type', $gTypes)
+                  ->orWhereHas('rack', function ($rq) use ($gTypes) {
+                      $rq->whereIn('gudang', $gTypes);
+                  });
+            });
+        }
         if ($rackId) {
             $mutationsQuery->where('rack_id', $rackId);
+        }
+        if ($productId) {
+            $mutationsQuery->where('supplier_product_id', $productId);
         }
         if ($mutationType) {
             $mutationsQuery->where('mutation_type', $mutationType);
@@ -308,6 +362,7 @@ class StockCardController extends Controller
             'mutations',
             'startDate',
             'endDate',
+            'gudangType',
             'rackId',
             'saldoAwalQty',
             'saldoAwalValue',
@@ -324,8 +379,10 @@ class StockCardController extends Controller
      */
     public function exportExcel(Request $request)
     {
+        $gudangType = $request->get('gudang_type');
+        $rackId = $request->get('rack_id');
         $productId = $request->get('product_id');
-        $currentProduct = SupplierProduct::findOrFail($productId);
+        $currentProduct = $productId ? SupplierProduct::find($productId) : null;
 
         $startDate = $request->filled('start_date') 
             ? Carbon::parse($request->start_date)->startOfDay() 
@@ -335,29 +392,47 @@ class StockCardController extends Controller
             ? Carbon::parse($request->end_date)->endOfDay() 
             : Carbon::now()->endOfDay();
 
-        $rackId = $request->get('rack_id');
         $mutationType = $request->get('mutation_type');
 
-        $saldoAwalQuery = StockMutation::where('supplier_product_id', $productId)
-            ->where('transaction_date', '<', $startDate);
+        $saldoAwalQuery = StockMutation::where('transaction_date', '<', $startDate);
+        if (!empty($gudangType)) {
+            $gTypes = [strtoupper($gudangType), strtolower($gudangType)];
+            $saldoAwalQuery->where(function ($q) use ($gTypes) {
+                $q->whereIn('gudang_type', $gTypes)
+                  ->orWhereHas('rack', function ($rq) use ($gTypes) {
+                      $rq->whereIn('gudang', $gTypes);
+                  });
+            });
+        }
         if ($rackId) $saldoAwalQuery->where('rack_id', $rackId);
+        if ($productId) $saldoAwalQuery->where('supplier_product_id', $productId);
         $saldoAwalQty = max(0, (int)$saldoAwalQuery->select(DB::raw('COALESCE(SUM(qty_in - qty_out), 0) as balance'))->value('balance'));
 
         $unitCost = (float)($currentProduct->last_purchase_price ?? 0);
-        if ($unitCost <= 0) $unitCost = (float)($currentProduct->gudangProducts()->max('price') ?? 0);
+        if ($unitCost <= 0 && $currentProduct) $unitCost = (float)($currentProduct->gudangProducts()->max('price') ?? 0);
 
-        $mutationsQuery = StockMutation::with(['rack', 'user'])
-            ->where('supplier_product_id', $productId)
+        $mutationsQuery = StockMutation::with(['rack', 'supplierProduct', 'user'])
             ->whereBetween('transaction_date', [$startDate, $endDate]);
 
+        if (!empty($gudangType)) {
+            $gTypes = [strtoupper($gudangType), strtolower($gudangType)];
+            $mutationsQuery->where(function ($q) use ($gTypes) {
+                $q->whereIn('gudang_type', $gTypes)
+                  ->orWhereHas('rack', function ($rq) use ($gTypes) {
+                      $rq->whereIn('gudang', $gTypes);
+                  });
+            });
+        }
         if ($rackId) $mutationsQuery->where('rack_id', $rackId);
+        if ($productId) $mutationsQuery->where('supplier_product_id', $productId);
         if ($mutationType) $mutationsQuery->where('mutation_type', $mutationType);
 
         $mutations = $mutationsQuery->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
 
-        $filename = 'Kartu_Stok_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $currentProduct->sku ?: $currentProduct->item_name) . '_' . date('Ymd_His') . '.csv';
+        $identifier = $currentProduct ? ($currentProduct->sku ?: $currentProduct->item_name) : ($rackId ? 'Rak_' . $rackId : ($gudangType ? 'Gudang_' . $gudangType : 'Global'));
+        $filename = 'Kartu_Stok_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $identifier) . '_' . date('Ymd_His') . '.csv';
 
         $headers = [
             'Content-Type'        => 'text/csv; charset=UTF-8',
@@ -367,23 +442,33 @@ class StockCardController extends Controller
             'Expires'             => '0',
         ];
 
-        $callback = function () use ($currentProduct, $startDate, $endDate, $saldoAwalQty, $unitCost, $mutations) {
+        $callback = function () use ($currentProduct, $startDate, $endDate, $saldoAwalQty, $unitCost, $mutations, $rackId, $gudangType) {
             $handle = fopen('php://output', 'w');
             fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM for Excel
 
             fputcsv($handle, ['KARTU STOK PERSEDIAAN BARANG']);
-            fputcsv($handle, ['Produk', $currentProduct->item_name]);
-            fputcsv($handle, ['SKU', $currentProduct->sku]);
+            if ($currentProduct) {
+                fputcsv($handle, ['Produk', $currentProduct->item_name]);
+                fputcsv($handle, ['SKU', $currentProduct->sku ?: '-']);
+            } elseif ($rackId) {
+                fputcsv($handle, ['Lokasi Rak', $rackId]);
+                if ($gudangType) fputcsv($handle, ['Gudang', 'Gudang ' . $gudangType]);
+            } elseif ($gudangType) {
+                fputcsv($handle, ['Gudang', 'Gudang ' . $gudangType]);
+            } else {
+                fputcsv($handle, ['Cakupan', 'Semua Gudang & Rak']);
+            }
             fputcsv($handle, ['Periode', $startDate->format('d/m/Y') . ' - ' . $endDate->format('d/m/Y')]);
             fputcsv($handle, []);
 
             fputcsv($handle, [
                 'No',
                 'Tanggal',
+                'Barang / SKU',
                 'Kode Mutasi',
                 'No Referensi',
                 'Tipe Mutasi',
-                'Rak / Lokasi',
+                'Gudang / Lokasi Rak',
                 'Masuk (Qty)',
                 'Keluar (Qty)',
                 'Saldo (Qty)',
@@ -397,17 +482,18 @@ class StockCardController extends Controller
             fputcsv($handle, [
                 '-',
                 $startDate->format('d/m/Y'),
+                $currentProduct ? ($currentProduct->item_name . ' (' . ($currentProduct->sku ?: '-') . ')') : 'Saldo Awal Periode',
                 '-',
                 'SALDO AWAL',
                 'Saldo Awal',
-                '-',
+                $rackId ?: ($gudangType ? 'Gudang ' . $gudangType : 'Semua Lokasi'),
                 0,
                 0,
                 $saldoAwalQty,
                 $unitCost,
                 0,
                 $saldoAwalQty * $unitCost,
-                'Saldo Awal Periode',
+                'Saldo Awal sebelum periode ' . $startDate->format('d/m/Y'),
             ]);
 
             $runningBal = $saldoAwalQty;
@@ -416,14 +502,17 @@ class StockCardController extends Controller
                 $runningBal += ($m->qty_in - $m->qty_out);
                 if ($runningBal < 0) $runningBal = 0;
                 $rowHpp = (float)($m->unit_cost ?: $unitCost);
+                $productLabel = $m->supplierProduct ? ($m->supplierProduct->item_name . ' (' . ($m->supplierProduct->sku ?: '-') . ')') : '-';
+                $locationLabel = ($m->rack_id ? 'Rak ' . $m->rack_id : '') . ($m->gudang_type ? ' [' . $m->gudang_type . ']' : '');
 
                 fputcsv($handle, [
                     $no++,
                     $m->transaction_date ? $m->transaction_date->format('d/m/Y H:i') : '-',
+                    $productLabel,
                     $m->mutation_code,
                     $m->reference_number ?: '-',
                     $m->type_badge['label'] ?? $m->mutation_type,
-                    $m->rack_id ?: 'Semua Rak',
+                    $locationLabel ?: 'Global',
                     $m->qty_in,
                     $m->qty_out,
                     $runningBal,

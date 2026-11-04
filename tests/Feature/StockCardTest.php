@@ -217,4 +217,80 @@ class StockCardTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('status');
     }
+
+    public function test_stock_card_filter_by_warehouse_and_rack_without_product(): void
+    {
+        $this->authenticateSuperAdmin();
+
+        $supplier = Supplier::create(['name' => 'Supplier Test WhRack', 'status' => 'active']);
+        $productA = SupplierProduct::create([
+            'supplier_id' => $supplier->id,
+            'sku' => 'SKU-WHRACK-A',
+            'item_name' => 'Barang WhRack A',
+            'last_purchase_price' => 30000,
+            'unit' => 'pcs',
+            'status' => 'active',
+        ]);
+        $productB = SupplierProduct::create([
+            'supplier_id' => $supplier->id,
+            'sku' => 'SKU-WHRACK-B',
+            'item_name' => 'Barang WhRack B',
+            'last_purchase_price' => 45000,
+            'unit' => 'pcs',
+            'status' => 'active',
+        ]);
+
+        $rack = Rak::firstOrCreate(['rak_kode' => 'L1 R1-1'], ['location' => 'Gudang JS Lantai 1', 'gudang' => 'js']);
+
+        StockMutationService::recordMutation([
+            'supplier_product_id' => $productA->id,
+            'rack_id'             => $rack->rak_kode,
+            'transaction_date'    => now()->subDay(),
+            'mutation_type'       => 'inbound',
+            'reference_number'    => 'INB-RACK-01',
+            'qty_in'              => 50,
+            'qty_out'             => 0,
+            'unit_cost'           => 30000,
+            'notes'               => 'Masuk Barang A ke Rak L1 R1-1',
+        ]);
+
+        StockMutationService::recordMutation([
+            'supplier_product_id' => $productB->id,
+            'rack_id'             => $rack->rak_kode,
+            'transaction_date'    => now(),
+            'mutation_type'       => 'inbound',
+            'reference_number'    => 'INB-RACK-02',
+            'qty_in'              => 25,
+            'qty_out'             => 0,
+            'unit_cost'           => 45000,
+            'notes'               => 'Masuk Barang B ke Rak L1 R1-1',
+        ]);
+
+        // Filter purely by warehouse and rack (no product_id)
+        $response = $this->get(route('stock-cards.index', [
+            'gudang_type' => 'JS',
+            'rack_id' => 'L1 R1-1',
+        ]));
+
+        $response->assertStatus(200);
+        $response->assertSee('LOKASI RAK: L1 R1-1');
+        $response->assertSee('Barang WhRack A');
+        $response->assertSee('Barang WhRack B');
+
+        // Test Print by Rack
+        $printResponse = $this->get(route('stock-cards.print', [
+            'gudang_type' => 'JS',
+            'rack_id' => 'L1 R1-1',
+        ]));
+        $printResponse->assertStatus(200);
+        $printResponse->assertSee('Rak L1 R1-1');
+
+        // Test Export by Rack
+        $exportResponse = $this->get(route('stock-cards.export-excel', [
+            'gudang_type' => 'JS',
+            'rack_id' => 'L1 R1-1',
+        ]));
+        $exportResponse->assertStatus(200);
+        $this->assertStringContainsString('text/csv', $exportResponse->headers->get('content-type'));
+    }
 }

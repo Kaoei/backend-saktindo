@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Kartu Stok - {{ $currentProduct->sku ?: $currentProduct->item_name }}</title>
+    <title>Kartu Stok - {{ $currentProduct ? ($currentProduct->sku ?: $currentProduct->item_name) : ($rackId ? 'Rak ' . $rackId : ($gudangType ? 'Gudang ' . $gudangType : 'Semua Gudang')) }}</title>
     <style>
         @page {
             size: A4 landscape;
@@ -139,21 +139,21 @@
 <table class="info-table">
     <tr>
         <td style="width: 15%;"><strong>Nama Produk</strong></td>
-        <td style="width: 35%;">: {{ $currentProduct->item_name }}</td>
+        <td style="width: 35%;">: {{ $currentProduct ? $currentProduct->item_name : 'Semua Produk' }}</td>
         <td style="width: 15%;"><strong>Periode</strong></td>
         <td style="width: 35%;">: {{ $startDate->format('d/m/Y') }} s/d {{ $endDate->format('d/m/Y') }}</td>
     </tr>
     <tr>
         <td><strong>SKU / Kode Barang</strong></td>
-        <td>: {{ $currentProduct->sku ?: '-' }}</td>
-        <td><strong>Lokasi Rak / Gudang</strong></td>
-        <td>: {{ $rackId ?: 'Semua Rak (Global)' }}</td>
+        <td>: {{ $currentProduct ? ($currentProduct->sku ?: '-') : '-' }}</td>
+        <td><strong>Lokasi Gudang / Rak</strong></td>
+        <td>: {{ $rackId ? 'Rak ' . $rackId : ($gudangType ? 'Gudang ' . $gudangType : 'Semua Gudang & Rak') }}</td>
     </tr>
     <tr>
         <td><strong>Brand / Kategori</strong></td>
-        <td>: {{ $currentProduct->brand ?: '-' }} / {{ $currentProduct->category ?: '-' }}</td>
+        <td>: {{ $currentProduct ? (($currentProduct->brand ?: '-') . ' / ' . ($currentProduct->category ?: '-')) : '-' }}</td>
         <td><strong>Satuan Unit</strong></td>
-        <td>: {{ strtoupper($currentProduct->unit ?: 'PCS') }}</td>
+        <td>: {{ strtoupper($currentProduct?->unit ?: 'PCS / Item') }}</td>
     </tr>
 </table>
 
@@ -161,22 +161,22 @@
     <tr>
         <td>
             <div class="label">Saldo Awal Periode</div>
-            <div class="val">{{ number_format($saldoAwalQty) }} {{ $currentProduct->unit ?: 'pcs' }}</div>
+            <div class="val">{{ number_format($saldoAwalQty) }} {{ $currentProduct?->unit ?: 'pcs' }}</div>
             <div class="subval">Nilai: Rp {{ number_format($saldoAwalValue, 0, ',', '.') }}</div>
         </td>
         <td>
             <div class="label">Total Masuk (+)</div>
-            <div class="val" style="color: #008000;">+{{ number_format($totalMasukPeriode) }} {{ $currentProduct->unit ?: 'pcs' }}</div>
+            <div class="val" style="color: #008000;">+{{ number_format($totalMasukPeriode) }} {{ $currentProduct?->unit ?: 'pcs' }}</div>
             <div class="subval">Periode Terpilih</div>
         </td>
         <td>
             <div class="label">Total Keluar (-)</div>
-            <div class="val" style="color: #b30000;">-{{ number_format($totalKeluarPeriode) }} {{ $currentProduct->unit ?: 'pcs' }}</div>
+            <div class="val" style="color: #b30000;">-{{ number_format($totalKeluarPeriode) }} {{ $currentProduct?->unit ?: 'pcs' }}</div>
             <div class="subval">Periode Terpilih</div>
         </td>
         <td>
             <div class="label">Saldo Akhir Periode</div>
-            <div class="val" style="color: #0033cc;">{{ number_format($saldoAkhirPeriode) }} {{ $currentProduct->unit ?: 'pcs' }}</div>
+            <div class="val" style="color: #0033cc;">{{ number_format($saldoAkhirPeriode) }} {{ $currentProduct?->unit ?: 'pcs' }}</div>
             <div class="subval">Valuasi: Rp {{ number_format($totalValuasiSaldo, 0, ',', '.') }}</div>
         </td>
     </tr>
@@ -186,16 +186,17 @@
     <thead>
         <tr>
             <th style="width: 30px;">No</th>
-            <th style="width: 80px;">Tanggal</th>
-            <th style="width: 110px;">No. Referensi</th>
-            <th style="width: 85px;">Tipe Mutasi</th>
-            <th style="width: 75px;">Lokasi Rak</th>
-            <th style="width: 60px;">Masuk (+)</th>
-            <th style="width: 60px;">Keluar (-)</th>
+            <th style="width: 75px;">Tanggal</th>
+            <th style="width: 140px;">Barang / SKU</th>
+            <th style="width: 100px;">No. Referensi</th>
+            <th style="width: 80px;">Tipe Mutasi</th>
+            <th style="width: 70px;">Gudang/Rak</th>
+            <th style="width: 55px;">Masuk (+)</th>
+            <th style="width: 55px;">Keluar (-)</th>
             <th style="width: 65px;">Saldo Akhir</th>
-            <th style="width: 85px;">HPP Satuan</th>
-            <th style="width: 95px;">Total Nilai</th>
-            <th style="width: 105px;">Valuasi Persediaan</th>
+            <th style="width: 80px;">HPP Satuan</th>
+            <th style="width: 90px;">Total Nilai</th>
+            <th style="width: 95px;">Valuasi Persediaan</th>
             <th>Keterangan</th>
         </tr>
     </thead>
@@ -204,9 +205,10 @@
         <tr class="bg-light">
             <td class="text-center">-</td>
             <td class="text-center">{{ $startDate->format('d/m/Y') }}</td>
+            <td class="fw-bold">{{ $currentProduct ? ($currentProduct->item_name . ' (' . ($currentProduct->sku ?: '-') . ')') : 'Saldo Awal Terbawa' }}</td>
             <td class="fw-bold">SALDO AWAL</td>
             <td>Saldo Awal</td>
-            <td class="text-center">{{ $rackId ?: 'Semua Rak' }}</td>
+            <td class="text-center">{{ $rackId ?: ($gudangType ?: 'Semua') }}</td>
             <td class="text-end">-</td>
             <td class="text-end">-</td>
             <td class="text-end fw-bold">{{ number_format($saldoAwalQty) }}</td>
@@ -220,9 +222,17 @@
             <tr>
                 <td class="text-center">{{ $idx + 1 }}</td>
                 <td class="text-center">{{ $m->transaction_date ? $m->transaction_date->format('d/m/Y H:i') : '-' }}</td>
+                <td>
+                    {{ $m->supplierProduct ? ($m->supplierProduct->item_name . ' (' . ($m->supplierProduct->sku ?: '-') . ')') : '-' }}
+                </td>
                 <td>{{ $m->reference_number ?: '-' }}</td>
                 <td>{{ $m->type_badge['label'] ?? $m->mutation_type }}</td>
-                <td class="text-center">{{ $m->rack_id ?: '-' }}</td>
+                <td class="text-center">
+                    {{ $m->rack_id ?: '-' }}
+                    @if($m->gudang_type)
+                        <small>({{ $m->gudang_type }})</small>
+                    @endif
+                </td>
                 <td class="text-end fw-bold" style="color: #008000;">{{ $m->qty_in > 0 ? '+' . number_format($m->qty_in) : '-' }}</td>
                 <td class="text-end fw-bold" style="color: #b30000;">{{ $m->qty_out > 0 ? '-' . number_format($m->qty_out) : '-' }}</td>
                 <td class="text-end fw-bold">{{ number_format($m->calculated_balance ?? $m->balance) }}</td>
@@ -233,13 +243,13 @@
             </tr>
         @empty
             <tr>
-                <td colspan="12" class="text-center" style="padding: 15px;">Belum ada catatan mutasi transaksi pada rentang periode ini.</td>
+                <td colspan="13" class="text-center" style="padding: 15px;">Belum ada catatan mutasi transaksi pada rentang periode ini.</td>
             </tr>
         @endforelse
     </tbody>
     <tfoot>
         <tr class="bg-light fw-bold">
-            <td colspan="5" class="text-end">TOTAL MUTASI PERIODE:</td>
+            <td colspan="6" class="text-end">TOTAL MUTASI PERIODE:</td>
             <td class="text-end" style="color: #008000;">+{{ number_format($totalMasukPeriode) }}</td>
             <td class="text-end" style="color: #b30000;">-{{ number_format($totalKeluarPeriode) }}</td>
             <td class="text-end">{{ number_format($saldoAkhirPeriode) }}</td>

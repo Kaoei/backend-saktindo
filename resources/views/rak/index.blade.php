@@ -88,6 +88,11 @@
                                     </td>
 
                                     <td class="text-end">
+                                        <a href="{{ route('stock-cards.index', ['gudang_type' => $rak->gudang, 'rack_id' => $rak->rak_kode]) }}"
+                                           class="text-primary me-2" title="Lihat Kartu Stok Rak Ini">
+                                            <i class="feather icon-book-open f-18"></i>
+                                        </a>
+
                                         <a href="{{ route('rak.edit', $rak->rak_kode) }}"
                                            class="text-success me-2" title="Edit Rak">
                                             <i class="feather icon-edit f-18"></i>
