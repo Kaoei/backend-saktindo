@@ -69,7 +69,7 @@
                                 @endphp
                                 <tr>
                                     <td>
-                                        <a href="{{ route('stock-cards.index', ['rack_id' => $rak->rak_kode]) }}" class="fw-bold text-primary text-decoration-none" title="Lihat Produk & Kartu Stok di Rak {{ $rak->rak_kode }}">
+                                        <a href="{{ route('gudang-product.index', ['rack' => $rak->rak_kode]) }}" class="fw-bold text-primary text-decoration-none" title="Lihat Produk di Rak {{ $rak->rak_kode }}">
                                             <i class="feather icon-layers me-1"></i> {{ $rak->rak_kode }}
                                         </a>
                                     </td>
@@ -79,7 +79,7 @@
                                     </td>
                                     <td>
                                         @if($prodCount > 0)
-                                            <a href="{{ route('stock-cards.index', ['rack_id' => $rak->rak_kode]) }}" class="badge bg-light-success text-success text-decoration-none border border-success-subtle py-1 px-2" title="Klik untuk melihat produk di rak ini">
+                                            <a href="{{ route('gudang-product.index', ['rack' => $rak->rak_kode]) }}" class="badge bg-light-success text-success text-decoration-none border border-success-subtle py-1 px-2" title="Klik untuk melihat produk di rak ini">
                                                 <i class="feather icon-package me-1"></i> {{ $prodCount }} Produk ({{ number_format($totalQty) }} pcs)
                                             </a>
                                         @else
@@ -88,11 +88,6 @@
                                     </td>
 
                                     <td class="text-end">
-                                        <a href="{{ route('stock-cards.index', ['rack_id' => $rak->rak_kode]) }}"
-                                           class="text-primary me-2" title="Lihat Kartu Stok Rak Ini">
-                                            <i class="feather icon-book-open f-18"></i>
-                                        </a>
-
                                         <a href="{{ route('rak.edit', $rak->rak_kode) }}"
                                            class="text-success me-2" title="Edit Rak">
                                             <i class="feather icon-edit f-18"></i>

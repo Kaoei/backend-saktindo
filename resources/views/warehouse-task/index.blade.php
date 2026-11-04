@@ -179,7 +179,16 @@
                                                 </a>
                                             @endif
 
-                                            <!-- Penanda Khusus & Hak Akses Super Admin -->
+                                            <!-- Hak Akses Edit Task: Super Admin & Gudang -->
+                                            @if($isSuperAdmin || auth()->user()?->role === \App\Models\User::ROLE_GUDANG)
+                                                <a href="{{ route('warehouse-task.edit', $task->id) }}"
+                                                   class="btn btn-sm btn-outline-secondary"
+                                                   title="Edit Task">
+                                                    <i class="feather icon-edit me-1"></i> Edit
+                                                </a>
+                                            @endif
+
+                                            <!-- Penanda Khusus & Hak Akses Hapus Super Admin -->
                                             @if($isSuperAdmin)
                                                 <form action="{{ route('warehouse-task.toggle-check', $task->id) }}"
                                                       method="POST"
@@ -194,12 +203,6 @@
                                                         {{ $task->is_checked_by_admin ? 'Batal Periksa' : 'Tandai Diperiksa' }}
                                                     </button>
                                                 </form>
-
-                                                <a href="{{ route('warehouse-task.edit', $task->id) }}"
-                                                   class="btn btn-sm btn-outline-secondary"
-                                                   title="Edit Task">
-                                                    <i class="feather icon-edit"></i>
-                                                </a>
 
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-danger btn-delete-task"
