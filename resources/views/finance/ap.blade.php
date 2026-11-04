@@ -25,7 +25,7 @@
             </div>
         @endif
 
-        @if($errors->any())
+        @if(isset($errors) && $errors->any())
             <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
                 <div class="fw-bold mb-1"><i class="feather icon-alert-circle me-1"></i> Terjadi kesalahan pengisian form:</div>
                 <ul class="mb-0 ps-3">
