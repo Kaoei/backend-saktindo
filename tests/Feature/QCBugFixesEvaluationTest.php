@@ -358,4 +358,91 @@ class QCBugFixesEvaluationTest extends TestCase
         $response->assertSee('data-order="2026-11-02"', false);
         $response->assertSee('data-order="2026-08-11"', false);
     }
+
+    public function test_point_14_and_16_invoice_faktur_print_consolidates_items_and_syncs_numbers()
+    {
+        $so = SalesOrder::create([
+            'id' => 'SO-QC-PRINT-01',
+            'order_date' => now()->toDateString(),
+            'order_status' => 'confirmed',
+            'customer_name' => 'PT Test Kenari',
+            'customer_po_number' => 'PO-KENARI-01',
+            'sales_type' => 'js',
+            'total_amount' => 320000,
+        ]);
+
+        // Same product split across 2 racks: 10 pcs and 6 pcs
+        SalesOrderItem::create([
+            'sales_order_id' => $so->id,
+            'product_name' => 'VARIO - CAPSULE',
+            'product_code' => 'SKU-VARIO',
+            'quantity' => 10,
+            'unit' => 'pcs',
+            'unit_price' => 20000,
+            'line_total' => 200000,
+            'rack_id' => 'RAK-01',
+        ]);
+
+        SalesOrderItem::create([
+            'sales_order_id' => $so->id,
+            'product_name' => 'VARIO - CAPSULE',
+            'product_code' => 'SKU-VARIO',
+            'quantity' => 6,
+            'unit' => 'pcs',
+            'unit_price' => 20000,
+            'line_total' => 120000,
+            'rack_id' => 'RAK-02',
+        ]);
+
+        $inv = Invoice::create([
+            'id' => 'INV-QC-PRINT-01',
+            'invoice_number' => 'INV/QC/PRINT/001',
+            'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(30)->toDateString(),
+            'sales_order_id' => $so->id,
+            'status' => 'outstanding',
+            'tax_type' => 'non_pajak',
+            'grand_total' => 320000,
+            'outstanding_amount' => 320000,
+        ]);
+
+        $response = $this->actingAs($this->superAdmin)
+            ->get(route('sales-finance.invoices.pdf', ['invoice' => $inv->id, 'action' => 'print_html']));
+
+        $response->assertStatus(200);
+
+        // Point 14: No Faktur and No Reff match, and No Seri Faktur Pajak is omitted for non SJB Pajak
+        $response->assertSee('No. Faktur :</span>', false);
+        $response->assertSee('No Reff :</span>', false);
+        $response->assertSee('INV/QC/PRINT/001');
+        $response->assertDontSee('No . Seri faktur Pajak :');
+
+        // Point 16: Identical items consolidated to 1 row with total 16 pcs (not 2 separate rows)
+        $response->assertSee('VARIO - CAPSULE');
+        $response->assertSee('16');
+    }
+
+    public function test_zero_dead_buttons_across_critical_views()
+    {
+        // 1. Rak view
+        $rakResp = $this->actingAs($this->superAdmin)->get(route('rak.index'));
+        $rakResp->assertStatus(200);
+        $rakResp->assertSee('id="rackProductsModal"', false);
+        $rakResp->assertSee('id="deleteModal"', false);
+
+        // 2. Warehouse task view
+        $taskResp = $this->actingAs($this->superAdmin)->get(route('warehouse-task.index'));
+        $taskResp->assertStatus(200);
+        $taskResp->assertSee('id="deleteModal"', false);
+
+        // 3. Finance AP view
+        $apResp = $this->actingAs($this->superAdmin)->get(route('finance.ap'));
+        $apResp->assertStatus(200);
+        $apResp->assertSee('id="paymentModal"', false);
+
+        // 4. Stock Cards view
+        $scResp = $this->actingAs($this->superAdmin)->get(route('stock-cards.index'));
+        $scResp->assertStatus(200);
+        $scResp->assertSee('Pilih Cepat Rak:');
+    }
 }

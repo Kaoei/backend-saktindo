@@ -63,7 +63,7 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" id="variation-tab" data-toggle="tab" href="#variation" role="tab" aria-controls="variation" aria-selected="false">
-                                <i class="feather icon-sliders f-18 me-1 align-middle"></i> Variations & Pricing
+                                <i class="feather icon-layers f-18 me-1 align-middle text-primary"></i> Alokasi Rak & Varian
                             </a>
                         </li>
                         <li class="nav-item">
@@ -226,6 +226,27 @@
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label fw-bold">Satuan Unit</label>
                                     <input name="unit" type="text" class="form-control" value="{{ old('unit', $product->unit ?: 'pcs') }}" placeholder="pcs / box / meter">
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <div class="alert alert-light-primary border border-primary-subtle d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 rounded">
+                                        <div>
+                                            <h6 class="mb-1 text-primary fw-bold"><i class="feather icon-layers me-1"></i> Penempatan Rak Penyimpanan</h6>
+                                            <div class="small text-muted">
+                                                Produk ini tersimpan di: 
+                                                @php $allocs = $product->gudangProducts; @endphp
+                                                @if($allocs->isNotEmpty())
+                                                    @foreach($allocs as $a)
+                                                        <span class="badge bg-primary me-1">{{ $a->rack_id }} ({{ $a->qty }} pcs - Gudang {{ strtoupper($a->rack?->gudang ?? ($a->gudang_type ?: 'JS')) }})</span>
+                                                    @endforeach
+                                                @else
+                                                    <span class="badge bg-warning text-dark">Belum ada alokasi rak</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="$('#variation-tab').tab('show');">
+                                            <i class="feather icon-edit me-1"></i> Kelola / Ubah Rak di Tab Alokasi Rak
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="col-md-12 mb-3">
                                     <label class="form-label fw-bold">Product Description</label>

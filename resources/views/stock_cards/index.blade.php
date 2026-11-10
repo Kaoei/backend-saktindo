@@ -204,9 +204,23 @@
                         </div>
                     </div>
 
+                    <!-- Quick Click Rak Pills (Alur Cepat Pilih Rak Langsung Muncul di Bawah) -->
+                    <div class="col-12 mt-2 pt-2 border-top">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <span class="small fw-bold text-dark"><i class="feather icon-layers me-1 text-primary"></i> Pilih Cepat Rak:</span>
+                            @foreach($allRacks->take(12) as $quickR)
+                                <a href="{{ route('stock-cards.index', array_merge(request()->except(['page', 'product_id']), ['rack_id' => $quickR->rak_kode, 'gudang_type' => strtoupper($quickR->gudang ?: 'JS')])) }}"
+                                   class="badge {{ $rackId === $quickR->rak_kode ? 'bg-primary text-white shadow-sm' : 'bg-white text-dark border' }} text-decoration-none py-1 px-2"
+                                   title="Klik untuk langsung memuat mutasi rak {{ $quickR->rak_kode }} (Gudang {{ strtoupper($quickR->gudang ?: 'JS') }})">
+                                    {{ $quickR->rak_kode }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </div>
+
                     @if($rackId)
                         <!-- Dynamic Rack Products Chips -->
-                        <div class="col-12 mt-2 pt-2 border-top">
+                        <div class="col-12 mt-1">
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="badge bg-primary fs-6"><i class="feather icon-layers me-1"></i> Rak: {{ $rackId }}</span>
                                 <span class="small fw-bold text-dark">Barang Tersimpan di Rak Ini:</span>
