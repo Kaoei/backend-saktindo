@@ -75,6 +75,7 @@
                                         $firstItemName = $items->first()?->supplierProduct?->item_name ?? 'Barang PO';
                                         $barangLabel = $itemCount > 1 ? $firstItemName . ' (+' . ($itemCount - 1) . ' item lainnya)' : $firstItemName;
                                         $qtyTotal = $items->sum('qty');
+                                        $rawDateIso = $purchase->order_date ? \Carbon\Carbon::parse($purchase->order_date)->format('Y-m-d') : '0000-00-00';
                                         $tgl = $purchase->order_date ? \Carbon\Carbon::parse($purchase->order_date)->format('d/m/Y') : '-';
                                         $dueDate = $purchase->due_date ? \Carbon\Carbon::parse($purchase->due_date)->format('d/m/Y') : null;
                                         $totalTagihan = (float) $purchase->total_amount;
@@ -84,6 +85,7 @@
                                     } else {
                                         $barangLabel = $purchase->item_name ?? '-';
                                         $qtyTotal = $purchase->quantity ?? 1;
+                                        $rawDateIso = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('Y-m-d') : '0000-00-00';
                                         $tgl = $purchase->purchase_date ? \Carbon\Carbon::parse($purchase->purchase_date)->format('d/m/Y') : '-';
                                         $dueDate = null;
                                         $totalTagihan = (float) $purchase->total_amount;
@@ -109,7 +111,7 @@
                                         <span>{{ $barangLabel }}</span>
                                     </td>
                                     <td>{{ number_format($qtyTotal, 0, ',', '.') }}</td>
-                                    <td>
+                                    <td data-order="{{ $rawDateIso }}" data-sort="{{ $rawDateIso }}">
                                         <div>{{ $tgl }}</div>
                                         @if($dueDate)
                                             <small class="text-danger d-block">Tempo: {{ $dueDate }}</small>

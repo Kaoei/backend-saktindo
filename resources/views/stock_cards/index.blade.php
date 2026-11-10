@@ -638,13 +638,9 @@
             filterRacksByGudang(selectedGudang, false);
         });
 
-        // When user selects / changes a Rak
+        // When user selects / changes a Rak, immediately display products & transactions below
         $('#rack_select').on('change', function() {
             const selectedRack = $(this).val();
-
-            if (!selectedRack) {
-                return;
-            }
 
             // Sync gudang dropdown if rack is chosen
             const selectedOpt = $(this).find('option:selected');
@@ -653,28 +649,8 @@
                 $('#gudang_select').val(rackGudang);
             }
 
-            // Fetch products in this rack dynamically
-            productSelect.prop('disabled', true);
-            $.ajax({
-                url: "{{ route('stock-cards.products-by-rack') }}",
-                type: 'GET',
-                data: { rack_id: selectedRack },
-                dataType: 'json',
-                success: function(response) {
-                    productSelect.empty();
-                    productSelect.append(new Option('-- Semua Produk di Rak ' + selectedRack + ' --', '', true, true));
-                    if (response.products && response.products.length > 0) {
-                        $.each(response.products, function(i, item) {
-                            const opt = new Option(item.text, item.id, false, false);
-                            productSelect.append(opt);
-                        });
-                    }
-                    productSelect.prop('disabled', false).trigger('change.select2');
-                },
-                error: function() {
-                    productSelect.prop('disabled', false);
-                }
-            });
+            // Alur disederhanakan: Pilih rak langsung memuat mutasi dan produk di bawah
+            $('#stock-card-filter-form').submit();
         });
     });
 </script>

@@ -12,7 +12,7 @@ class WarehouseTaskController extends Controller
 {
     public function index()
     {
-        $warehouseTasks = WarehouseTask::with(['salesOrder', 'invoice'])
+        $warehouseTasks = WarehouseTask::with(['salesOrder.items', 'invoice.salesOrders.items'])
             ->latest()
             ->get();
 
@@ -70,7 +70,8 @@ class WarehouseTaskController extends Controller
 
     public function edit(WarehouseTask $warehouseTask)
     {
-        $salesOrders = SalesOrder::latest()->get();
+        $warehouseTask->load(['salesOrder.items', 'invoice.salesOrders.items']);
+        $salesOrders = SalesOrder::with('items')->latest()->get();
         $invoices = Invoice::latest()->get();
 
         return view('warehouse-task.edit', compact('warehouseTask', 'salesOrders', 'invoices'));

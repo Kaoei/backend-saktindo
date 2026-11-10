@@ -63,4 +63,19 @@ class WarehouseTask extends Model
     {
         return $this->belongsTo(Invoice::class, 'invoice_id', 'id');
     }
+
+    public function getOrderedItemsAttribute()
+    {
+        if ($this->salesOrder && $this->salesOrder->items && $this->salesOrder->items->isNotEmpty()) {
+            return $this->salesOrder->items;
+        }
+
+        if ($this->invoice && $this->invoice->salesOrders && $this->invoice->salesOrders->isNotEmpty()) {
+            return $this->invoice->salesOrders->flatMap(function ($so) {
+                return $so->items;
+            });
+        }
+
+        return collect();
+    }
 }

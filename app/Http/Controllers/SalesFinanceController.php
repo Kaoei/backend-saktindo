@@ -36,6 +36,7 @@ class SalesFinanceController extends Controller
 {
     $orders = SalesOrder::query()
         ->with([
+            'items',
             'invoice.deliveryNote',
             'invoice.payments',
             'invoice.warehouseTask',

@@ -415,6 +415,8 @@
 
                                 <th>Customer</th>
 
+                                <th>Keterangan Barang</th>
+
                                 <th>PO</th>
 
                                 <th>Status Order</th>
@@ -565,6 +567,29 @@
                                 <td class="align-middle">
 
                                     {{ $order->customer_name }}
+
+                                </td>
+
+
+                                <td class="align-middle">
+
+                                    @php
+                                        $soItems = $order->items;
+                                        $firstItem = $soItems->first();
+                                    @endphp
+                                    @if($firstItem)
+                                        <div class="fw-semibold text-dark small" title="{{ $firstItem->product_name }}">
+                                            {{ \Illuminate\Support\Str::limit($firstItem->product_name, 35) }}
+                                        </div>
+                                        <small class="text-muted d-block">
+                                            {{ number_format($firstItem->quantity) }} {{ $firstItem->unit ?? 'pcs' }}
+                                            @if($soItems->count() > 1)
+                                                <span class="badge bg-light text-primary border ms-1">+{{ $soItems->count() - 1 }} item lainnya</span>
+                                            @endif
+                                        </small>
+                                    @else
+                                        <span class="text-muted small">-</span>
+                                    @endif
 
                                 </td>
 
@@ -949,7 +974,7 @@
                 {
                     orderable: false,
                     searchable: false,
-                    targets: [7]
+                    targets: [8]
                 }
             ]
 

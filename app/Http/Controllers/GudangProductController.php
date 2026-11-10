@@ -38,40 +38,61 @@ class GudangProductController extends Controller
         $totalProduk = $products->count();
         $totalQty = $products->sum('qty');
 
-        $totalJS = GudangProduct::whereHas('rack', function ($q) {
-            $q->where('gudang', 'JS');
+        $totalJS = GudangProduct::where(function ($q) {
+            $q->where('gudang_type', 'JS')
+              ->orWhereHas('rack', function ($rq) {
+                  $rq->where('gudang', 'JS');
+              });
         })->sum('qty');
 
         $topRakJS = GudangProduct::select('rack_id', DB::raw('SUM(qty) as total_qty'))
-            ->whereHas('rack', function ($q) {
-                $q->where('gudang', 'JS');
+            ->where(function ($q) {
+                $q->where('gudang_type', 'JS')
+                  ->orWhereHas('rack', function ($rq) {
+                      $rq->where('gudang', 'JS');
+                  });
             })
+            ->whereNotNull('rack_id')
             ->groupBy('rack_id')
             ->orderByDesc('total_qty')
             ->take(3)
             ->get();
 
-        $totalSJB = GudangProduct::whereHas('rack', function ($q) {
-            $q->where('gudang', 'SJB')->orWhere('gudang', 'sjb');
+        $totalSJB = GudangProduct::where(function ($q) {
+            $q->where('gudang_type', 'SJB')
+              ->orWhereHas('rack', function ($rq) {
+                  $rq->where('gudang', 'SJB')->orWhere('gudang', 'sjb');
+              });
         })->sum('qty');
 
         $topRakSJB = GudangProduct::select('rack_id', DB::raw('SUM(qty) as total_qty'))
-            ->whereHas('rack', function ($q) {
-                $q->where('gudang', 'SJB')->orWhere('gudang', 'sjb');
+            ->where(function ($q) {
+                $q->where('gudang_type', 'SJB')
+                  ->orWhereHas('rack', function ($rq) {
+                      $rq->where('gudang', 'SJB')->orWhere('gudang', 'sjb');
+                  });
             })
+            ->whereNotNull('rack_id')
             ->groupBy('rack_id')
             ->orderByDesc('total_qty')
             ->take(3)
             ->get();
 
-        $totalRK = GudangProduct::whereHas('rack', function ($q) {
-            $q->where('gudang', 'RK')->orWhere('gudang', 'rk');
+        $totalRK = GudangProduct::where(function ($q) {
+            $q->where('gudang_type', 'RK')
+              ->orWhereHas('rack', function ($rq) {
+                  $rq->where('gudang', 'RK')->orWhere('gudang', 'rk');
+              });
         })->sum('qty');
 
         $topRakRK = GudangProduct::select('rack_id', DB::raw('SUM(qty) as total_qty'))
-            ->whereHas('rack', function ($q) {
-                $q->where('gudang', 'RK')->orWhere('gudang', 'rk');
+            ->where(function ($q) {
+                $q->where('gudang_type', 'RK')
+                  ->orWhereHas('rack', function ($rq) {
+                      $rq->where('gudang', 'RK')->orWhere('gudang', 'rk');
+                  });
             })
+            ->whereNotNull('rack_id')
             ->groupBy('rack_id')
             ->orderByDesc('total_qty')
             ->take(3)
@@ -615,16 +636,30 @@ class GudangProductController extends Controller
 
     public function destroy(GudangProduct $gudangProduct)
     {
-        $supplierProduct = $gudangProduct->supplierProduct;
-        $gudangProduct->delete();
-
-        if ($supplierProduct) {
-            StockSyncService::syncProductCatalog($supplierProduct);
+        if (OutBound::where('gudang_product_id', $gudangProduct->id)->exists()) {
+            return redirect()
+                ->route('gudang-product.index')
+                ->with('error', 'Barang gudang tidak dapat dihapus karena memiliki riwayat pengeluaran barang (Outbound).')
+                ->withErrors(['Barang gudang tidak dapat dihapus karena memiliki riwayat pengeluaran barang (Outbound).']);
         }
 
-        return redirect()
-            ->route('gudang-product.index')
-            ->with('success', 'Data barang gudang berhasil dihapus dan stok disinkronkan.');
+        try {
+            $supplierProduct = $gudangProduct->supplierProduct;
+            $gudangProduct->delete();
+
+            if ($supplierProduct) {
+                StockSyncService::syncProductCatalog($supplierProduct);
+            }
+
+            return redirect()
+                ->route('gudang-product.index')
+                ->with('success', 'Data barang gudang berhasil dihapus dan stok disinkronkan.');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Gagal hapus gudang product: ' . $e->getMessage());
+            return redirect()
+                ->route('gudang-product.index')
+                ->with('error', 'Gagal menghapus barang gudang: ' . $e->getMessage());
+        }
     }
 
     /**

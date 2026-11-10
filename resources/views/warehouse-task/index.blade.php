@@ -92,6 +92,7 @@
                                 <th>ID Task</th>
                                 <th>Sales Order</th>
                                 <th>Invoice</th>
+                                <th>Keterangan Barang</th>
                                 <th>PIC Gudang</th>
                                 <th>Status Task</th>
                                 <th>Pemeriksaan Super Admin</th>
@@ -114,6 +115,26 @@
                                         <small class="text-muted">
                                             {{ $task->invoice->invoice_number ?? '-' }}
                                         </small>
+                                    </td>
+
+                                    <td>
+                                        @php
+                                            $taskItems = $task->ordered_items;
+                                            $firstItem = $taskItems->first();
+                                        @endphp
+                                        @if($firstItem)
+                                            <div class="fw-semibold text-dark small" title="{{ $firstItem->product_name }}">
+                                                {{ \Illuminate\Support\Str::limit($firstItem->product_name, 35) }}
+                                            </div>
+                                            <small class="text-muted d-block">
+                                                {{ number_format($firstItem->quantity) }} {{ $firstItem->unit ?? 'pcs' }}
+                                                @if($taskItems->count() > 1)
+                                                    <span class="badge bg-light text-primary border ms-1">+{{ $taskItems->count() - 1 }} item lainnya</span>
+                                                @endif
+                                            </small>
+                                        @else
+                                            <span class="text-muted small">-</span>
+                                        @endif
                                     </td>
 
                                     <td>{{ $task->assigned_to ?? '-' }}</td>
@@ -278,7 +299,7 @@ $(function () {
         columnDefs: [
             {
                 orderable: false,
-                targets: [6]
+                targets: [7]
             }
         ]
     });

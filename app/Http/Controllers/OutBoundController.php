@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\OutBound;
 use App\Models\WarehouseTask;
 use App\Models\GudangProduct;
+use App\Services\StockSyncService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -105,6 +106,10 @@ class OutBoundController extends Controller
                 $warehouseTask?->salesOrder?->update([
                     'order_status' => 'delivered',
                 ]);
+
+                if ($gudangProduct->supplierProduct) {
+                    StockSyncService::syncProductCatalog($gudangProduct->supplierProduct);
+                }
             });
 
             return redirect()
@@ -137,10 +142,44 @@ class OutBoundController extends Controller
 
     public function destroy(OutBound $outBound)
     {
-        $outBound->delete();
+        try {
+            DB::transaction(function () use ($outBound) {
+                $gudangProduct = $outBound->gudangProduct;
+                $qty = $outBound->qty;
 
-        return redirect()
-            ->route('outbound.index')
-            ->with('success', 'Data outbound berhasil dihapus.');
+                if ($gudangProduct) {
+                    $gudangProduct->increment('qty', $qty);
+                    if ($gudangProduct->supplierProduct) {
+                        StockSyncService::syncProductCatalog($gudangProduct->supplierProduct);
+                    }
+
+                    try {
+                        \App\Services\StockMutationService::recordMutation([
+                            'supplier_product_id' => $gudangProduct->supplier_product_id,
+                            'gudang_product_id'   => $gudangProduct->id,
+                            'rack_id'             => $gudangProduct->rack_id,
+                            'gudang_type'         => $gudangProduct->gudang_type,
+                            'transaction_date'    => now(),
+                            'mutation_type'       => 'adjustment',
+                            'reference_type'      => 'outbound_reversal',
+                            'reference_id'        => $outBound->id,
+                            'reference_number'    => 'REV-' . $outBound->id,
+                            'qty_in'              => (int) $qty,
+                            'qty_out'             => 0,
+                            'unit_cost'           => (float) $gudangProduct->price,
+                            'notes'               => 'Pembatalan/Penghapusan Outbound ' . $outBound->id,
+                        ]);
+                    } catch (\Throwable $e) {}
+                }
+
+                $outBound->delete();
+            });
+
+            return redirect()
+                ->route('outbound.index')
+                ->with('success', 'Data outbound berhasil dihapus dan stok dikembalikan.');
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Gagal menghapus outbound: ' . $e->getMessage());
+        }
     }
 }

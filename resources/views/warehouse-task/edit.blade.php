@@ -164,6 +164,55 @@
 
                     </div>
 
+                    {{-- Rincian Barang yang Dipesan dalam Task --}}
+                    @php
+                        $orderedItems = $warehouseTask->ordered_items;
+                    @endphp
+                    <div class="card border my-3">
+                        <div class="card-header bg-light py-2 d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0 fw-bold"><i class="feather icon-package me-1 text-primary"></i> Rincian Barang yang Dipesan</h6>
+                            <span class="badge bg-primary">{{ $orderedItems->count() }} Item Barang</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped align-middle mb-0">
+                                    <thead class="table-light small">
+                                        <tr>
+                                            <th style="width: 40px;" class="text-center">#</th>
+                                            <th>Kode Barang / SKU</th>
+                                            <th>Nama Barang</th>
+                                            <th class="text-center">Qty</th>
+                                            <th>Satuan</th>
+                                            <th>Lokasi Rak</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($orderedItems as $idx => $it)
+                                            <tr>
+                                                <td class="text-center text-muted small">{{ $idx + 1 }}</td>
+                                                <td><code>{{ $it->product_code ?: '-' }}</code></td>
+                                                <td><span class="fw-semibold text-dark">{{ $it->product_name }}</span></td>
+                                                <td class="text-center fw-bold">{{ number_format($it->quantity) }}</td>
+                                                <td>{{ $it->unit ?? 'pcs' }}</td>
+                                                <td>
+                                                    @if($it->rack_id)
+                                                        <span class="badge bg-light text-primary border"><i class="feather icon-inbox me-1"></i>{{ $it->rack_id }}</span>
+                                                    @else
+                                                        <span class="badge bg-light text-muted border">Default / Multi Rak</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted py-3">Tidak ada data rincian barang untuk task ini.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="d-flex gap-2 mt-4">
                         <button type="submit" class="btn btn-primary">
                             Update Warehouse Task
