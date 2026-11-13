@@ -515,4 +515,46 @@ class QCBugFixesEvaluationTest extends TestCase
         // Rak route is protected and must return 403 Forbidden
         $this->actingAs($salesUser)->get(route('rak.index'))->assertStatus(403);
     }
+
+    public function test_gudang_role_without_explicit_dashboard_checkbox_can_access_dashboard_and_renders_warehouse_dashboard()
+    {
+        // Recreate the exact user report: role created with only Gudang permissions (dashboard NOT checked)
+        $role = Role::create([
+            'name' => 'Staf Gudang Lapangan',
+            'slug' => 'staf-gudang-lapangan',
+            'description' => 'Role gudang tanpa centang dashboard',
+            'permissions' => [
+                'rak.view',
+                'inbound.view',
+                'gudang_product.view',
+                'outbound.view',
+                'stock_card.view',
+            ],
+            'is_system' => false,
+        ]);
+
+        $gudangUser = User::factory()->create([
+            'name' => 'gudang-lapangan',
+            'role' => 'staf-gudang-lapangan',
+        ]);
+
+        // hasPermission('dashboard') must implicitly return true for roles with active permissions
+        $this->assertTrue($gudangUser->hasPermission('dashboard'));
+
+        // Accessing /dashboard must succeed (200 OK) without 403 Access Denied
+        $response = $this->actingAs($gudangUser)->get(route('dashboard'));
+        $response->assertStatus(200);
+
+        // Must display Dashboard Gudang & Warehouse overview
+        $response->assertSee('Dashboard Gudang');
+        $response->assertSee('Stok Minimum');
+        $response->assertSee('Total Stok Fisik Gudang');
+
+        // Sidebar must show both Dashboard and Gudang menus
+        $response->assertSee('Dashboard');
+        $response->assertSee('Gudang');
+        $response->assertSee('List Barang Masuk');
+        $response->assertSee('Stok Barang');
+        $response->assertSee('Kartu Stok');
+    }
 }

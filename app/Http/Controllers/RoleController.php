@@ -40,11 +40,16 @@ class RoleController extends Controller
             return back()->withInput()->withErrors(['name' => 'Role dengan nama ini sudah ada.']);
         }
 
+        $permissions = $data['permissions'] ?? [];
+        if (! empty($permissions) && ! in_array('dashboard', $permissions, true)) {
+            $permissions[] = 'dashboard';
+        }
+
         $role = Role::query()->create([
             'name'        => $data['name'],
             'slug'        => $slug,
             'description' => $data['description'] ?? null,
-            'permissions' => $data['permissions'] ?? [],
+            'permissions' => $permissions,
             'is_system'   => false,
         ]);
 
@@ -70,9 +75,14 @@ class RoleController extends Controller
             'permissions.*' => ['string', 'in:' . implode(',', array_keys(Role::PERMISSIONS))],
         ]);
 
+        $permissions = $data['permissions'] ?? [];
+        if (! empty($permissions) && ! in_array('dashboard', $permissions, true)) {
+            $permissions[] = 'dashboard';
+        }
+
         $role->name        = $data['name'];
         $role->description = $data['description'] ?? null;
-        $role->permissions = $data['permissions'] ?? [];
+        $role->permissions = $permissions;
 
         // Update slug only for non-system roles
         if (! $role->is_system) {

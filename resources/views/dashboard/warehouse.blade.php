@@ -198,7 +198,13 @@
                         <tbody>
                             @forelse($recentOrders as $order)
                                 <tr>
-                                    <td><a href="{{ route('sales-finance.show', $order) }}" class="fw-bold">{{ $order->id }}</a></td>
+                                    <td>
+                                        @if(auth()->user()?->hasPermission('sales_finance.view') || auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES]))
+                                            <a href="{{ route('sales-finance.show', $order) }}" class="fw-bold">{{ $order->id }}</a>
+                                        @else
+                                            <span class="fw-bold">{{ $order->id }}</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $order->customer_name }}</td>
                                     <td>
                                         <span class="badge bg-light-primary text-primary">{{ str_replace('_', ' ', ucfirst($order->order_status)) }}</span>

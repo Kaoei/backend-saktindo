@@ -24,8 +24,22 @@ class DashboardController extends Controller
 
         $unpaidClients = $this->getUnpaidClientsData();
 
-        switch ($role) {
-            case 'finance':
+        $gudangPermissions = [
+            'rak.view', 'rak.create', 'rak.edit', 'rak.delete',
+            'inbound.view', 'inbound.create', 'inbound.edit', 'inbound.delete',
+            'gudang_product.view', 'gudang_product.create', 'gudang_product.delete',
+            'warehouse_task.view', 'warehouse_task.create', 'warehouse_task.edit', 'warehouse_task.delete', 'warehouse_task.process', 'warehouse_task.complete',
+            'outbound.view', 'outbound.create', 'outbound.print', 'outbound.delete',
+            'stock_card.view', 'stock_card.export',
+        ];
+
+        $isGudangUser = $role === 'gudang'
+            || $role === 'teknisi'
+            || str_contains((string) $role, 'gudang')
+            || ($user->hasAnyPermission($gudangPermissions) && ! $user->hasPermission('sales_finance.view') && ! $user->hasPermission('users.view'));
+
+        switch (true) {
+            case $role === 'finance':
                 $pendingOrders30Days = SalesOrder::where('order_date', '<=', now()->subDays(30))
                     ->whereNotIn('order_status', ['completed', 'cancelled'])
                     ->get();
@@ -68,7 +82,7 @@ class DashboardController extends Controller
                     'unpaidClients'
                 ));
 
-            case 'sales':
+            case $role === 'sales':
                 $pendingOrders30Days = SalesOrder::where('order_date', '<=', now()->subDays(30))
                     ->whereNotIn('order_status', ['completed', 'cancelled'])
                     ->get();
@@ -106,7 +120,7 @@ class DashboardController extends Controller
                     'unpaidClients'
                 ));
 
-            case 'teknisi': // Warehouse / Gudang
+            case $isGudangUser: // Warehouse / Gudang (built-in or custom role)
                 $temporaryRackProducts = GudangProduct::with(['supplierProduct', 'rack'])
                     ->whereHas('rack', fn($q) => $q->where('is_temporary', true))
                     ->where('created_at', '<=', now()->subDays(3))

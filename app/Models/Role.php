@@ -125,7 +125,16 @@ class Role extends Model
     {
         $permissions = $this->permissions ?? [];
 
-        return in_array($permission, $permissions, true);
+        if (in_array($permission, $permissions, true)) {
+            return true;
+        }
+
+        // Any role with active permissions implicitly has access to the dashboard overview
+        if ($permission === 'dashboard' && ! empty($permissions)) {
+            return true;
+        }
+
+        return false;
     }
 
     public function getPermissionsCountAttribute(): int
