@@ -557,4 +557,72 @@ class QCBugFixesEvaluationTest extends TestCase
         $response->assertSee('Stok Barang');
         $response->assertSee('Kartu Stok');
     }
+
+    public function test_warehouse_task_create_displays_sales_orders_and_invoices_in_dropdown()
+    {
+        // 1. Sales Order without invoice
+        $so = SalesOrder::create([
+            'id' => 'SO-QC-WTASK-01',
+            'order_date' => now()->toDateString(),
+            'order_status' => 'confirmed',
+            'customer_name' => 'PT Makmur Jaya',
+            'customer_po_number' => 'PO-MAKMUR-01',
+            'subtotal' => 500000,
+            'grand_total' => 500000,
+            'sales_type' => 'js',
+        ]);
+
+        // 2. Invoice created
+        $inv = Invoice::create([
+            'id' => 'INV-QC-WTASK-02',
+            'invoice_number' => 'INV/QC/WTASK/02',
+            'invoice_date' => now()->toDateString(),
+            'due_date' => now()->addDays(14)->toDateString(),
+            'sales_order_id' => $so->id,
+            'status' => 'outstanding',
+            'subtotal' => 500000,
+            'grand_total' => 500000,
+            'outstanding_amount' => 500000,
+        ]);
+
+        // Visit create warehouse task page
+        $response = $this->actingAs($this->superAdmin)->get(route('warehouse-task.create'));
+        $response->assertStatus(200);
+
+        // Assert dropdown contains options for both Sales Order and Invoice
+        $response->assertSee($so->id);
+        $response->assertSee('PT Makmur Jaya');
+        $response->assertSee('INV/QC/WTASK/02');
+
+        // 3. User can create Warehouse Task by choosing Sales Order (even if invoice not manually created before)
+        $soNoInvoice = SalesOrder::create([
+            'id' => 'SO-QC-WTASK-03',
+            'order_date' => now()->toDateString(),
+            'order_status' => 'confirmed',
+            'customer_name' => 'CV Mandiri Sejahtera',
+            'customer_po_number' => 'PO-MANDIRI-03',
+            'subtotal' => 300000,
+            'grand_total' => 300000,
+            'sales_type' => 'js',
+        ]);
+
+        $storeResponse = $this->actingAs($this->superAdmin)->post(route('warehouse-task.store'), [
+            'invoice_id' => $soNoInvoice->id, // Passing SO id directly
+            'assigned_to' => 'Staff Logistik',
+            'note' => 'Packing rapi',
+        ]);
+
+        $storeResponse->assertRedirect(route('warehouse-task.index'));
+        $storeResponse->assertSessionHas('success');
+
+        // Verify task is created and linked to newly auto-generated invoice
+        $soNoInvoice->refresh();
+        $this->assertNotNull($soNoInvoice->invoice_id);
+        $this->assertEquals('invoiced', $soNoInvoice->order_status);
+
+        $task = WarehouseTask::where('sales_order_id', $soNoInvoice->id)->first();
+        $this->assertNotNull($task);
+        $this->assertEquals('Staff Logistik', $task->assigned_to);
+        $this->assertEquals('waiting', $task->status);
+    }
 }

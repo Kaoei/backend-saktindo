@@ -32,10 +32,11 @@ class WarehouseTaskController extends Controller
 
     public function create()
     {
-        $salesOrders = SalesOrder::latest()->get();
-        $usedInvoiceIds = WarehouseTask::pluck('invoice_id');
+        $salesOrders = SalesOrder::with(['customer', 'invoice', 'invoices', 'items', 'warehouseTask'])
+            ->latest()
+            ->get();
 
-        $invoices = Invoice::whereNotIn('id', $usedInvoiceIds)
+        $invoices = Invoice::with(['salesOrder.customer', 'salesOrders.customer', 'warehouseTask'])
             ->latest()
             ->get();
 
@@ -45,23 +46,74 @@ class WarehouseTaskController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'invoice_id' => 'required|exists:invoices,id',
+            'invoice_id' => 'required|string',
             'assigned_to' => 'nullable|string|max:255',
             'note' => 'nullable|string',
         ]);
 
-        // FIX: Karena sales_order_id tidak melekat pada tabel invoice langsung, ambil SO pertama lewat relasi pivot Many-to-Many
-        $invoice = Invoice::with('salesOrders')->findOrFail($request->invoice_id);
-        $firstSalesOrder = $invoice->salesOrders->first();
+        $selectedId = trim($request->invoice_id);
+        $salesOrder = null;
+        $invoice = null;
 
-        WarehouseTask::create([
+        // 1. Check if the input is a SalesOrder ID
+        $soCandidate = SalesOrder::with(['invoice', 'invoices'])->find($selectedId);
+        if ($soCandidate) {
+            $salesOrder = $soCandidate;
+            $invoice = $salesOrder->invoice_record ?? $salesOrder->invoice ?? $salesOrder->invoices->first();
+
+            // If this Sales Order does not have an Invoice yet, auto-generate one
+            if (! $invoice) {
+                $taxType = $salesOrder->sales_type === 'js' ? 'js' : ($salesOrder->jenis_invoice ?? 'sjb_non_pajak');
+                $taxAmount = (float) ($salesOrder->tax_amount ?? 0);
+                $subtotal = (float) ($salesOrder->subtotal ?? 0);
+                $grandTotal = (float) ($salesOrder->grand_total ?: ($subtotal + $taxAmount));
+
+                $invoiceNumber = 'INV-' . now()->format('YmdHis') . '-' . random_int(100, 999);
+
+                $invoice = Invoice::create([
+                    'sales_order_id' => $salesOrder->id,
+                    'invoice_number' => $invoiceNumber,
+                    'invoice_type' => 'normal',
+                    'tax_type' => $taxType,
+                    'invoice_date' => now()->toDateString(),
+                    'due_date' => now()->addDays(14)->toDateString(),
+                    'status' => 'outstanding',
+                    'subtotal' => $subtotal,
+                    'tax_amount' => $taxAmount,
+                    'grand_total' => $grandTotal,
+                    'paid_amount' => 0,
+                    'outstanding_amount' => $grandTotal,
+                ]);
+
+                $salesOrder->update([
+                    'invoice_id' => $invoice->id,
+                    'order_status' => 'invoiced',
+                ]);
+            }
+        } else {
+            // 2. The input is an Invoice ID
+            $invoice = Invoice::with(['salesOrders', 'salesOrder'])->find($selectedId);
+            if (! $invoice) {
+                return back()->withInput()->withErrors(['invoice_id' => 'Invoice atau Sales Order yang dipilih tidak valid.']);
+            }
+
+            $salesOrder = $invoice->salesOrders->first()
+                ?? $invoice->salesOrder
+                ?? SalesOrder::where('invoice_id', $invoice->id)->first();
+        }
+
+        $warehouseTask = WarehouseTask::create([
             'id' => WarehouseTask::generateId(),
-            'sales_order_id' => $firstSalesOrder ? $firstSalesOrder->id : null,
+            'sales_order_id' => $salesOrder?->id ?? ($invoice->sales_order_id ?? ''),
             'invoice_id' => $invoice->id,
             'assigned_to' => $request->assigned_to,
             'status' => 'waiting',
             'note' => $request->note,
         ]);
+
+        if ($salesOrder && empty($salesOrder->warehouse_task_reference)) {
+            $salesOrder->update(['warehouse_task_reference' => $warehouseTask->id]);
+        }
 
         return redirect()
             ->route('warehouse-task.index')

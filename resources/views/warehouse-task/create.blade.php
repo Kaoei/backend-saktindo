@@ -41,26 +41,59 @@
 
                     <div class="row">
                         <div class="col-md-12 mb-3">
-                            <label class="form-label">
-                                Invoice <span class="text-danger">*</span>
+                            <label class="form-label fw-bold">
+                                Sales Order / Invoice <span class="text-danger">*</span>
                             </label>
 
                             <select name="invoice_id"
-                                    class="form-select"
+                                    class="form-select @error('invoice_id') is-invalid @enderror"
                                     required>
 
-                                <option value="">Pilih Invoice</option>
+                                <option value="">-- Pilih Sales Order atau Invoice --</option>
 
-                                @foreach($invoices as $invoice)
-                                    <option value="{{ $invoice->id }}"
-                                        {{ old('invoice_id') == $invoice->id ? 'selected' : '' }}>
-                                        {{ $invoice->id }} - {{ $invoice->invoice_number }}
-                                    </option>
-                                @endforeach
+                                @if(isset($salesOrders) && $salesOrders->isNotEmpty())
+                                    <optgroup label="Daftar Sales Order (Pesanan Masuk)">
+                                        @foreach($salesOrders as $so)
+                                            @php
+                                                $soInvoice = $so->invoice_record ?? $so->invoice ?? $so->invoices->first();
+                                                $invInfo = $soInvoice ? " [Invoice: {$soInvoice->invoice_number}]" : " [Belum Ada Invoice - Otomatis Dibuat]";
+                                                $taskInfo = $so->warehouseTask ? " (Sudah ada Task: {$so->warehouseTask->id})" : "";
+                                                $val = $soInvoice ? $soInvoice->id : $so->id;
+                                            @endphp
+                                            <option value="{{ $val }}"
+                                                {{ old('invoice_id') == $val ? 'selected' : '' }}>
+                                                SO: {{ $so->id }} - {{ $so->customer_name }} (Rp {{ number_format($so->grand_total, 0, ',', '.') }}){{ $invInfo }}{{ $taskInfo }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+
+                                @if(isset($invoices) && $invoices->isNotEmpty())
+                                    <optgroup label="Daftar Invoice">
+                                        @foreach($invoices as $invoice)
+                                            @php
+                                                $custName = $invoice->salesOrder?->customer_name ?? $invoice->salesOrders->first()?->customer_name ?? 'Customer';
+                                                $soId = $invoice->sales_order_id ?? $invoice->salesOrders->first()?->id ?? '-';
+                                                $taskInfo = $invoice->warehouseTask ? " (Sudah ada Task: {$invoice->warehouseTask->id})" : "";
+                                            @endphp
+                                            <option value="{{ $invoice->id }}"
+                                                {{ old('invoice_id') == $invoice->id ? 'selected' : '' }}>
+                                                Invoice: {{ $invoice->invoice_number }} (SO: {{ $soId }} - {{ $custName }} - Rp {{ number_format($invoice->grand_total, 0, ',', '.') }}){{ $taskInfo }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
 
                             </select>
-                        </div>
 
+                            @error('invoice_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+
+                            <small class="text-muted">
+                                Pilih Sales Order atau Invoice untuk dibuatkan tugas persiapan barang gudang. Jika Sales Order belum memiliki invoice, sistem akan membuatkan invoice secara otomatis.
+                            </small>
+                        </div>
                     </div>
 
                     <div class="row">

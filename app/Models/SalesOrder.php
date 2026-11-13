@@ -100,12 +100,15 @@ class SalesOrder extends Model
 
         try {
             if (\Illuminate\Support\Facades\Schema::hasTable('invoice_sales_orders')) {
-                return $this->invoices->first();
+                $inv = $this->invoices->first();
+                if ($inv) {
+                    return $inv;
+                }
             }
         } catch (\Throwable $e) {
         }
 
-        return null;
+        return Invoice::where('sales_order_id', $this->id)->first();
     }
 
     public function getInvoicesCollectionAttribute()
