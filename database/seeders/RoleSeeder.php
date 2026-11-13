@@ -37,6 +37,7 @@ class RoleSeeder extends Seeder
                     'gudang_product.view', 'gudang_product.create',
                     'warehouse_task.view', 'warehouse_task.process', 'warehouse_task.complete',
                     'outbound.view', 'outbound.create', 'outbound.print',
+                    'stock_card.view', 'stock_card.export',
                 ],
             ],
             [

@@ -117,8 +117,46 @@ class User extends Authenticatable
             return true;
         }
 
-        $role = \App\Models\Role::where('slug', $this->role)->first();
+        $role = $this->roleModel
+            ?? \App\Models\Role::where('slug', $this->role)
+                ->orWhere('slug', str_replace('-', '_', (string) $this->role))
+                ->orWhere('slug', str_replace('_', '-', (string) $this->role))
+                ->first();
 
-        return $role?->hasPermission($permission) ?? false;
+        if ($role) {
+            return $role->hasPermission($permission);
+        }
+
+        // Fallback default permissions for system roles when role model is not in database
+        return match ($this->role) {
+            self::ROLE_GUDANG => in_array($permission, [
+                'dashboard', 'suppliers.view',
+                'rak.view', 'rak.create', 'rak.edit', 'rak.delete',
+                'inbound.view', 'inbound.create', 'inbound.edit', 'inbound.delete',
+                'gudang_product.view', 'gudang_product.create', 'gudang_product.delete',
+                'warehouse_task.view', 'warehouse_task.create', 'warehouse_task.edit', 'warehouse_task.delete', 'warehouse_task.process', 'warehouse_task.complete',
+                'outbound.view', 'outbound.create', 'outbound.print', 'outbound.delete',
+                'stock_card.view', 'stock_card.export',
+            ], true),
+            default => false,
+        };
+    }
+
+    /**
+     * Check if this user's role has any of the given permissions.
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        if ($this->role === self::ROLE_SUPER_ADMIN) {
+            return true;
+        }
+
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

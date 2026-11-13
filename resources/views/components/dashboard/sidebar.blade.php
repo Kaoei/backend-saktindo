@@ -26,7 +26,20 @@
                 @endif
 
                                 @auth
-                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]))
+                    @php
+                        $user = auth()->user();
+                        $gudangPermissions = [
+                            'rak.view', 'rak.create', 'rak.edit', 'rak.delete',
+                            'inbound.view', 'inbound.create', 'inbound.edit', 'inbound.delete',
+                            'gudang_product.view', 'gudang_product.create', 'gudang_product.delete',
+                            'warehouse_task.view', 'warehouse_task.create', 'warehouse_task.edit', 'warehouse_task.delete', 'warehouse_task.process', 'warehouse_task.complete',
+                            'outbound.view', 'outbound.create', 'outbound.print', 'outbound.delete',
+                            'stock_card.view', 'stock_card.export',
+                        ];
+                        $hasGudangAccess = $user?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]) || $user?->hasAnyPermission($gudangPermissions);
+                    @endphp
+
+                    @if($hasGudangAccess)
                         <li class="pc-item pc-caption">
                             <label>Gudang</label>
                         </li>
@@ -42,59 +55,71 @@
                             </a>
 
                             <ul class="pc-submenu">
-                                <li class="pc-item">
-                                    <a href="{{ route('inbound.index') }}" class="pc-link">
-                                        <span class="pc-micon">
-                                            <i class="material-icons-two-tone">group</i>
-                                        </span>
-                                        <span class="pc-mtext">List Barang Masuk</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('outbound.index') }}" class="pc-link">
-                                        <span class="pc-micon">
-                                            <i class="material-icons-two-tone">group</i>
-                                        </span>
-                                        <span class="pc-mtext">List Barang Keluar</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('gudang-product.index') }}" class="pc-link">
-                                        <span class="pc-micon">
-                                            <i class="material-icons-two-tone">group</i>
-                                        </span>
-                                        <span class="pc-mtext">Stok Barang</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('stock-cards.index') }}" class="pc-link">
-                                        <span class="pc-micon">
-                                            <i class="material-icons-two-tone">import_contacts</i>
-                                        </span>
-                                        <span class="pc-mtext">Kartu Stok</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('warehouse-task.index') }}" class="pc-link">
-                                        <span class="pc-micon">
-                                            <i class="material-icons-two-tone">assignment</i>
-                                        </span>
-                                        <span class="pc-mtext">Task Gudang (Warehouse Task)</span>
-                                    </a>
-                                </li>
-                                <li class="pc-item">
-                                    <a href="{{ route('rak.index') }}" class="pc-link">
-                                        <span class="pc-micon">
-                                            <i class="material-icons-two-tone">admin_panel_settings</i>
-                                        </span>
-                                        <span class="pc-mtext">Rak</span>
-                                    </a>
-                                </li>
+                                @if($user?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]) || $user?->hasPermission('inbound.view'))
+                                    <li class="pc-item">
+                                        <a href="{{ route('inbound.index') }}" class="pc-link">
+                                            <span class="pc-micon">
+                                                <i class="material-icons-two-tone">group</i>
+                                            </span>
+                                            <span class="pc-mtext">List Barang Masuk</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if($user?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]) || $user?->hasPermission('outbound.view'))
+                                    <li class="pc-item">
+                                        <a href="{{ route('outbound.index') }}" class="pc-link">
+                                            <span class="pc-micon">
+                                                <i class="material-icons-two-tone">group</i>
+                                            </span>
+                                            <span class="pc-mtext">List Barang Keluar</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if($user?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]) || $user?->hasPermission('gudang_product.view'))
+                                    <li class="pc-item">
+                                        <a href="{{ route('gudang-product.index') }}" class="pc-link">
+                                            <span class="pc-micon">
+                                                <i class="material-icons-two-tone">group</i>
+                                            </span>
+                                            <span class="pc-mtext">Stok Barang</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if($user?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]) || $user?->hasPermission('stock_card.view'))
+                                    <li class="pc-item">
+                                        <a href="{{ route('stock-cards.index') }}" class="pc-link">
+                                            <span class="pc-micon">
+                                                <i class="material-icons-two-tone">import_contacts</i>
+                                            </span>
+                                            <span class="pc-mtext">Kartu Stok</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if($user?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES, \App\Models\User::ROLE_GUDANG]) || $user?->hasPermission('warehouse_task.view'))
+                                    <li class="pc-item">
+                                        <a href="{{ route('warehouse-task.index') }}" class="pc-link">
+                                            <span class="pc-micon">
+                                                <i class="material-icons-two-tone">assignment</i>
+                                            </span>
+                                            <span class="pc-mtext">Task Gudang (Warehouse Task)</span>
+                                        </a>
+                                    </li>
+                                @endif
+                                @if($user?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_GUDANG]) || $user?->hasPermission('rak.view'))
+                                    <li class="pc-item">
+                                        <a href="{{ route('rak.index') }}" class="pc-link">
+                                            <span class="pc-micon">
+                                                <i class="material-icons-two-tone">admin_panel_settings</i>
+                                            </span>
+                                            <span class="pc-mtext">Rak</span>
+                                        </a>
+                                    </li>
+                                @endif
                             </ul>
                         </li>
                     @endif
 
-                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES, \App\Models\User::ROLE_GUDANG]))
+                    @if(auth()->user()?->hasPermission('warehouse_task.view') || auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES, \App\Models\User::ROLE_GUDANG]))
                          <li class="pc-item">
                                 <a href="{{ route('warehouse-task.index') }}" class="pc-link ">
                                     <span class="pc-micon"><i class="material-icons-two-tone">assignment</i></span>
@@ -102,7 +127,7 @@
                                 </a>
                             </li>
                     @endif
-                    @if(auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES]))
+                    @if(auth()->user()?->hasPermission('sales_finance.view') || auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES]))
                         <li class="pc-item pc-caption">
                             <label>Customer</label>
                         </li>

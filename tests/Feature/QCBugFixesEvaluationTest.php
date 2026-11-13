@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Master_customer;
 use App\Models\Product;
 use App\Models\Rak;
+use App\Models\Role;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderItem;
 use App\Models\Supplier;
@@ -444,5 +445,74 @@ class QCBugFixesEvaluationTest extends TestCase
         $scResp = $this->actingAs($this->superAdmin)->get(route('stock-cards.index'));
         $scResp->assertStatus(200);
         $scResp->assertSee('Pilih Cepat Rak:');
+    }
+
+    public function test_custom_role_with_gudang_permissions_displays_gudang_sidebar_and_allows_routes()
+    {
+        $role = Role::create([
+            'name' => 'Gudang Test',
+            'slug' => 'gudang-test',
+            'description' => 'Custom role with gudang permissions',
+            'permissions' => [
+                'dashboard',
+                'rak.view',
+                'inbound.view',
+                'gudang_product.view',
+                'warehouse_task.view',
+                'outbound.view',
+                'stock_card.view',
+            ],
+            'is_system' => false,
+        ]);
+
+        $customGudangUser = User::factory()->create([
+            'name' => 'gudang-test',
+            'role' => 'gudang-test',
+        ]);
+
+        // 1. Dashboard sidebar check
+        $dashboardResponse = $this->actingAs($customGudangUser)->get(route('dashboard'));
+        $dashboardResponse->assertStatus(200);
+        $dashboardResponse->assertSee('Gudang');
+        $dashboardResponse->assertSee('List Barang Masuk');
+        $dashboardResponse->assertSee('List Barang Keluar');
+        $dashboardResponse->assertSee('Stok Barang');
+        $dashboardResponse->assertSee('Kartu Stok');
+        $dashboardResponse->assertSee('Task Gudang (Warehouse Task)');
+        $dashboardResponse->assertSee('Rak');
+
+        // 2. Direct route access check (EnsureRole middleware allows permission-compatible custom roles)
+        $this->actingAs($customGudangUser)->get(route('rak.index'))->assertStatus(200);
+        $this->actingAs($customGudangUser)->get(route('inbound.index'))->assertStatus(200);
+        $this->actingAs($customGudangUser)->get(route('gudang-product.index'))->assertStatus(200);
+        $this->actingAs($customGudangUser)->get(route('stock-cards.index'))->assertStatus(200);
+        $this->actingAs($customGudangUser)->get(route('warehouse-task.index'))->assertStatus(200);
+        $this->actingAs($customGudangUser)->get(route('outbound.index'))->assertStatus(200);
+    }
+
+    public function test_role_without_gudang_permissions_is_forbidden_and_hidden()
+    {
+        $salesRole = Role::create([
+            'name' => 'Sales Only',
+            'slug' => 'sales-only',
+            'description' => 'Custom role without gudang permissions',
+            'permissions' => ['dashboard', 'sales_finance.view'],
+            'is_system' => false,
+        ]);
+
+        $salesUser = User::factory()->create([
+            'name' => 'sales-only',
+            'role' => 'sales-only',
+        ]);
+
+        $dashboardResponse = $this->actingAs($salesUser)->get(route('dashboard'));
+        $dashboardResponse->assertStatus(200);
+        $dashboardResponse->assertDontSee('List Barang Masuk');
+        $dashboardResponse->assertDontSee('List Barang Keluar');
+        $dashboardResponse->assertDontSee('Stok Barang');
+        $dashboardResponse->assertDontSee('Kartu Stok');
+
+        // Rak route is protected and must return 403 Forbidden
+        $this->actingAs($salesUser)->get(route('rak.index'))->assertStatus(403);
     }
 }
