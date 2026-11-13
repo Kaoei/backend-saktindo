@@ -119,14 +119,6 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()?->hasPermission('warehouse_task.view') || auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES, \App\Models\User::ROLE_GUDANG]))
-                         <li class="pc-item">
-                                <a href="{{ route('warehouse-task.index') }}" class="pc-link ">
-                                    <span class="pc-micon"><i class="material-icons-two-tone">assignment</i></span>
-                                    <span class="pc-mtext">Warehouse Tasks</span>
-                                </a>
-                            </li>
-                    @endif
                     @if(auth()->user()?->hasPermission('sales_finance.view') || auth()->user()?->hasAnyRole([\App\Models\User::ROLE_SUPER_ADMIN, \App\Models\User::ROLE_SALES]))
                         <li class="pc-item pc-caption">
                             <label>Customer</label>

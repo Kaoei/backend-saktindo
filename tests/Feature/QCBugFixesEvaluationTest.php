@@ -481,6 +481,10 @@ class QCBugFixesEvaluationTest extends TestCase
         $dashboardResponse->assertSee('Task Gudang (Warehouse Task)');
         $dashboardResponse->assertSee('Rak');
 
+        // Zero duplicate menu items: Task Gudang link appears exactly once
+        $this->assertEquals(1, substr_count($dashboardResponse->getContent(), route('warehouse-task.index')));
+        $dashboardResponse->assertDontSee('Warehouse Tasks');
+
         // 2. Direct route access check (EnsureRole middleware allows permission-compatible custom roles)
         $this->actingAs($customGudangUser)->get(route('rak.index'))->assertStatus(200);
         $this->actingAs($customGudangUser)->get(route('inbound.index'))->assertStatus(200);
