@@ -116,7 +116,7 @@ class BundlePromoController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal membuat paket promo bundling: ' . $e->getMessage());
+            return back()->withInput()->with('error', \App\Support\FriendlyError::message($e, 'Gagal membuat paket promo bundling'));
         }
     }
 
@@ -202,7 +202,7 @@ class BundlePromoController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withInput()->with('error', 'Gagal memperbarui paket promo: ' . $e->getMessage());
+            return back()->withInput()->with('error', \App\Support\FriendlyError::message($e, 'Gagal memperbarui paket promo'));
         }
     }
 
@@ -214,7 +214,7 @@ class BundlePromoController extends Controller
 
             return redirect()->route('bundle-promos.index')->with('status', "Paket Promo '{$name}' berhasil dihapus.");
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal menghapus paket promo: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal menghapus paket promo'));
         }
     }
 

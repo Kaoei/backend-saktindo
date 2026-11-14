@@ -21,5 +21,19 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Database\QueryException $e, $request) {
+            $msg = \App\Support\FriendlyError::message($e);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg, 'error' => $msg], 500);
+            }
+            return back()->withInput()->with('error', $msg);
+        });
+
+        $exceptions->render(function (\PDOException $e, $request) {
+            $msg = \App\Support\FriendlyError::message($e);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $msg, 'error' => $msg], 500);
+            }
+            return back()->withInput()->with('error', $msg);
+        });
     })->create();

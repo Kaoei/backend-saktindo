@@ -655,10 +655,9 @@ class GudangProductController extends Controller
                 ->route('gudang-product.index')
                 ->with('success', 'Data barang gudang berhasil dihapus dan stok disinkronkan.');
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('Gagal hapus gudang product: ' . $e->getMessage());
             return redirect()
                 ->route('gudang-product.index')
-                ->with('error', 'Gagal menghapus barang gudang: ' . $e->getMessage());
+                ->with('error', \App\Support\FriendlyError::message($e, 'Gagal menghapus barang gudang'));
         }
     }
 
@@ -725,8 +724,7 @@ class GudangProductController extends Controller
                 'Cache-Control' => 'max-age=0',
             ]);
         } catch (\Exception $e) {
-            Log::error('Export Stock Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal melakukan export: ' . $e->getMessage());
+            return redirect()->back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal melakukan export stok'));
         }
     }
 
@@ -781,8 +779,7 @@ class GudangProductController extends Controller
                 'Cache-Control' => 'max-age=0',
             ]);
         } catch (\Exception $e) {
-            Log::error('Download Stock Template Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal mengunduh template: ' . $e->getMessage());
+            return redirect()->back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal mengunduh template stok'));
         }
     }
 
@@ -1126,8 +1123,7 @@ class GudangProductController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Import Stock Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Gagal memproses file Excel/CSV: ' . $e->getMessage());
+            return redirect()->back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal memproses file Excel/CSV'));
         }
     }
 

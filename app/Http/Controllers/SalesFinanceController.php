@@ -838,7 +838,7 @@ class SalesFinanceController extends Controller
 
             return back()->with('status', "Transaksi berhasil dipindahkan ke entitas {$targetLabel}. Seluruh riwayat dan nomor invoice asal telah tercatat pada audit trail.");
         } catch (\Throwable $e) {
-            return back()->with('error', 'Gagal memproses pemindahan transaksi: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal memproses pemindahan transaksi'));
         }
     }
 
@@ -1038,8 +1038,7 @@ class SalesFinanceController extends Controller
                 ->withInput()
                 ->with(
                     'error',
-                    'Gagal generate invoice: '
-                    . $e->getMessage()
+                    \App\Support\FriendlyError::message($e, 'Gagal generate invoice')
                 );
         }
     }
@@ -2306,8 +2305,7 @@ class SalesFinanceController extends Controller
                 ->withInput()
                 ->with(
                     'error',
-                    'Gagal menggabungkan Sales Order: '
-                    . $e->getMessage()
+                    \App\Support\FriendlyError::message($e, 'Gagal menggabungkan Sales Order')
                 );
         }
     }

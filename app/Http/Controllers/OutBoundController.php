@@ -118,7 +118,7 @@ class OutBoundController extends Controller
         } catch (\Illuminate\Validation\ValidationException $ve) {
             throw $ve;
         } catch (\Throwable $e) {
-            return back()->withInput()->with('error', 'Gagal membuat Outbound: ' . $e->getMessage());
+            return back()->withInput()->with('error', \App\Support\FriendlyError::message($e, 'Gagal membuat Outbound'));
         }
     }
 
@@ -179,7 +179,7 @@ class OutBoundController extends Controller
                 ->route('outbound.index')
                 ->with('success', 'Data outbound berhasil dihapus dan stok dikembalikan.');
         } catch (\Throwable $e) {
-            return back()->with('error', 'Gagal menghapus outbound: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal menghapus outbound'));
         }
     }
 }

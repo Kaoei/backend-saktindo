@@ -337,7 +337,7 @@ class FinanceController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal memproses pelunasan: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal memproses pelunasan'));
         }
     }
 
@@ -421,7 +421,7 @@ class FinanceController extends Controller
 
             return back()->with('status', "Tagihan invoice {$invoice->invoice_number} berhasil dikirim ke {$recipientEmail}.");
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal mengirim email: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal mengirim email'));
         }
     }
 }

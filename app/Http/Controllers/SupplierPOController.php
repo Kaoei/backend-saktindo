@@ -143,7 +143,7 @@ class SupplierPOController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal membuat Supplier PO: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal membuat Supplier PO'));
         }
     }
 
@@ -264,7 +264,7 @@ class SupplierPOController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Gagal memperbarui Supplier PO: ' . $e->getMessage());
+            return back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal memperbarui Supplier PO'));
         }
     }
 

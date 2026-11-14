@@ -629,4 +629,35 @@ class QCBugFixesEvaluationTest extends TestCase
         $this->assertEquals('Staff Logistik', $task->assigned_to);
         $this->assertEquals('waiting', $task->status);
     }
+
+    public function test_friendly_error_helper_sanitizes_sql_errors()
+    {
+        // 1. Column value / Incorrect integer value (Error 1366)
+        $rawSqlError = "SQLSTATE[HY000]: General error: 1366 Incorrect integer value: 'USR-202606-0001' for column 'created_by' at row 1 (Connection: mysql, Host: 202.155.132.3, Port: 3306, Database: credibug_backendsaktindo, SQL: insert into `supplier_po_payments` ...)";
+        $exception = new \Exception($rawSqlError);
+        $friendly = \App\Support\FriendlyError::message($exception, 'Gagal memproses pelunasan');
+
+        $this->assertStringNotContainsString('SQLSTATE', $friendly);
+        $this->assertStringNotContainsString('202.155.132.3', $friendly);
+        $this->assertStringNotContainsString('credibug_backendsaktindo', $friendly);
+        $this->assertStringNotContainsString('insert into', $friendly);
+        $this->assertStringContainsString('Format data yang dimasukkan tidak sesuai dengan standar sistem', $friendly);
+
+        // 2. Duplicate entry (Error 1062)
+        $duplicateException = new \Exception("SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'INV-001' for key 'invoices_invoice_number_unique'");
+        $friendlyDuplicate = \App\Support\FriendlyError::message($duplicateException, 'Gagal menyimpan invoice');
+        $this->assertStringNotContainsString('SQLSTATE', $friendlyDuplicate);
+        $this->assertStringContainsString('duplikasi data', $friendlyDuplicate);
+
+        // 3. Foreign key violation (Error 1451)
+        $fkException = new \Exception("SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails");
+        $friendlyFk = \App\Support\FriendlyError::message($fkException, 'Gagal menghapus');
+        $this->assertStringNotContainsString('SQLSTATE', $friendlyFk);
+        $this->assertStringContainsString('masih terkait dengan data transaksi lainnya', $friendlyFk);
+
+        // 4. Standard business exception preserved
+        $businessException = new \Exception('Jumlah pembayaran melebihi sisa hutang.');
+        $friendlyBusiness = \App\Support\FriendlyError::message($businessException, 'Gagal memproses');
+        $this->assertEquals('Gagal memproses: Jumlah pembayaran melebihi sisa hutang.', $friendlyBusiness);
+    }
 }

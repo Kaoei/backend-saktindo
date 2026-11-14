@@ -210,8 +210,8 @@ class ProductController extends Controller
 
             return redirect()->route('products.index')->with('success', 'Master Produk berhasil ditambahkan dan stok disinkronkan.');
         } catch (\Throwable $e) {
-            Log::error('Gagal simpan master produk: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return back()->withInput()->with('error', 'Gagal menyimpan produk: ' . $e->getMessage())->withErrors(['error' => $e->getMessage()]);
+            $msg = \App\Support\FriendlyError::message($e, 'Gagal menyimpan produk');
+            return back()->withInput()->with('error', $msg)->withErrors(['error' => $msg]);
         }
     }
 
@@ -390,8 +390,8 @@ class ProductController extends Controller
 
             return redirect()->route('products.index')->with('success', 'Master Produk berhasil diperbarui dan disinkronkan.');
         } catch (\Throwable $e) {
-            Log::error('Gagal update master produk: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return back()->withInput()->with('error', 'Gagal memperbarui produk: ' . $e->getMessage())->withErrors(['error' => $e->getMessage()]);
+            $msg = \App\Support\FriendlyError::message($e, 'Gagal memperbarui produk');
+            return back()->withInput()->with('error', $msg)->withErrors(['error' => $msg]);
         }
     }
 
@@ -564,8 +564,7 @@ class ProductController extends Controller
             $writer->save('php://output');
             exit;
         } catch (\Exception $e) {
-            Log::error('TikTok Product Export Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Error generating Excel export: ' . $e->getMessage());
+            return redirect()->back()->with('error', \App\Support\FriendlyError::message($e, 'Gagal mengekspor data produk TikTok'));
         }
     }
 }

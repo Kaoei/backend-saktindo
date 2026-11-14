@@ -112,7 +112,7 @@ class ExternalOrderController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem saat menyimpan pesanan.',
-                'error' => $e->getMessage()
+                'error' => \App\Support\FriendlyError::message($e, 'Gagal memproses pesanan')
             ], 500);
         }
     }
