@@ -264,3 +264,47 @@ test('finance overview dashboard includes supplier PO in totalAP calculation', f
     $response->assertViewHas('totalAP', 3000000.0);
 });
 
+test('user with custom string id can pay supplier po without created_by type error', function () {
+    // User with explicit string ID like USR-202606-0001
+    $user = User::factory()->create([
+        'id' => 'USR-202606-0001',
+        'role' => User::ROLE_SUPER_ADMIN,
+    ]);
+
+    $supplier = Supplier::create([
+        'id' => 'SUP-TEST-STRING-USER',
+        'name' => 'PT String User AP',
+    ]);
+
+    $po = SupplierPO::create([
+        'id' => 'SPO-TEST-STRING-001',
+        'supplier_id' => $supplier->id,
+        'po_number' => 'PO/2026/11/STR-001',
+        'order_date' => now()->toDateString(),
+        'subtotal' => 24820254.82,
+        'total_amount' => 24820254.82,
+        'paid_amount' => 0,
+        'outstanding_amount' => 24820254.82,
+        'payment_status' => 'unpaid',
+        'status' => 'received',
+    ]);
+
+    $response = $this->actingAs($user)->post(route('finance.payment.store'), [
+        'type' => 'ap',
+        'supplier_po_id' => $po->id,
+        'payment_date' => now()->toDateString(),
+        'amount' => 24820254.82,
+        'payment_method' => 'transfer_bank',
+        'bank_name' => 'BCA',
+        'notes' => 'Pelunasan penuh via transfer bank',
+    ]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('status', 'Pelunasan berhasil disimpan.');
+
+    $payment = SupplierPoPayment::where('supplier_po_id', $po->id)->first();
+    $this->assertNotNull($payment);
+    $this->assertEquals('USR-202606-0001', $payment->created_by);
+});
+
+

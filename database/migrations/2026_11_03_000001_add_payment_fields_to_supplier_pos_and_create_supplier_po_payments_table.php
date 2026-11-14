@@ -39,7 +39,7 @@ return new class extends Migration
                 $table->string('bank_account_number', 100)->nullable();
                 $table->string('reference_number', 100)->nullable();
                 $table->text('notes')->nullable();
-                $table->unsignedBigInteger('created_by')->nullable();
+                $table->string('created_by', 50)->nullable();
                 $table->timestamps();
 
                 $table->foreign('supplier_po_id')->references('id')->on('supplier_pos')->cascadeOnDelete();

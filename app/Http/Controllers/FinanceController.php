@@ -166,6 +166,13 @@ class FinanceController extends Controller
             $request->merge(['payment_method' => $request->input('method')]);
         }
 
+        if (!$request->has('id') && $request->has('supplier_po_id')) {
+            $request->merge([
+                'id' => $request->input('supplier_po_id'),
+                'type' => 'ap'
+            ]);
+        }
+
         if (!$request->has('id') && $invoiceId = $request->route('invoice')) {
             $request->merge([
                 'id' => is_object($invoiceId) ? $invoiceId->id : $invoiceId,
@@ -280,7 +287,7 @@ class FinanceController extends Controller
                     if ($method === 'cheque') $method = 'giro';
                     if ($method === 'cash') $method = 'cash';
 
-                    $apPayment = SupplierPoPayment::create([
+                    $paymentData = [
                         'supplier_po_id' => $po->id,
                         'payment_number' => 'PAY-AP-' . now()->format('YmdHis') . '-' . random_int(100, 999),
                         'payment_date' => $request->payment_date,
@@ -291,7 +298,19 @@ class FinanceController extends Controller
                         'reference_number' => $request->reference_number ?: $request->giro_number,
                         'notes' => $request->notes,
                         'created_by' => auth()->id(),
-                    ]);
+                    ];
+
+                    try {
+                        $apPayment = SupplierPoPayment::create($paymentData);
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        // Fallback jika kolom created_by di production belum di-alter ke string
+                        if (str_contains($e->getMessage(), 'created_by') || (string)$e->getCode() === '1366' || str_contains($e->getMessage(), '1366')) {
+                            $paymentData['created_by'] = null;
+                            $apPayment = SupplierPoPayment::create($paymentData);
+                        } else {
+                            throw $e;
+                        }
+                    }
 
                     ActivityLogger::log('payment', 'supplier_po', $po, [
                         'payment_id' => $apPayment->id,
