@@ -114,6 +114,17 @@
     $userName = !empty($c['user_name']) ? $c['user_name'] : (auth()->user()?->name ?? 'SALSA');
     $computerName = !empty($c['computer_name']) ? $c['computer_name'] : 'JAYA';
 
+    // Entity / Nama Toko
+    $taxType = $invoice->tax_type ?? $order?->sales_type ?? 'sjb_pajak';
+    $isJs = in_array($taxType, ['js', 'non_pajak']);
+    $defaultCompanyName = $isJs ? 'JAYA SAKTI' : 'PT. SAKTINDO JAYA BERSAMA';
+    $companyName = !empty($c['company_name']) ? $c['company_name'] : $defaultCompanyName;
+    $companyAddress = !empty($c['company_address']) ? $c['company_address'] : ($isJs 
+        ? "PASAR KENARI AKS 110\nJL. SALEMBA RAYA\nSENEN , JAKARTA PUSAT"
+        : "PASAR KENARI ALO D AKS 110\nJL. SALEMBA RAYA\nSENEN , JAKARTA PUSAT-10430");
+    $bankAccountName = !empty($c['bank_account_name']) ? $c['bank_account_name'] : $companyName;
+    $bankAccountDetails = !empty($c['bank_account_details']) ? $c['bank_account_details'] : "BCA KENARI . REK NO. 068.3055678";
+
     // Logo Perusahaan dari Web Customization (Sidebar Logo)
     $logoBase64 = null;
     if ($showLogo) {
@@ -177,12 +188,15 @@
         body {
             @if($fontMode === 'dotmatrix')
                 font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace !important;
-                font-size: 9.5px;
+                font-size: 10px;
+                font-weight: 700 !important;
                 color: #000000 !important;
-                -webkit-font-smoothing: none;
+                -webkit-font-smoothing: antialiased;
+                -webkit-text-stroke: 0.2px #000000;
             @else
                 font-family: Arial, Helvetica, sans-serif !important;
-                font-size: 9.5px;
+                font-size: 10px;
+                font-weight: 700 !important;
                 color: #000000 !important;
             @endif
             margin: 0;
@@ -203,90 +217,114 @@
         }
 
         .company-name {
-            font-size: 11px;
-            font-weight: bold;
+            font-size: 13.5px;
+            font-weight: 900;
             margin-bottom: 1px;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.5px;
+            color: #000000;
+            -webkit-text-stroke: 0.3px #000000;
         }
 
         .company-address {
-            font-size: 8px;
-            line-height: 1.2;
+            font-size: 9px;
+            font-weight: 700;
+            line-height: 1.22;
+            color: #000000;
         }
 
         .faktur-title {
             text-align: center;
-            font-size: 17px;
-            font-weight: bold;
+            font-size: 20px;
+            font-weight: 900;
             text-decoration: underline;
-            padding-top: 1px;
-            letter-spacing: 2px;
+            padding-top: 2px;
+            letter-spacing: 3px;
+            color: #000000;
+            -webkit-text-stroke: 0.4px #000000;
         }
 
         .info-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 2px;
+            font-weight: 700;
         }
 
         .info-table td {
             padding: 0px 2px;
-            font-size: 9px;
+            font-size: 9.5px;
             vertical-align: top;
         }
 
         .customer-box {
-            border: 1px solid #000000;
+            border: 1.5px solid #000000;
             width: 100%;
-            min-height: 36px;
+            min-height: 44px;
             text-align: left;
-            padding: 2px 4px;
-            font-size: 8.5px;
-            line-height: 1.2;
+            padding: 4px 6px;
+            font-size: 9.5px;
+            font-weight: 700;
+            line-height: 1.25;
+            background: #ffffff;
         }
 
         .customer-name {
-            font-weight: bold;
-            font-size: 9.5px;
+            font-weight: 900;
+            font-size: 10px;
             margin-bottom: 1px;
         }
 
         .ref-table {
             width: 100%;
-            margin-top: 3px;
+            margin-top: 5px;
             border-collapse: collapse;
+            font-size: 10px;
+            font-weight: 700;
         }
 
         .ref-table td {
-            padding: 1px 0;
-            font-size: 9px;
+            padding: 1.5px 0;
         }
 
         .label-bold {
-            font-weight: bold;
+            font-weight: 900;
         }
 
+        /* TABEL BARANG: TEBAL, FULL SAMPAI BAWAH, BEBAS GARIS ANTAR BARIS */
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 3px;
+            margin-top: 5px;
             table-layout: fixed;
+            font-size: 10px;
+            font-weight: 700;
+            border: 1.5px solid #000000;
         }
 
         .items-table th,
         .items-table td {
-            border: 1px solid #000000;
-            padding: 2.5px 4px;
-            font-size: 8.5px;
-            vertical-align: middle;
+            font-size: 10px;
             word-wrap: break-word;
             overflow: hidden;
         }
 
         .items-table th {
-            font-weight: bold;
+            border: 1.5px solid #000000;
+            padding: 4px 6px;
+            font-weight: 900;
             text-align: center;
             background: #ffffff;
+            -webkit-text-stroke: 0.25px #000000;
+        }
+
+        .items-table td {
+            border-left: 1.5px solid #000000;
+            border-right: 1.5px solid #000000;
+            border-top: none;
+            border-bottom: none;
+            padding: 3px 6px;
+            font-weight: 700;
+            vertical-align: top;
         }
 
         .items-table td.center {
@@ -297,42 +335,71 @@
             text-align: right;
         }
 
-        .items-table .empty-row td {
-            height: 13px;
-            border-left: 1px solid #000000;
-            border-right: 1px solid #000000;
+        .items-table tr.last-row td {
+            border-bottom: 1.5px solid #000000;
+        }
+
+        .items-table .spacer-row td {
+            border-left: 1.5px solid #000000;
+            border-right: 1.5px solid #000000;
             border-top: none;
             border-bottom: none;
         }
 
-        .items-table .last-row td {
-            border-bottom: 1px solid #000000;
+        .subtotal-table {
+            width: 100%;
+            margin-top: 4px;
+            border-collapse: collapse;
+            font-size: 10.5px;
+            font-weight: 800;
         }
 
-        .footer-table {
+        .bottom-section {
             width: 100%;
-            margin-top: 3px;
+            margin-top: 5px;
             border-collapse: collapse;
         }
 
-        .footer-table td {
+        .bottom-section td {
             vertical-align: top;
-            font-size: 8.5px;
-            padding: 1px 0;
+            padding: 0;
         }
 
         .signature-block {
             text-align: center;
-            margin-top: 2px;
+            padding: 0 8px;
         }
 
         .signature-space {
-            height: 25px;
+            height: 42px;
         }
 
         .signature-name {
-            font-weight: bold;
+            font-weight: 900;
+            font-size: 11px;
             text-decoration: underline;
+        }
+
+        .total-box {
+            text-align: right;
+            padding-left: 8px;
+        }
+
+        .total-line {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 900;
+            font-size: 12.5px;
+            border-bottom: 2.5px solid #000000;
+            padding-bottom: 2px;
+            margin-top: 38px;
+            -webkit-text-stroke: 0.3px #000000;
+        }
+
+        .footer-table {
+            width: 100%;
+            margin-top: 5px;
+            border-collapse: collapse;
         }
 
         .page-container {
@@ -358,7 +425,7 @@
             <div>
                 <strong style="color: #38bdf8;">🖨️ Mode Cetak Epson LX-310 (Direct Browser Print)</strong>
                 <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
-                    Ukuran: <strong>Continuous Form 8.5" x 5.5" (Bagi 2)</strong> &bull; Font: <strong>Monospace Pekat</strong> (Anti-Terpotong & Jelas di Pita Jarum)
+                    Ukuran: <strong>Continuous Form 8.5" x 5.5" (Bagi 2)</strong> &bull; Font: <strong>Monospace Pekat & Tebal</strong> (Jelas & Tajam di Pita Jarum)
                 </div>
             </div>
             <div style="display: flex; gap: 8px;">
@@ -382,17 +449,15 @@
                             <img src="{{ $logoBase64 }}" style="max-height: 26px; max-width: 170px; object-fit: contain;">
                         </div>
                     @endif
-                    <div class="company-name">PT. SAKTINDO JAYA BERSAMA</div>
+                    <div class="company-name">{{ $companyName }}</div>
                     <div class="company-address">
-                        PASAR KENARI ALO D AKS 110<br>
-                        JL. SALEMBA RAYA<br>
-                        SENEN , JAKARTA PUSAT-10430
+                        {!! nl2br(e($companyAddress)) !!}
                     </div>
                 </td>
-                <td style="width: 23%; text-align: center;">
+                <td style="width: 24%; text-align: center;">
                     <div class="faktur-title">FAKTUR</div>
                 </td>
-                <td style="width: 35%;">
+                <td style="width: 34%;">
                     <table class="info-table">
                         <tr>
                             <td style="width: 32%; font-weight: bold;">Tanggal</td>
@@ -417,15 +482,15 @@
         {{-- NO FAKTUR / NO REFF / KETERANGAN --}}
         <table class="ref-table">
             <tr>
-                <td style="width: 34%;">
+                <td style="width: 38%;">
                     <span class="label-bold">No. Faktur :</span>
                     {{ $invoiceNumber }}
                 </td>
-                <td style="width: 33%;">
+                <td style="width: 32%;">
                     <span class="label-bold">No Reff :</span>
                     {{ $poNumber }}
                 </td>
-                <td style="width: 33%;">
+                <td style="width: 30%;">
                     <span class="label-bold">Keterangan :</span>
                     {{ $notesText }}
                 </td>
@@ -493,101 +558,107 @@
             }
             $displayItems = $consolidatedItems->values();
             $rowCount = count($displayItems);
-            // Pada kertas Continuous Form Bagi 2 (tinggi 5.5 in), batasi baris kosong agar pas 1 halaman
-            $targetRows = ($paperSize === 'continuous_half') ? 3 : 5;
-            $emptyRows = max(0, $targetRows - $rowCount);
+            
+            // Full sampai bawah: hitung tinggi spacer agar garis vertikal mengisi penuh area tengah halaman
+            $targetHeightPx = ($paperSize === 'continuous_half') ? 180 : 320;
+            $usedHeightPx = $rowCount * 22;
+            $spacerHeightPx = max(25, $targetHeightPx - $usedHeightPx);
         @endphp
         <table class="items-table">
             <thead>
                 <tr>
                     <th style="width: 5%;">No</th>
-                    <th style="width: 39%;">Nama Barang</th>
-                    <th style="width: 13%;">Qty</th>
+                    <th style="width: 41%;">Nama Barang</th>
+                    <th style="width: 12%;">Qty</th>
                     <th style="width: 14%;">Harga</th>
-                    <th style="width: 9%;">Disc</th>
-                    <th style="width: 20%;">Jumlah</th>
+                    <th style="width: 10%;">Disc</th>
+                    <th style="width: 18%;">Jumlah</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($displayItems as $index => $item)
                     <tr>
                         <td class="center">{{ $index + 1 }}</td>
-                        <td style="font-weight: 600;">{{ $item['name'] }}</td>
-                        <td class="center">{{ number_format($item['qty'], 2, ',', '.') }} {{ strtoupper($item['unit']) }}</td>
-                        <td class="right">{{ number_format($item['price'], 2, ',', '.') }}</td>
-                        <td class="center">{{ $item['disc_display'] }}</td>
-                        <td class="right" style="font-weight: 600;">{{ number_format($item['total'], 2, ',', '.') }}</td>
+                        <td style="font-weight: 800;">{{ $item['name'] }}</td>
+                        <td class="center" style="font-weight: 800;">{{ number_format($item['qty'], 2, ',', '.') }} {{ strtoupper($item['unit']) }}</td>
+                        <td class="right" style="font-weight: 800;">{{ number_format($item['price'], 2, ',', '.') }}</td>
+                        <td class="center" style="font-weight: 800;">{{ $item['disc_display'] }}</td>
+                        <td class="right" style="font-weight: 900;">{{ number_format($item['total'], 2, ',', '.') }}</td>
                     </tr>
                 @endforeach
 
-                {{-- Baris kosong pengisi ruang meniru cetakan asli --}}
-                @for ($i = 0; $i < $emptyRows; $i++)
-                    <tr class="empty-row {{ $i == $emptyRows - 1 ? 'last-row' : '' }}">
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                        <td></td>
-                    </tr>
-                @endfor
+                {{-- Spacer Row Full Sampai Bawah: garis vertikal tembus tanpa garis horizontal antar baris --}}
+                <tr class="spacer-row last-row">
+                    <td style="height: {{ $spacerHeightPx }}px;">&nbsp;</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
             </tbody>
         </table>
 
         {{-- SUBTOTAL / TERBILANG --}}
-        <table class="footer-table" style="margin-top: 4px;">
+        <table class="subtotal-table">
             <tr>
-                <td style="width: 70%; vertical-align: top;">
+                <td style="width: 72%; vertical-align: top;">
                     <span class="label-bold">Terbilang :</span>
                     {{ $terbilangText }}
                 </td>
-                <td style="width: 30%; text-align: right; vertical-align: top; font-weight: bold; font-size: 10px;">
+                <td style="width: 28%; text-align: right; vertical-align: top; font-weight: 900; font-size: 11px;">
                     {{ number_format($subtotal > 0 ? $subtotal : $grandTotal, 2, ',', '.') }}
                 </td>
             </tr>
         </table>
 
-        {{-- JATUH TEMPO, PERHATIAN, HORMAT KAMI, DAN TOTAL RP --}}
-        <table class="footer-table" style="margin-top: 4px;">
+        {{-- JATUH TEMPO, PERHATIAN | TTD DI TENGAH | TOTAL RP DI KANAN --}}
+        <table class="bottom-section">
             <tr>
-                <td style="width: 62%; vertical-align: top;">
-                    <div style="font-size: 9.5px; margin-bottom: 4px;">
+                {{-- KIRI: Jatuh Tempo & Perhatian --}}
+                <td style="width: 48%; vertical-align: top;">
+                    <div style="font-size: 10px; margin-bottom: 4px; font-weight: 800;">
                         <span class="label-bold">Jatuh Tempo pada Tanggal :</span>
                         {{ $dueDateObj ? $dueDateObj->translatedFormat('l, d F, Y') : ($invoiceDateObj ? $invoiceDateObj->translatedFormat('l, d F, Y') : '-') }}
                     </div>
 
-                    <table style="width: 100%; font-size: 8px; line-height: 1.25; border-collapse: collapse;">
+                    <table style="width: 100%; font-size: 9px; line-height: 1.25; border-collapse: collapse; font-weight: 700;">
                         <tr>
-                            <td style="width: 16%; vertical-align: top; font-weight: bold; padding: 0;">Perhatian</td>
-                            <td style="width: 84%; vertical-align: top; padding: 0;">
+                            <td style="width: 18%; vertical-align: top; font-weight: 900; padding: 0;">Perhatian</td>
+                            <td style="width: 82%; vertical-align: top; padding: 0;">
                                 1. Barang-barang yang telah dibeli tidak dapat dikembalikan.<br>
                                 2. Pembayaran dengan cek/giro belum berarti lunas sebelum diuangkan.<br>
-                                3. CEK/GIRO atas nama : <strong>PT. SAKTINDO JAYA BERSAMA</strong>. BCA KENARI . REK NO. <strong>068.3055678</strong>
+                                3. CEK/GIRO atas nama : <strong>{{ $bankAccountName }}</strong>.<br>
+                                &nbsp;&nbsp;&nbsp;{{ $bankAccountDetails }}
                             </td>
                         </tr>
                     </table>
                 </td>
-                <td style="width: 38%; vertical-align: top;">
+
+                {{-- TENGAH: Tanda Tangan (Sesuai Arahan User) --}}
+                <td style="width: 26%; text-align: center; vertical-align: top;">
                     <div class="signature-block">
-                        <div style="font-weight: bold;">Hormat Kami</div>
+                        <div style="font-weight: 900; font-size: 10.5px;">Hormat Kami</div>
                         <div class="signature-space"></div>
                         <div class="signature-name">{{ $signerName }}</div>
-                        <div style="font-weight: bold; font-size: 8.5px;">{{ $signerTitle }}</div>
+                        <div style="font-weight: 800; font-size: 9.5px;">{{ $signerTitle }}</div>
                     </div>
-                    <table style="width: 100%; margin-top: 4px;">
-                        <tr>
-                            <td style="width: 35%; font-weight: bold; font-size: 10.5px; padding: 2px 0;">Total Rp.</td>
-                            <td style="width: 65%; text-align: right; font-weight: bold; font-size: 10.5px; border-bottom: 2px solid #000000; padding: 2px 0;">
-                                {{ number_format($grandTotal, 2, ',', '.') }}
-                            </td>
-                        </tr>
-                    </table>
+                </td>
+
+                {{-- KANAN: Total Rp --}}
+                <td style="width: 26%; vertical-align: top;">
+                    <div class="total-box">
+                        <div class="total-line">
+                            <span>Total Rp.</span>
+                            <span>{{ number_format($grandTotal, 2, ',', '.') }}</span>
+                        </div>
+                    </div>
                 </td>
             </tr>
         </table>
 
         {{-- FOOTER BAWAH --}}
-        <table style="width: 100%; margin-top: 6px; font-size: 7.5px; border-collapse: collapse;">
+        <table style="width: 100%; margin-top: 6px; font-size: 8.5px; font-weight: 700; border-collapse: collapse; color: #000000;">
             <tr>
                 <td style="width: 75%; text-align: left;">
                     User : {{ $userName }}, Tgl & Jam Cetak : {{ now()->format('d/m/Y H:i:s') }} WIB ,Komp : {{ $computerName }}
