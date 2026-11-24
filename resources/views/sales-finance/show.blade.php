@@ -1326,11 +1326,11 @@
                                 <div class="col-md-4">
                                     <label class="form-label small fw-semibold text-dark">Format Font / Ketajaman</label>
                                     <select name="font_mode" id="fakturFontMode" class="form-select form-select-sm">
-                                        <option value="dotmatrix" selected>Mode Dot Matrix (Monospace Tajam & Hitam Pekat untuk Pita LX-310)</option>
-                                        <option value="standard">Mode Standar Grafis (Arial / Helvetica)</option>
+                                        <option value="standard" selected>Mode Standar Grafis (Arial - Tulisan Tebal, Padat & Jelas)</option>
+                                        <option value="dotmatrix">Mode Monospace (Consolas / Courier New)</option>
                                     </select>
                                     <div class="form-text text-muted" style="font-size: 11px;">
-                                        Font monospaced pekat membuat ketukan jarum printer LX-310 tidak buram dan tembus jelas hingga rangkap belakang.
+                                        Rekomendasi Epson LX-310: Gunakan <strong>Mode Standar Grafis (Arial)</strong> agar ketukan jarum pita padat, tebal, dan tidak putus-putus.
                                     </div>
                                 </div>
                                 <div class="col-md-3">

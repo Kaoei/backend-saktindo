@@ -168,10 +168,10 @@
         @page {
             @if($paperSize === 'continuous_half')
                 size: 8.5in 5.5in landscape;
-                margin: 3mm 6mm 3mm 6mm;
+                margin: 6mm 8mm 5mm 8mm;
             @elseif($paperSize === 'continuous_full')
                 size: 8.5in 11in portrait;
-                margin: 5mm 8mm 5mm 8mm;
+                margin: 6mm 8mm 6mm 8mm;
             @elseif($paperSize === 'a4_landscape')
                 size: 297mm 210mm landscape;
                 margin: 6mm 10mm 6mm 10mm;
@@ -189,18 +189,18 @@
 
         body {
             @if($fontMode === 'dotmatrix')
-                font-family: 'Consolas', 'Courier New', Courier, 'Lucida Console', Monaco, monospace !important;
-                font-size: 11px;
+                font-family: Arial, 'Segoe UI', Tahoma, 'Consolas', 'Courier New', Courier, sans-serif !important;
+                font-size: 10px;
                 font-weight: 700 !important;
                 color: #000000 !important;
-                -webkit-font-smoothing: none !important;
-                font-smooth: never !important;
+                -webkit-font-smoothing: antialiased !important;
                 text-rendering: geometricPrecision !important;
             @else
-                font-family: Arial, Helvetica, sans-serif !important;
-                font-size: 10.5px;
+                font-family: Arial, 'Segoe UI', Tahoma, Helvetica, sans-serif !important;
+                font-size: 10px;
                 font-weight: 700 !important;
                 color: #000000 !important;
+                -webkit-font-smoothing: antialiased !important;
             @endif
             margin: 0;
             padding: 0;
@@ -222,27 +222,27 @@
         }
 
         .company-name {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 900;
             margin-bottom: 1px;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             color: #000000;
         }
 
         .company-address {
-            font-size: 9.5px;
+            font-size: 9px;
             font-weight: 700;
-            line-height: 1.22;
+            line-height: 1.25;
             color: #000000;
         }
 
         .faktur-title {
             text-align: center;
-            font-size: 21px;
+            font-size: 18px;
             font-weight: 900;
             text-decoration: underline;
-            padding-top: 2px;
-            letter-spacing: 3px;
+            padding-top: 4px;
+            letter-spacing: 2px;
             color: #000000;
         }
 
@@ -255,17 +255,17 @@
 
         .info-table td {
             padding: 0px 2px;
-            font-size: 10px;
+            font-size: 9.5px;
             vertical-align: top;
         }
 
         .customer-box {
             border: 1.5px solid #000000;
             width: 100%;
-            min-height: 44px;
+            min-height: 42px;
             text-align: left;
             padding: 4px 6px;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 700;
             line-height: 1.25;
             background: #ffffff;
@@ -273,15 +273,15 @@
 
         .customer-name {
             font-weight: 900;
-            font-size: 10.5px;
+            font-size: 10px;
             margin-bottom: 1px;
         }
 
         .ref-table {
             width: 100%;
-            margin-top: 5px;
+            margin-top: 4px;
             border-collapse: collapse;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 700;
         }
 
@@ -297,16 +297,16 @@
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 5px;
+            margin-top: 4px;
             table-layout: fixed;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 700;
             border: 1.5px solid #000000;
         }
 
         .items-table th,
         .items-table td {
-            font-size: 10.5px;
+            font-size: 10px;
             word-wrap: break-word;
             overflow: hidden;
         }
@@ -352,7 +352,7 @@
             width: 100%;
             margin-top: 4px;
             border-collapse: collapse;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 800;
         }
 
@@ -373,12 +373,12 @@
         }
 
         .signature-space {
-            height: 42px;
+            height: 38px;
         }
 
         .signature-name {
             font-weight: 900;
-            font-size: 11.5px;
+            font-size: 11px;
             text-decoration: underline;
         }
 
@@ -391,10 +391,10 @@
             display: flex;
             justify-content: space-between;
             font-weight: 900;
-            font-size: 13px;
-            border-bottom: 2.5px solid #000000;
+            font-size: 12.5px;
+            border-bottom: 2px solid #000000;
             padding-bottom: 2px;
-            margin-top: 38px;
+            margin-top: 34px;
         }
 
         .footer-table {
@@ -421,8 +421,7 @@
                 padding: 0 !important;
                 background: #ffffff !important;
                 color: #000000 !important;
-                -webkit-font-smoothing: none !important;
-                font-smooth: never !important;
+                -webkit-font-smoothing: antialiased !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
             }
@@ -580,9 +579,9 @@
             $rowCount = count($displayItems);
             
             // Full sampai bawah: hitung tinggi spacer agar garis vertikal mengisi penuh area tengah halaman
-            $targetHeightPx = ($paperSize === 'continuous_half') ? 180 : 320;
+            $targetHeightPx = ($paperSize === 'continuous_half') ? 165 : 300;
             $usedHeightPx = $rowCount * 22;
-            $spacerHeightPx = max(25, $targetHeightPx - $usedHeightPx);
+            $spacerHeightPx = max(20, $targetHeightPx - $usedHeightPx);
         @endphp
         <table class="items-table">
             <thead>
