@@ -167,35 +167,38 @@
     <style>
         @page {
             @if($paperSize === 'continuous_half')
-                size: 8.5in 5.5in;
-                margin: 4mm 6mm 4mm 6mm;
+                size: 8.5in 5.5in landscape;
+                margin: 3mm 6mm 3mm 6mm;
             @elseif($paperSize === 'continuous_full')
-                size: 8.5in 11in;
-                margin: 6mm 8mm 6mm 8mm;
+                size: 8.5in 11in portrait;
+                margin: 5mm 8mm 5mm 8mm;
             @elseif($paperSize === 'a4_landscape')
-                size: 297mm 210mm;
-                margin: 8mm 12mm 8mm 12mm;
+                size: 297mm 210mm landscape;
+                margin: 6mm 10mm 6mm 10mm;
             @else
-                size: 210mm 297mm;
-                margin: 8mm 12mm 8mm 12mm;
+                size: 210mm 297mm portrait;
+                margin: 6mm 10mm 6mm 10mm;
             @endif
         }
 
         * {
             box-sizing: border-box;
+            -webkit-text-stroke: 0 !important;
+            text-shadow: none !important;
         }
 
         body {
             @if($fontMode === 'dotmatrix')
-                font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace !important;
-                font-size: 10px;
+                font-family: 'Consolas', 'Courier New', Courier, 'Lucida Console', Monaco, monospace !important;
+                font-size: 11px;
                 font-weight: 700 !important;
                 color: #000000 !important;
-                -webkit-font-smoothing: antialiased;
-                -webkit-text-stroke: 0.2px #000000;
+                -webkit-font-smoothing: none !important;
+                font-smooth: never !important;
+                text-rendering: geometricPrecision !important;
             @else
                 font-family: Arial, Helvetica, sans-serif !important;
-                font-size: 10px;
+                font-size: 10.5px;
                 font-weight: 700 !important;
                 color: #000000 !important;
             @endif
@@ -203,6 +206,8 @@
             padding: 0;
             background: #ffffff;
             line-height: 1.25;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         .header-table {
@@ -217,16 +222,15 @@
         }
 
         .company-name {
-            font-size: 13.5px;
+            font-size: 14px;
             font-weight: 900;
             margin-bottom: 1px;
             letter-spacing: 0.5px;
             color: #000000;
-            -webkit-text-stroke: 0.3px #000000;
         }
 
         .company-address {
-            font-size: 9px;
+            font-size: 9.5px;
             font-weight: 700;
             line-height: 1.22;
             color: #000000;
@@ -234,13 +238,12 @@
 
         .faktur-title {
             text-align: center;
-            font-size: 20px;
+            font-size: 21px;
             font-weight: 900;
             text-decoration: underline;
             padding-top: 2px;
             letter-spacing: 3px;
             color: #000000;
-            -webkit-text-stroke: 0.4px #000000;
         }
 
         .info-table {
@@ -252,7 +255,7 @@
 
         .info-table td {
             padding: 0px 2px;
-            font-size: 9.5px;
+            font-size: 10px;
             vertical-align: top;
         }
 
@@ -262,7 +265,7 @@
             min-height: 44px;
             text-align: left;
             padding: 4px 6px;
-            font-size: 9.5px;
+            font-size: 10px;
             font-weight: 700;
             line-height: 1.25;
             background: #ffffff;
@@ -270,7 +273,7 @@
 
         .customer-name {
             font-weight: 900;
-            font-size: 10px;
+            font-size: 10.5px;
             margin-bottom: 1px;
         }
 
@@ -278,7 +281,7 @@
             width: 100%;
             margin-top: 5px;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 700;
         }
 
@@ -296,14 +299,14 @@
             border-collapse: collapse;
             margin-top: 5px;
             table-layout: fixed;
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 700;
             border: 1.5px solid #000000;
         }
 
         .items-table th,
         .items-table td {
-            font-size: 10px;
+            font-size: 10.5px;
             word-wrap: break-word;
             overflow: hidden;
         }
@@ -314,7 +317,6 @@
             font-weight: 900;
             text-align: center;
             background: #ffffff;
-            -webkit-text-stroke: 0.25px #000000;
         }
 
         .items-table td {
@@ -350,7 +352,7 @@
             width: 100%;
             margin-top: 4px;
             border-collapse: collapse;
-            font-size: 10.5px;
+            font-size: 11px;
             font-weight: 800;
         }
 
@@ -376,7 +378,7 @@
 
         .signature-name {
             font-weight: 900;
-            font-size: 11px;
+            font-size: 11.5px;
             text-decoration: underline;
         }
 
@@ -389,11 +391,10 @@
             display: flex;
             justify-content: space-between;
             font-weight: 900;
-            font-size: 12.5px;
+            font-size: 13px;
             border-bottom: 2.5px solid #000000;
             padding-bottom: 2px;
             margin-top: 38px;
-            -webkit-text-stroke: 0.3px #000000;
         }
 
         .footer-table {
@@ -410,10 +411,20 @@
             .no-print {
                 display: none !important;
             }
+            * {
+                -webkit-text-stroke: 0 !important;
+                text-shadow: none !important;
+                filter: none !important;
+            }
             body {
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #ffffff !important;
+                color: #000000 !important;
+                -webkit-font-smoothing: none !important;
+                font-smooth: never !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>
@@ -421,20 +432,29 @@
 <body>
 
     @if($isHtmlPrint)
-        <div class="no-print" style="background: #1e293b; color: #f8fafc; padding: 10px 16px; margin-bottom: 12px; border-radius: 6px; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
-            <div>
-                <strong style="color: #38bdf8;">🖨️ Mode Cetak Epson LX-310 (Direct Browser Print)</strong>
-                <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
-                    Ukuran: <strong>Continuous Form 8.5" x 5.5" (Bagi 2)</strong> &bull; Font: <strong>Monospace Pekat & Tebal</strong> (Jelas & Tajam di Pita Jarum)
+        <div class="no-print" style="background: #0f172a; color: #f8fafc; padding: 12px 18px; margin-bottom: 12px; border-radius: 6px; font-family: system-ui, -apple-system, sans-serif; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 8px;">
+                <div>
+                    <strong style="color: #38bdf8; font-size: 14px;">🖨️ Mode Cetak Epson LX-310 (Direct Browser Print)</strong>
+                    <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px;">
+                        Ukuran: <strong>Continuous Form 8.5" x 5.5" (Bagi 2)</strong> &bull; Font: <strong>Solid Monospace</strong> (Anti-Keropos & Pekat Tanpa Dithering)
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 8px 18px; border-radius: 4px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                        <span>🖨️</span> Cetak Sekarang
+                    </button>
+                    <button type="button" onclick="window.close()" style="background: #475569; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-size: 13px;">
+                        Tutup
+                    </button>
                 </div>
             </div>
-            <div style="display: flex; gap: 8px;">
-                <button type="button" onclick="window.print()" style="background: #16a34a; color: white; border: none; padding: 7px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                    <span>🖨️</span> Cetak Sekarang
-                </button>
-                <button type="button" onclick="window.close()" style="background: #475569; color: white; border: none; padding: 7px 12px; border-radius: 4px; cursor: pointer;">
-                    Tutup
-                </button>
+            <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 16px; flex-wrap: wrap;">
+                <span>💡 <strong>Panduan Print Dialog Browser:</strong></span>
+                <span>• Tata Letak (Layout): <strong style="color:#fde047;">Lanskap / Landscape</strong></span>
+                <span>• Margin: <strong style="color:#fde047;">None (Tanpa Margin)</strong></span>
+                <span>• Skala (Scale): <strong style="color:#fde047;">100% / Default</strong></span>
+                <span>• Warna: <strong style="color:#fde047;">Hitam & Putih (Black & White)</strong></span>
             </div>
         </div>
     @endif
